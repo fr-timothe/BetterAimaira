@@ -446,6 +446,10 @@
   /* The translucent pill surface: card, thinned just enough to let the content
      behind it read as motion. */
   --color-card-veil: color-mix(in oklch, var(--card) 92%, transparent);
+  /* A scrim over content that is being refreshed: thin enough to read through. */
+  --color-card-scrim: color-mix(in oklch, var(--card) 78%, transparent);
+  /* A pill's hover ground on a sunken track. */
+  --color-card-hover: color-mix(in oklch, var(--card) 60%, transparent);
 
   /* Sign-in signal panel. It is the darkest surface in the app, so its tones are
      mixed against white rather than against a light surface. */
