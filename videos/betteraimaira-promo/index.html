@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>BetterAimaira — Présentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --ink-blue: #13253f;
+        --ink-dark: #0a1424;
+        --primary-cyan: #00b9e8;
+        --cyan-glow: rgba(0, 185, 232, 0.45);
+        --secondary-blue: #223d63;
+        --surface-light: #f8fafc;
+        --card-white: #ffffff;
+        --text-dark: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ink-dark);
+        color: #ffffff;
+        font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--ink-dark);
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Ambient Background Elements */
+      .grid-pattern {
+        position: absolute;
+        inset: 0;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+        background-size: 60px 60px;
+      }
+
+      .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(120px);
+        pointer-events: none;
+      }
+
+      /* Typography & Utility Components */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 18px;
+        border-radius: 9999px;
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .badge-cyan {
+        background: rgba(0, 185, 232, 0.15);
+        color: var(--primary-cyan);
+        border: 1px solid rgba(0, 185, 232, 0.35);
+        box-shadow: 0 0 20px rgba(0, 185, 232, 0.2);
+      }
+
+      .badge-white {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+      }
+
+      .headline-main {
+        font-size: 64px;
+        font-weight: 900;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+
+      .gradient-text {
+        background: linear-gradient(135deg, #ffffff 30%, #00b9e8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .sub-caption {
+        font-size: 24px;
+        line-height: 1.4;
+        color: #94a3b8;
+        font-weight: 500;
+      }
+
+      /* Mockup Frame & Glass Styling */
+      .mockup-window {
+        position: absolute;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 
+          0 25px 60px -15px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(255, 255, 255, 0.12),
+          0 0 40px rgba(0, 185, 232, 0.15);
+        background: #0f172a;
+      }
+
+      .mockup-window img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      .floating-card {
+        position: absolute;
+        padding: 24px 28px;
+        border-radius: 18px;
+        background: rgba(19, 37, 63, 0.85);
+        border: 1px solid rgba(0, 185, 232, 0.3);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      .feature-pill {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 22px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .feature-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--primary-cyan);
+        display: grid;
+        place-items: center;
+        color: var(--ink-dark);
+        font-weight: 800;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="24"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- =============================================================
+           SCENE 1: HOOK & IDENTITY (0.0s - 4.8s)
+           ============================================================= -->
+      <div id="scene-intro" class="scene">
+        <div class="grid-pattern"></div>
+        <div class="glow-orb" style="top: 20%; left: 35%; width: 600px; height: 600px; background: var(--cyan-glow);"></div>
+        <div class="glow-orb" style="bottom: 10%; right: 20%; width: 450px; height: 450px; background: rgba(34, 61, 99, 0.6);"></div>
+
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px;">
+          <!-- Animated Slot Matrix Monogram -->
+          <div id="intro-logo-box" style="position: relative; width: 140px; height: 140px; margin-bottom: 36px;">
+            <img src="assets/logo.svg" alt="BetterAimaira Logo" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 15px 30px rgba(0, 185, 232, 0.4));" />
+          </div>
+
+          <div id="intro-badge" class="badge badge-cyan" style="margin-bottom: 24px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary-cyan); box-shadow: 0 0 10px var(--primary-cyan);"></span>
+            Nouvelle Génération Intranet Étudiant
+          </div>
+
+          <h1 id="intro-title" class="headline-main gradient-text" style="font-size: 80px; margin-bottom: 24px;">
+            BetterAimaira
+          </h1>
+
+          <p id="intro-tagline" class="sub-caption" style="max-width: 850px; font-size: 28px; color: #cbd5e1; margin-bottom: 36px;">
+            Votre emploi du temps, vos notes et votre assiduité.<br />
+            <strong style="color: #ffffff; font-weight: 700;">Instantané, fluide, 100% local.</strong>
+          </p>
+
+          <div id="intro-badges-row" style="display: flex; gap: 16px;">
+            <span class="badge badge-white">🔒 Données Chiffrées sur l'Appareil</span>
+            <span class="badge badge-white">⚡ Rust & Tauri v2</span>
+            <span class="badge badge-white">📱 Multi-Plateforme</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================
+           SCENE 2: TODAY & LIVE COURSE (4.8s - 10.2s)
+           ============================================================= -->
+      <div id="scene-today" class="scene">
+        <div class="grid-pattern"></div>
+        <div class="glow-orb" style="top: 15%; right: 10%; width: 500px; height: 500px; background: var(--cyan-glow);"></div>
+
+        <div style="position: absolute; left: 100px; top: 120px; width: 620px; z-index: 10;">
+          <div id="today-badge" class="badge badge-cyan" style="margin-bottom: 20px;">
+            Vue Aujourd'hui en direct
+          </div>
+          <h2 id="today-headline" class="headline-main" style="margin-bottom: 20px;">
+            Votre journée<br /><span class="gradient-text">en un coup d'œil.</span>
+          </h2>
+          <p id="today-desc" class="sub-caption" style="margin-bottom: 36px;">
+            Le cours en cours, la salle, le professeur, le temps restant et la moyenne générale actualisée en temps réel.
+          </p>
+
+          <div id="today-features" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="feature-pill">
+              <div class="feature-icon">✓</div>
+              <span>Badge « En ce moment » avec compte à rebours précis</span>
+            </div>
+            <div class="feature-pill">
+              <div class="feature-icon">✓</div>
+              <span>Volume d'heures du jour et cours restants</span>
+            </div>
+            <div class="feature-pill">
+              <div class="feature-icon">✓</div>
+              <span>Dernières évaluations et lien direct vers Tempo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Angled Mockup Screen -->
+        <div id="today-mockup-wrapper" style="position: absolute; right: 80px; top: 110px; width: 1050px; height: 860px; perspective: 1200px;">
+          <div id="today-mockup" class="mockup-window" style="width: 1050px;">
+            <img src="assets/screenshot-1.png" alt="Today view" />
+          </div>
+
+          <!-- Highlight Floating Card 1: Course in Progress -->
+          <div id="today-card-live" class="floating-card" style="left: -40px; bottom: 80px; width: 380px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+              <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #00b9e8; box-shadow: 0 0 12px #00b9e8;"></span>
+              <span style="font-size: 13px; font-weight: 800; color: #00b9e8; text-transform: uppercase;">En ce moment</span>
+              <span style="font-size: 12px; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;">Salle C105</span>
+            </div>
+            <div style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 6px;">Sécurité & Cryptographie</div>
+            <div style="font-size: 14px; color: #94a3b8;">Pr. Antoine Girard · Fin dans 49 min</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================
+           SCENE 3: ADAPTIVE SCHEDULE (10.2s - 15.6s)
+           ============================================================= -->
+      <div id="scene-schedule" class="scene">
+        <div class="grid-pattern"></div>
+        <div class="glow-orb" style="bottom: 10%; left: 30%; width: 600px; height: 600px; background: rgba(0, 185, 232, 0.35);"></div>
+
+        <div style="position: absolute; right: 100px; top: 120px; width: 620px; z-index: 10; text-align: right;">
+          <div id="sched-badge" class="badge badge-cyan" style="margin-bottom: 20px; align-self: flex-end;">
+            Planning Dynamique
+          </div>
+          <h2 id="sched-headline" class="headline-main" style="margin-bottom: 20px;">
+            Emploi du temps<br /><span class="gradient-text">Semaine & Jour.</span>
+          </h2>
+          <p id="sched-desc" class="sub-caption" style="margin-bottom: 36px;">
+            Consultez votre semaine complète avec codes couleurs ou passez au sélecteur de jour compact sur mobile.
+          </p>
+
+          <div id="sched-features" style="display: flex; flex-direction: column; gap: 16px; align-items: flex-end;">
+            <div class="feature-pill" style="width: fit-content;">
+              <span>Grille de semaine avec repérage des amphis et labos</span>
+              <div class="feature-icon">✓</div>
+            </div>
+            <div class="feature-pill" style="width: fit-content;">
+              <span>Disponible 100% hors-ligne grâce au cache sécurisé</span>
+              <div class="feature-icon">✓</div>
+            </div>
+            <div class="feature-pill" style="width: fit-content;">
+              <span>Navigation fluide entre semaines et mois</span>
+              <div class="feature-icon">✓</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Layered Desktop + Mobile Mockup -->
+        <div id="sched-mockup-wrapper" style="position: absolute; left: 80px; top: 120px; width: 1080px; height: 840px;">
+          <!-- Desktop Week Grid Plate -->
+          <div id="sched-desktop-plate" class="mockup-window" style="width: 980px; top: 20px; left: 0;">
+            <img src="assets/screenshot-3.png" alt="Week Schedule Grid" />
+          </div>
+
+          <!-- Compact Day Picker Card Overlaid -->
+          <div id="sched-compact-plate" class="mockup-window" style="width: 480px; bottom: -20px; left: 560px; box-shadow: 0 30px 70px rgba(0,0,0,0.8), 0 0 0 2px rgba(0,185,232,0.4);">
+            <img src="assets/screenshot-2.png" alt="Day Schedule View" />
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================
+           SCENE 4: GRADES & BULLETINS (15.6s - 20.4s)
+           ============================================================= -->
+      <div id="scene-grades" class="scene">
+        <div class="grid-pattern"></div>
+        <div class="glow-orb" style="top: 20%; left: 15%; width: 550px; height: 550px; background: var(--cyan-glow);"></div>
+
+        <div style="position: absolute; left: 100px; top: 120px; width: 620px; z-index: 10;">
+          <div id="grades-badge" class="badge badge-cyan" style="margin-bottom: 20px;">
+            Notes & Assiduité
+          </div>
+          <h2 id="grades-headline" class="headline-main" style="margin-bottom: 20px;">
+            Suivi académique<br /><span class="gradient-text">clair et précis.</span>
+          </h2>
+          <p id="grades-desc" class="sub-caption" style="margin-bottom: 36px;">
+            Courbe de progression, moyennes par bloc, détails des évaluations et téléchargement direct de vos bulletins officiels.
+          </p>
+
+          <div id="grades-features" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="feature-pill">
+              <div class="feature-icon">✓</div>
+              <span>Calcul automatique et pondéré des moyennes</span>
+            </div>
+            <div class="feature-pill">
+              <div class="feature-icon">✓</div>
+              <span>Détail complet des coefficients et examens</span>
+            </div>
+            <div class="feature-pill">
+              <div class="feature-icon">✓</div>
+              <span>Téléchargement des certificats et bulletins PDF</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="grades-mockup-wrapper" style="position: absolute; right: 80px; top: 110px; width: 1050px; height: 860px;">
+          <div id="grades-mockup" class="mockup-window" style="width: 1050px;">
+            <img src="assets/screenshot-4.png" alt="Grades View" />
+          </div>
+
+          <!-- Highlight Metric Card -->
+          <div id="grades-floating-metric" class="floating-card" style="left: -40px; bottom: 80px; width: 340px;">
+            <div style="font-size: 14px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase;">Moyenne Semestre 8</div>
+            <div style="font-size: 42px; font-weight: 900; color: #00b9e8; line-height: 1; margin-bottom: 8px;">17,23 <span style="font-size: 20px; color: #94a3b8;">/20</span></div>
+            <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 700;">
+              <span>✦</span> Mention Très Bien
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =============================================================
+           SCENE 5: OUTRO & CTA (20.4s - 24.0s)
+           ============================================================= -->
+      <div id="scene-outro" class="scene">
+        <div class="grid-pattern"></div>
+        <div class="glow-orb" style="top: 30%; left: 38%; width: 500px; height: 500px; background: var(--cyan-glow);"></div>
+
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px;">
+          <div id="outro-logo" style="width: 120px; height: 120px; margin-bottom: 28px;">
+            <img src="assets/logo.svg" alt="BetterAimaira Logo" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 15px 35px rgba(0, 185, 232, 0.5));" />
+          </div>
+
+          <h2 id="outro-title" class="headline-main gradient-text" style="font-size: 72px; margin-bottom: 18px;">
+            BetterAimaira
+          </h2>
+
+          <p id="outro-subtitle" class="sub-caption" style="font-size: 26px; max-width: 780px; margin-bottom: 36px; color: #e2e8f0;">
+            L'alternative moderne, élégante et native pour tous vos campus.
+          </p>
+
+          <!-- Platforms supported pills -->
+          <div id="outro-platforms" style="display: flex; gap: 14px; margin-bottom: 40px;">
+            <span class="badge badge-white">🪟 Windows</span>
+            <span class="badge badge-white">🍎 macOS</span>
+            <span class="badge badge-white">🐧 Linux</span>
+            <span class="badge badge-white">🤖 Android</span>
+            <span class="badge badge-white">📱 iOS</span>
+          </div>
+
+          <!-- Open Source CTA -->
+          <div id="outro-cta" style="display: inline-flex; align-items: center; gap: 14px; padding: 18px 36px; border-radius: 9999px; background: var(--primary-cyan); color: var(--ink-dark); font-size: 20px; font-weight: 800; box-shadow: 0 10px 30px rgba(0, 185, 232, 0.4);">
+            <span>🚀 Projet Open Source — Disponible sur GitHub</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Master GSAP Choreography Timeline -->
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // =========================================================================
+      // SCENE 1: Intro (0.0s - 4.8s)
+      // =========================================================================
+      tl.set("#scene-intro", { autoAlpha: 1 }, 0);
+      tl.fromTo("#intro-logo-box", { scale: 0.5, autoAlpha: 0, y: 40 }, { scale: 1, autoAlpha: 1, y: 0, duration: 1.0, ease: "back.out(1.7)" }, 0.2);
+      tl.fromTo("#intro-badge", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power3.out" }, 0.6);
+      tl.fromTo("#intro-title", { autoAlpha: 0, scale: 0.9, y: 30 }, { autoAlpha: 1, scale: 1, y: 0, duration: 0.9, ease: "power3.out" }, 0.9);
+      tl.fromTo("#intro-tagline", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: "power3.out" }, 1.3);
+      tl.fromTo("#intro-badges-row", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power3.out" }, 1.7);
+
+      // Exit Scene 1
+      tl.to("#scene-intro", { autoAlpha: 0, scale: 0.96, duration: 0.6, ease: "power2.inOut" }, 4.3);
+
+      // =========================================================================
+      // SCENE 2: Today & Live Course (4.8s - 10.2s)
+      // =========================================================================
+      tl.set("#scene-today", { autoAlpha: 1 }, 4.7);
+      tl.fromTo("#today-badge", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.6, ease: "power3.out" }, 4.8);
+      tl.fromTo("#today-headline", { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0, duration: 0.8, ease: "power3.out" }, 5.0);
+      tl.fromTo("#today-desc", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.7, ease: "power3.out" }, 5.3);
+      tl.fromTo("#today-features .feature-pill", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.5, stagger: 0.15, ease: "power3.out" }, 5.6);
+
+      // 3D Mockup Entrance & Camera Pan
+      tl.fromTo("#today-mockup", { autoAlpha: 0, x: 120, rotationY: -12, scale: 0.92 }, { autoAlpha: 1, x: 0, rotationY: 0, scale: 1, duration: 1.2, ease: "power3.out" }, 4.9);
+      tl.fromTo("#today-card-live", { autoAlpha: 0, scale: 0.8, y: 40 }, { autoAlpha: 1, scale: 1, y: 0, duration: 0.8, ease: "back.out(1.5)" }, 6.2);
+
+      // Subtle float camera during scene 2
+      tl.to("#today-mockup", { y: -15, duration: 3.0, ease: "sine.inOut" }, 6.5);
+
+      // Exit Scene 2
+      tl.to("#scene-today", { autoAlpha: 0, scale: 0.95, duration: 0.6, ease: "power2.inOut" }, 9.7);
+
+      // =========================================================================
+      // SCENE 3: Adaptive Schedule (10.2s - 15.6s)
+      // =========================================================================
+      tl.set("#scene-schedule", { autoAlpha: 1 }, 10.1);
+      tl.fromTo("#sched-badge", { autoAlpha: 0, x: 30 }, { autoAlpha: 1, x: 0, duration: 0.6, ease: "power3.out" }, 10.2);
+      tl.fromTo("#sched-headline", { autoAlpha: 0, x: 40 }, { autoAlpha: 1, x: 0, duration: 0.8, ease: "power3.out" }, 10.4);
+      tl.fromTo("#sched-desc", { autoAlpha: 0, x: 30 }, { autoAlpha: 1, x: 0, duration: 0.7, ease: "power3.out" }, 10.7);
+      tl.fromTo("#sched-features .feature-pill", { autoAlpha: 0, x: 30 }, { autoAlpha: 1, x: 0, duration: 0.5, stagger: 0.15, ease: "power3.out" }, 11.0);
+
+      // Desktop + Mobile Mockup Choreography
+      tl.fromTo("#sched-desktop-plate", { autoAlpha: 0, x: -100, scale: 0.9 }, { autoAlpha: 1, x: 0, scale: 1, duration: 1.1, ease: "power3.out" }, 10.3);
+      tl.fromTo("#sched-compact-plate", { autoAlpha: 0, y: 80, scale: 0.85 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.9, ease: "back.out(1.4)" }, 11.2);
+
+      // Float effect
+      tl.to("#sched-compact-plate", { y: -18, duration: 2.8, ease: "sine.inOut" }, 12.1);
+
+      // Exit Scene 3
+      tl.to("#scene-schedule", { autoAlpha: 0, scale: 0.95, duration: 0.6, ease: "power2.inOut" }, 15.1);
+
+      // =========================================================================
+      // SCENE 4: Grades & Bulletins (15.6s - 20.4s)
+      // =========================================================================
+      tl.set("#scene-grades", { autoAlpha: 1 }, 15.5);
+      tl.fromTo("#grades-badge", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.6, ease: "power3.out" }, 15.6);
+      tl.fromTo("#grades-headline", { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0, duration: 0.8, ease: "power3.out" }, 15.8);
+      tl.fromTo("#grades-desc", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.7, ease: "power3.out" }, 16.1);
+      tl.fromTo("#grades-features .feature-pill", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.5, stagger: 0.15, ease: "power3.out" }, 16.4);
+
+      // Grades Mockup Entrance & Hero Metric Reveal
+      tl.fromTo("#grades-mockup", { autoAlpha: 0, x: 100, scale: 0.92 }, { autoAlpha: 1, x: 0, scale: 1, duration: 1.1, ease: "power3.out" }, 15.7);
+      tl.fromTo("#grades-floating-metric", { autoAlpha: 0, scale: 0.8, y: 35 }, { autoAlpha: 1, scale: 1, y: 0, duration: 0.8, ease: "back.out(1.5)" }, 16.9);
+
+      // Exit Scene 4
+      tl.to("#scene-grades", { autoAlpha: 0, scale: 0.95, duration: 0.6, ease: "power2.inOut" }, 19.9);
+
+      // =========================================================================
+      // SCENE 5: Outro & Multi-Plateforme (20.4s - 24.0s)
+      // =========================================================================
+      tl.set("#scene-outro", { autoAlpha: 1 }, 20.3);
+      tl.fromTo("#outro-logo", { scale: 0.6, autoAlpha: 0, y: 30 }, { scale: 1, autoAlpha: 1, y: 0, duration: 0.8, ease: "back.out(1.6)" }, 20.5);
+      tl.fromTo("#outro-title", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power3.out" }, 20.8);
+      tl.fromTo("#outro-subtitle", { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.7, ease: "power3.out" }, 21.1);
+      tl.fromTo("#outro-platforms span", { autoAlpha: 0, scale: 0.8, y: 15 }, { autoAlpha: 1, scale: 1, y: 0, duration: 0.5, stagger: 0.1, ease: "back.out(1.4)" }, 21.4);
+      tl.fromTo("#outro-cta", { autoAlpha: 0, scale: 0.9, y: 20 }, { autoAlpha: 1, scale: 1, y: 0, duration: 0.8, ease: "back.out(1.6)" }, 21.9);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -12,6 +12,13 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 /.vscode
-/project.inlang
 /.claude
 /.agents
+/.tauri
+/dist-release
+
+# Video renders & working directories
+videos/**/renders/
+videos/**/snapshots/
+videos/**/node_modules/
+videos/**/.cache/
