@@ -87,11 +87,13 @@ jobs:
         with:
           ndk-version: r27c
 
-      # arm64-v8a and armeabi-v7a only: x86 and x86_64 are emulator ABIs, and
-      # each extra target is a full Rust compile of the whole graph.
+      # arm64-v8a and armeabi-v7a cover every real device; x86_64 is added so
+      # the update flow can be tested on an Android Studio emulator, which
+      # refuses an APK with no matching ABI. i686 is left out: no device and no
+      # current emulator image needs it.
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -130,7 +132,7 @@ jobs:
       - name: Build APK
         run: |
           bun run android:sync
-          bun tauri android build --apk --target aarch64 --target armv7
+          bun tauri android build --apk --target aarch64 --target armv7 --target x86_64
         env:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
 
@@ -232,7 +234,6 @@ jobs:
             --generate-notes \
             "${flags[@]}" \
             "${assets[@]}"
-
 
       # The feed the app actually reads. `gh-pages` is an orphan branch holding
       # nothing but these manifests, so `master` is never touched and the channel

@@ -73,7 +73,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -94,7 +94,7 @@ jobs:
       # target list must match `release` or the cached artifacts are unusable.
       - run: |
           bun run android:sync
-          bun tauri android build --apk --target aarch64 --target armv7
+          bun tauri android build --apk --target aarch64 --target armv7 --target x86_64
         env:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
 
