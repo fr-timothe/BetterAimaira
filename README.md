@@ -128,7 +128,7 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 <details>
   <summary>Mises à jour et distribution</summary>
 
-- `Flux de mise à jour unifié` (une seule release GitHub lue par toutes les plateformes)
+- `Flux de mise à jour unifié` (un manifeste par canal, publié sur GitHub Pages et lu par toutes les plateformes)
 - `Installation en place signée` sur bureau (vérification minisign, NSIS passif)
 - `Passage de relais à PackageInstaller` sur Android
 - `Vérification de source AltStore` sur iOS
@@ -218,7 +218,9 @@ bun run clean
 bun run clean:cache
 ```
 
-Pousser un tag `v*` déclenche le workflow [`.github/workflows/release.yml`](.github/workflows/release.yml), qui compile l'installeur Windows ainsi que l'APK Android, génère les manifestes de mise à jour et publie la release interrogée par l'application.
+Pousser un tag `v*` déclenche le workflow [`.github/workflows/release.yml`](.github/workflows/release.yml), qui compile l'installeur Windows ainsi que l'APK Android, génère les manifestes de mise à jour, publie la release et commite les manifestes sur la branche `gh-pages`.
+
+L'application lit son flux de mise à jour sur GitHub Pages, un dossier par canal : `updates/stable/` et `updates/beta/`. Un build dont la version porte un suffixe de préversion suit le canal bêta par défaut ; le canal est modifiable dans Réglages. Prérequis unique côté dépôt : `Settings > Pages`, source « Deploy from a branch », branche `gh-pages`, dossier `/ (root)`.
 
 ### Vérification
 

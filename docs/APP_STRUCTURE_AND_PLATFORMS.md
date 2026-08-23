@@ -296,9 +296,24 @@ CI stages:
 
 Update delivery, implemented in `.github/workflows/release.yml`:
 
-- Desktop reads a minisign-signed `latest.json` and installs in place.
-- Android reads the same manifest and hands the APK to `PackageInstaller`.
+The feed is served by GitHub Pages from the orphan `gh-pages` branch, one
+directory per channel: `updates/stable/` and `updates/beta/`. It is deliberately
+not read from `releases/latest/download`, which only resolves to the newest
+release that is *not* flagged as a prerelease and therefore 404s on a project
+shipping betas.
+
+- Desktop reads a minisign-signed `latest.json` and installs in place. The
+  endpoint is set at runtime from the selected channel, not from the one baked
+  into `tauri.conf.json`.
+- Android reads the same manifest and hands the APK to `PackageInstaller`, whose
+  verdict comes back on the `update://install-status` event.
 - iOS reads an AltStore source; AltStore or SideStore performs the install.
+- A build follows the channel matching its own version until the user picks one
+  in Settings: a version carrying a prerelease suffix watches `beta`, since the
+  newest stable is by definition older than the beta already installed.
+- The release APK carries `arm64-v8a`, `armeabi-v7a` and `x86_64`. The last one
+  exists so the update flow can be exercised on an emulator, which refuses an
+  APK with no matching ABI.
 
 ## 11. Development workflows and flavor configurations
 

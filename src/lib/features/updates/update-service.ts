@@ -8,6 +8,19 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
  */
 export type UpdateDelivery = 'inApp' | 'androidPackage' | 'altStore';
 
+/**
+ * Which release stream to follow. `stable` carries only releases tagged without
+ * a prerelease suffix; `beta` carries everything, because a finished stable
+ * release supersedes the betas that led to it.
+ */
+export type UpdateChannel = 'stable' | 'beta';
+
+export const UPDATE_CHANNELS: readonly UpdateChannel[] = ['stable', 'beta'];
+
+export function isUpdateChannel(value: unknown): value is UpdateChannel {
+  return value === 'stable' || value === 'beta';
+}
+
 export type UpdateInfo = {
   available: boolean;
   currentVersion: string;
@@ -15,6 +28,7 @@ export type UpdateInfo = {
   notes: string | null;
   publishedAt: string | null;
   delivery: UpdateDelivery;
+  channel: UpdateChannel;
   downloadUrl: string | null;
   storeUrl: string | null;
 };
@@ -27,6 +41,15 @@ export type InstallOutcome = {
 export type DownloadProgress = {
   downloaded: number;
   total: number | null;
+};
+
+/**
+ * Android only: the system package installer answers on a broadcast well after
+ * the install command returned, so its verdict arrives as an event.
+ */
+export type InstallStatus = {
+  succeeded: boolean;
+  message: string | null;
 };
 
 export type UpdateErrorCode =
@@ -58,16 +81,17 @@ export function updatesSupported(): boolean {
   return isTauri();
 }
 
-export function checkForUpdate(): Promise<UpdateInfo> {
-  return invoke<UpdateInfo>('check_for_update');
+export function checkForUpdate(channel: UpdateChannel): Promise<UpdateInfo> {
+  return invoke<UpdateInfo>('check_for_update', { channel });
 }
 
-export function installUpdate(): Promise<InstallOutcome> {
-  return invoke<InstallOutcome>('install_update');
+export function installUpdate(channel: UpdateChannel): Promise<InstallOutcome> {
+  return invoke<InstallOutcome>('install_update', { channel });
 }
 
-export function updateFeedBase(): Promise<string> {
-  return invoke<string>('update_feed_base');
+/** The channel this build belongs to, before the user has chosen one. */
+export function defaultUpdateChannel(): Promise<UpdateChannel> {
+  return invoke<UpdateChannel>('default_update_channel');
 }
 
 export function onDownloadProgress(
@@ -78,4 +102,8 @@ export function onDownloadProgress(
 
 export function onDownloadFinished(handler: () => void): Promise<UnlistenFn> {
   return listen('update://downloaded', () => handler());
+}
+
+export function onInstallStatus(handler: (status: InstallStatus) => void): Promise<UnlistenFn> {
+  return listen<InstallStatus>('update://install-status', (event) => handler(event.payload));
 }

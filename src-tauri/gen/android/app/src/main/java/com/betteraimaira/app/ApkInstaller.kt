@@ -133,6 +133,17 @@ object ApkInstaller {
         }
     }
 
+    /**
+     * Forwards the installer's verdict to Rust, which turns it into an event the
+     * page listens to. The session install answers on a broadcast long after
+     * `install` returned, so without this a refused or failed install left the
+     * interface claiming the system installer had taken over.
+     *
+     * Implemented in `src-tauri/src/updater.rs`; the name and the signature
+     * must stay in sync with it.
+     */
+    private external fun reportInstallStatus(succeeded: Boolean, message: String)
+
     private class InstallStatusReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val status =
@@ -146,7 +157,19 @@ object ApkInstaller {
                 confirmation?.let { context.startActivity(it) }
                 return
             }
+
             unregisterStatusReceiver(context)
+
+            // A successful install replaces this process, so the event only ever
+            // reaches the page on failure — which is exactly the case that used
+            // to be invisible.
+            val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: ""
+            try {
+                reportInstallStatus(status == PackageInstaller.STATUS_SUCCESS, message)
+            } catch (error: UnsatisfiedLinkError) {
+                // The broadcast can outlive the native library on a cold restart;
+                // the page has nothing to show at that point anyway.
+            }
         }
     }
 }

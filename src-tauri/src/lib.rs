@@ -37,6 +37,11 @@ pub fn run() {
             app.manage(grade_sync::GradeSyncStore::new(
                 data_directory.join("grades.sqlite"),
             ));
+            // The Android package installer answers on a broadcast that outlives
+            // the command which started the install, so its verdict is forwarded
+            // through a handle published here.
+            #[cfg(target_os = "android")]
+            updater::remember_app_handle(app.handle());
             Ok(())
         })
         .manage(SessionState::default())
@@ -54,7 +59,7 @@ pub fn run() {
             commands::normalize_portal_url,
             updater::check_for_update,
             updater::install_update,
-            updater::update_feed_base,
+            updater::default_update_channel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

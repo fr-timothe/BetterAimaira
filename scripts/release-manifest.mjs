@@ -7,6 +7,10 @@
  *   altstore.json  AltStore/SideStore source. Read by the store and by the iOS
  *                  check, which can only report a newer build.
  *
+ * The release workflow copies both onto the `gh-pages` branch, under the channel
+ * the tag belongs to, and that GitHub Pages copy is what the app reads. This
+ * script does not know about channels: the tag decides, so the workflow decides.
+ *
  * Artifacts are discovered under the usual build output paths, so the common
  * case needs no flags:
  *

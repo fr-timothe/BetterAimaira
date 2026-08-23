@@ -298,5 +298,9 @@
   "update_last_checked": "Vérifié à {time}",
   "update_notes_label": "Nouveautés",
   "update_altstore_hint": "Sur iOS, les mises à jour passent par AltStore ou SideStore : ajoutez la source, puis actualisez l'application.",
-  "update_badge_label": "Mise à jour disponible"
+  "update_badge_label": "Mise à jour disponible",
+  "update_channel_label": "Canal de mise à jour",
+  "update_channel_stable": "Stable",
+  "update_channel_beta": "Bêta",
+  "update_channel_hint": "Le canal bêta reçoit les versions de test avant le canal stable."
 }

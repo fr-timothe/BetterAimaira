@@ -221,8 +221,13 @@ bun run clean:cache
 ```
 
 Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which
-builds the Windows installer and the Android APK, writes both update manifests, and publishes the
-release the app polls.
+builds the Windows installer and the Android APK, writes both update manifests, publishes the
+release, and commits the manifests to the `gh-pages` branch.
+
+The app reads its update feed from GitHub Pages, one directory per channel: `updates/stable/` and
+`updates/beta/`. A build whose version carries a prerelease suffix follows the beta channel by
+default; the channel can be changed in Settings. One repository setting is required, once:
+`Settings > Pages`, source "Deploy from a branch", branch `gh-pages`, folder `/ (root)`.
 
 ### Verification
 

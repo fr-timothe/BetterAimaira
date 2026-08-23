@@ -11,35 +11,70 @@
 //!   both refresh and update. The app can only report that a newer build is
 //!   published in the source, then deep-link into the store.
 //!
-//! Every platform reads the same GitHub release: `latest.json` for desktop and
-//! Android, `altstore.json` for iOS. `scripts/release-manifest.mjs` writes both.
+//! Every platform reads the same feed, published on the `gh-pages` branch and
+//! served by GitHub Pages: `latest.json` for desktop and Android,
+//! `altstore.json` for iOS. `scripts/release-manifest.mjs` writes both and the
+//! release workflow commits them under the channel the tag belongs to.
+//!
+//! The feed is *not* read from `releases/latest/download`: that path only ever
+//! resolves to the newest release that is not flagged as a prerelease, so a
+//! project shipping betas gets a 404 and every platform reports a failed check.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::error::CommandError;
 
-/// Both manifests are published as assets of the same GitHub release, so
-/// `releases/latest/download` always resolves to the newest one.
-const FEED_BASE: &str = "https://github.com/fr-timothe/BetterAimaira/releases/latest/download";
-
-/// Desktop reads this through the updater plugin endpoint configured in
-/// `tauri.conf.json`; Android reads it directly. Same file, same version field.
-#[cfg(target_os = "android")]
-const TAURI_MANIFEST_URL: &str = concat!(
-    "https://github.com/fr-timothe/BetterAimaira/releases/latest/download",
-    "/latest.json"
-);
-
-/// AltStore source, consumed by AltStore/SideStore and by the iOS check below.
-#[cfg(target_os = "ios")]
-const ALTSTORE_SOURCE_URL: &str = concat!(
-    "https://github.com/fr-timothe/BetterAimaira/releases/latest/download",
-    "/altstore.json"
-);
+/// GitHub Pages, `gh-pages` branch: one directory per channel, each holding the
+/// two manifests. A static host keeps the URL independent of how GitHub labels
+/// a release, which is what broke the previous `releases/latest` feed.
+const FEED_BASE: &str = "https://fr-timothe.github.io/BetterAimaira/updates";
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
 const MANIFEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+
+/// Which release stream a build follows. `stable` only ever carries releases
+/// tagged without a prerelease suffix; `beta` carries everything, because a
+/// finished stable release supersedes the betas that led to it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UpdateChannel {
+    Stable,
+    Beta,
+}
+
+impl UpdateChannel {
+    fn slug(self) -> &'static str {
+        match self {
+            Self::Stable => "stable",
+            Self::Beta => "beta",
+        }
+    }
+
+    /// The channel a build follows until the user picks another one.
+    ///
+    /// A version carrying a prerelease suffix can only have come from the beta
+    /// stream, and pointing such a build at `stable` would strand it: the
+    /// newest stable is older than the beta already installed, so the app would
+    /// report itself up to date forever.
+    fn of_build(version: &semver::Version) -> Self {
+        if version.pre.is_empty() {
+            Self::Stable
+        } else {
+            Self::Beta
+        }
+    }
+}
+
+#[cfg(any(desktop, target_os = "android"))]
+fn manifest_url(channel: UpdateChannel) -> String {
+    format!("{FEED_BASE}/{}/latest.json", channel.slug())
+}
+
+#[cfg(target_os = "ios")]
+fn altstore_source_url(channel: UpdateChannel) -> String {
+    format!("{FEED_BASE}/{}/altstore.json", channel.slug())
+}
 
 /// How the pending update reaches the device. The interface needs this to label
 /// its own button honestly: installing in place, opening the Android installer,
@@ -67,6 +102,9 @@ pub struct UpdateInfo {
     pub notes: Option<String>,
     pub published_at: Option<String>,
     pub delivery: UpdateDelivery,
+    /// The channel this answer was read from, so the interface never labels a
+    /// result with a channel the user changed in the meantime.
+    pub channel: UpdateChannel,
     /// Direct asset link, for the platforms where the user may need it.
     pub download_url: Option<String>,
     /// Deep link that starts the install on iOS, `null` everywhere else.
@@ -74,7 +112,7 @@ pub struct UpdateInfo {
 }
 
 impl UpdateInfo {
-    fn up_to_date(current: String, delivery: UpdateDelivery) -> Self {
+    fn up_to_date(current: String, delivery: UpdateDelivery, channel: UpdateChannel) -> Self {
         Self {
             available: false,
             current_version: current,
@@ -82,6 +120,7 @@ impl UpdateInfo {
             notes: None,
             published_at: None,
             delivery,
+            channel,
             download_url: None,
             store_url: None,
         }
@@ -110,25 +149,107 @@ struct DownloadProgress {
 const PROGRESS_EVENT: &str = "update://download-progress";
 const DOWNLOADED_EVENT: &str = "update://downloaded";
 
+/// Android only: the package installer answers on a broadcast, long after the
+/// command returned, so its verdict arrives as an event instead of a result.
+#[cfg(target_os = "android")]
+const INSTALL_STATUS_EVENT: &str = "update://install-status";
+
 // ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
 
 #[tauri::command]
-pub async fn check_for_update(app: AppHandle) -> Result<UpdateInfo, CommandError> {
-    platform::check(&app).await
+pub async fn check_for_update(
+    app: AppHandle,
+    channel: Option<UpdateChannel>,
+) -> Result<UpdateInfo, CommandError> {
+    let channel = channel.unwrap_or_else(|| UpdateChannel::of_build(&app.package_info().version));
+    platform::check(&app, channel).await
 }
 
 #[tauri::command]
-pub async fn install_update(app: AppHandle) -> Result<InstallOutcome, CommandError> {
-    platform::install(&app).await
+pub async fn install_update(
+    app: AppHandle,
+    channel: Option<UpdateChannel>,
+) -> Result<InstallOutcome, CommandError> {
+    let channel = channel.unwrap_or_else(|| UpdateChannel::of_build(&app.package_info().version));
+    platform::install(&app, channel).await
 }
 
-/// Where the release feed lives, so the interface can link to the release page
-/// instead of dead-ending when an install path is unavailable.
+/// The channel this build belongs to. The selector reads it once so a fresh
+/// install lands on the right stream without the user touching a setting.
 #[tauri::command]
-pub fn update_feed_base() -> &'static str {
-    FEED_BASE
+pub fn default_update_channel(app: AppHandle) -> UpdateChannel {
+    UpdateChannel::of_build(&app.package_info().version)
+}
+
+// ---------------------------------------------------------------------------
+// Android: package installer verdict, reported back from Kotlin
+// ---------------------------------------------------------------------------
+
+/// Publishes the handle the JNI callback below needs.
+///
+/// The package installer replies on a broadcast that outlives the command which
+/// started the install, so the handle used to forward that reply cannot be the
+/// one borrowed by the command.
+#[cfg(target_os = "android")]
+pub fn remember_app_handle(app: &AppHandle) {
+    let _ = android_install_status::APP.set(app.clone());
+}
+
+#[cfg(target_os = "android")]
+mod android_install_status {
+    use super::{AppHandle, Serialize, INSTALL_STATUS_EVENT};
+    use std::sync::OnceLock;
+    use tauri::Emitter;
+
+    pub(super) static APP: OnceLock<AppHandle> = OnceLock::new();
+
+    #[derive(Clone, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct InstallStatus {
+        succeeded: bool,
+        /// The system's own wording when it has one, so a refused install can
+        /// say why instead of just failing.
+        message: Option<String>,
+    }
+
+    /// Called by `ApkInstaller.kt` once `PackageInstaller` reaches a terminal
+    /// status. Without it a failed or cancelled install left the interface
+    /// claiming the system installer had taken over.
+    ///
+    /// The name, the class and the signature must stay in sync with the
+    /// `external fun` declared in `ApkInstaller.kt`.
+    #[allow(non_snake_case)]
+    #[unsafe(no_mangle)]
+    pub extern "system" fn Java_com_betteraimaira_app_ApkInstaller_reportInstallStatus(
+        mut env: jni::JNIEnv,
+        _this: jni::objects::JObject,
+        succeeded: jni::sys::jboolean,
+        message: jni::objects::JString,
+    ) {
+        let Some(app) = APP.get() else {
+            return;
+        };
+
+        // Kotlin always passes a string, empty when the system said nothing, so
+        // there is no null to guard against here.
+        let message: String = match env.get_string(&message) {
+            Ok(value) => value.into(),
+            Err(_) => {
+                let _ = env.exception_clear();
+                String::new()
+            }
+        };
+
+        let _ = app.emit(
+            INSTALL_STATUS_EVENT,
+            InstallStatus {
+                succeeded: succeeded != 0,
+                message: (!message.is_empty()).then_some(message),
+            },
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -139,19 +260,39 @@ pub fn update_feed_base() -> &'static str {
 mod platform {
     use super::*;
     use tauri::Emitter;
-    use tauri_plugin_updater::UpdaterExt;
+    use tauri_plugin_updater::{Updater, UpdaterExt};
 
-    pub(super) async fn check(app: &AppHandle) -> Result<UpdateInfo, CommandError> {
-        let current = app.package_info().version.to_string();
-        let update = app
-            .updater()
+    /// The endpoint is set here rather than read from `tauri.conf.json`, because
+    /// the channel is a runtime choice and the configured endpoint is baked in
+    /// at build time.
+    fn updater(app: &AppHandle, channel: UpdateChannel) -> Result<Updater, CommandError> {
+        let endpoint = manifest_url(channel)
+            .parse()
+            .map_err(|_| CommandError::new("update_check_failed"))?;
+
+        app.updater_builder()
+            .endpoints(vec![endpoint])
             .map_err(|_| CommandError::new("update_check_failed"))?
+            .build()
+            .map_err(|_| CommandError::new("update_check_failed"))
+    }
+
+    pub(super) async fn check(
+        app: &AppHandle,
+        channel: UpdateChannel,
+    ) -> Result<UpdateInfo, CommandError> {
+        let current = app.package_info().version.to_string();
+        let update = updater(app, channel)?
             .check()
             .await
             .map_err(|_| CommandError::new("update_check_failed"))?;
 
         let Some(update) = update else {
-            return Ok(UpdateInfo::up_to_date(current, UpdateDelivery::InApp));
+            return Ok(UpdateInfo::up_to_date(
+                current,
+                UpdateDelivery::InApp,
+                channel,
+            ));
         };
 
         Ok(UpdateInfo {
@@ -161,17 +302,19 @@ mod platform {
             notes: update.body.clone(),
             published_at: update.date.map(|date| date.to_string()),
             delivery: UpdateDelivery::InApp,
+            channel,
             download_url: None,
             store_url: None,
         })
     }
 
-    pub(super) async fn install(app: &AppHandle) -> Result<InstallOutcome, CommandError> {
+    pub(super) async fn install(
+        app: &AppHandle,
+        channel: UpdateChannel,
+    ) -> Result<InstallOutcome, CommandError> {
         // The `Update` handle from a previous check is not kept: re-resolving it
         // costs one small JSON request and removes a stale-handle failure mode.
-        let update = app
-            .updater()
-            .map_err(|_| CommandError::new("update_check_failed"))?
+        let update = updater(app, channel)?
             .check()
             .await
             .map_err(|_| CommandError::new("update_check_failed"))?
@@ -185,13 +328,8 @@ mod platform {
             .download_and_install(
                 move |chunk, total| {
                     downloaded += chunk as u64;
-                    let _ = progress_app.emit(
-                        PROGRESS_EVENT,
-                        DownloadProgress {
-                            downloaded,
-                            total,
-                        },
-                    );
+                    let _ =
+                        progress_app.emit(PROGRESS_EVENT, DownloadProgress { downloaded, total });
                 },
                 move || {
                     let _ = finished_app.emit(DOWNLOADED_EVENT, ());
@@ -213,9 +351,8 @@ mod platform {
 #[cfg(target_os = "android")]
 mod platform {
     use super::*;
-    use std::io::Write;
     use futures_util::StreamExt;
-    use serde::Deserialize;
+    use std::io::Write;
     use tauri::{Emitter, Manager};
 
     /// Tauri's `latest.json`. Desktop entries are keyed by target triple; the
@@ -235,14 +372,14 @@ mod platform {
 
     const ANDROID_KEY: &str = "android-universal";
 
-    async fn fetch_manifest() -> Result<ReleaseManifest, CommandError> {
+    async fn fetch_manifest(channel: UpdateChannel) -> Result<ReleaseManifest, CommandError> {
         let client = reqwest::Client::builder()
             .timeout(MANIFEST_TIMEOUT)
             .build()
             .map_err(|_| CommandError::new("update_check_failed"))?;
 
         let response = client
-            .get(TAURI_MANIFEST_URL)
+            .get(manifest_url(channel))
             .send()
             .await
             .map_err(|_| CommandError::new("update_check_failed"))?;
@@ -266,15 +403,19 @@ mod platform {
             .unwrap_or(false)
     }
 
-    pub(super) async fn check(app: &AppHandle) -> Result<UpdateInfo, CommandError> {
+    pub(super) async fn check(
+        app: &AppHandle,
+        channel: UpdateChannel,
+    ) -> Result<UpdateInfo, CommandError> {
         let current = app.package_info().version.clone();
-        let manifest = fetch_manifest().await?;
+        let manifest = fetch_manifest(channel).await?;
         let apk = manifest.platforms.get(ANDROID_KEY);
 
         if !newer_than(&manifest.version, &current) || apk.is_none() {
             return Ok(UpdateInfo::up_to_date(
                 current.to_string(),
                 UpdateDelivery::AndroidPackage,
+                channel,
             ));
         }
 
@@ -285,14 +426,18 @@ mod platform {
             notes: manifest.notes,
             published_at: manifest.pub_date,
             delivery: UpdateDelivery::AndroidPackage,
+            channel,
             download_url: apk.map(|entry| entry.url.clone()),
             store_url: None,
         })
     }
 
-    pub(super) async fn install(app: &AppHandle) -> Result<InstallOutcome, CommandError> {
+    pub(super) async fn install(
+        app: &AppHandle,
+        channel: UpdateChannel,
+    ) -> Result<InstallOutcome, CommandError> {
         let current = app.package_info().version.clone();
-        let manifest = fetch_manifest().await?;
+        let manifest = fetch_manifest(channel).await?;
 
         if !newer_than(&manifest.version, &current) {
             return Err(CommandError::new("update_not_available"));
@@ -306,7 +451,14 @@ mod platform {
 
         let apk_path = download_apk(app, &url, &manifest.version).await?;
 
-        match install_apk(&apk_path)?.as_str() {
+        // Handing the APK over copies it into the installer session, so it is a
+        // long blocking call: on the async runtime it would stall every other
+        // command for the length of the copy.
+        let status = tauri::async_runtime::spawn_blocking(move || install_apk(&apk_path))
+            .await
+            .map_err(|_| CommandError::new("update_install_failed"))??;
+
+        match status.as_str() {
             "installing" => Ok(InstallOutcome {
                 handed_off: true,
                 permission_required: false,
@@ -371,7 +523,8 @@ mod platform {
 
     /// Hands the APK to `ApkInstaller.kt`, which drives `PackageInstaller` and
     /// surfaces the system confirmation dialog. Returns the Kotlin status
-    /// string: `installing`, `permission_required` or `failed`.
+    /// string: `installing`, `permission_required` or `failed`. The installer's
+    /// own verdict arrives later on `INSTALL_STATUS_EVENT`.
     fn install_apk(path: &std::path::Path) -> Result<String, CommandError> {
         let path = path
             .to_str()
@@ -387,8 +540,7 @@ mod platform {
         // `ndk_context` owns a global ref to the Android context. A `JObject`
         // does not release the reference it wraps, so borrowing it here is safe
         // and the global ref stays alive for the next call.
-        let activity =
-            unsafe { jni::objects::JObject::from_raw(context.context().cast()) };
+        let activity = unsafe { jni::objects::JObject::from_raw(context.context().cast()) };
         let apk_path = env
             .new_string(path)
             .map_err(|_| CommandError::new("update_install_failed"))?;
@@ -424,7 +576,6 @@ mod platform {
 #[cfg(target_os = "ios")]
 mod platform {
     use super::*;
-    use serde::Deserialize;
     use tauri_plugin_opener::OpenerExt;
 
     /// Subset of the AltStore source format that the check needs.
@@ -455,12 +606,16 @@ mod platform {
 
     /// AltStore and SideStore both take a source URL on this deep link; the one
     /// that is installed answers it. AltStore is tried first.
-    fn add_source_link() -> String {
-        let source = ALTSTORE_SOURCE_URL.trim_start_matches("https://");
+    fn add_source_link(channel: UpdateChannel) -> String {
+        let source = altstore_source_url(channel);
+        let source = source.trim_start_matches("https://");
         format!("altstore://source?url={source}")
     }
 
-    pub(super) async fn check(app: &AppHandle) -> Result<UpdateInfo, CommandError> {
+    pub(super) async fn check(
+        app: &AppHandle,
+        channel: UpdateChannel,
+    ) -> Result<UpdateInfo, CommandError> {
         let current = app.package_info().version.clone();
         let bundle_id = app.config().identifier.clone();
 
@@ -469,7 +624,7 @@ mod platform {
             .build()
             .map_err(|_| CommandError::new("update_check_failed"))?;
         let response = client
-            .get(ALTSTORE_SOURCE_URL)
+            .get(altstore_source_url(channel))
             .send()
             .await
             .map_err(|_| CommandError::new("update_check_failed"))?;
@@ -504,6 +659,7 @@ mod platform {
             return Ok(UpdateInfo::up_to_date(
                 current.to_string(),
                 UpdateDelivery::AltStore,
+                channel,
             ));
         };
 
@@ -511,6 +667,7 @@ mod platform {
             return Ok(UpdateInfo::up_to_date(
                 current.to_string(),
                 UpdateDelivery::AltStore,
+                channel,
             ));
         }
 
@@ -521,16 +678,20 @@ mod platform {
             notes: entry.localized_description,
             published_at: entry.date,
             delivery: UpdateDelivery::AltStore,
+            channel,
             download_url: entry.download_url,
-            store_url: Some(add_source_link()),
+            store_url: Some(add_source_link(channel)),
         })
     }
 
     /// iOS cannot install an IPA from inside the app: AltStore does it. The
     /// deep link opens the store on this source so the update is one tap away.
-    pub(super) async fn install(app: &AppHandle) -> Result<InstallOutcome, CommandError> {
+    pub(super) async fn install(
+        app: &AppHandle,
+        channel: UpdateChannel,
+    ) -> Result<InstallOutcome, CommandError> {
         app.opener()
-            .open_url(add_source_link(), None::<&str>)
+            .open_url(add_source_link(channel), None::<&str>)
             .map_err(|_| CommandError::new("update_store_unavailable"))?;
 
         Ok(InstallOutcome {

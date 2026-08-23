@@ -2,8 +2,15 @@ name: release
 
 # Publishes the artifacts the in-app updater reads. Pushing a `v*` tag builds
 # the Windows installer, the Android APK and an unsigned iOS IPA, writes
-# `latest.json` and `altstore.json`, and attaches everything to the GitHub
-# release the app polls.
+# `latest.json` and `altstore.json`, attaches everything to the GitHub release,
+# and commits the two manifests to the `gh-pages` branch the app polls.
+#
+# The app reads the feed from GitHub Pages, not from `releases/latest/download`:
+# that path only ever resolves to the newest release *not* flagged as a
+# prerelease, so a project shipping betas serves a 404 to every client.
+#
+# One manual repository setting, once: Settings > Pages > Source = "Deploy from
+# a branch", branch `gh-pages`, folder `/ (root)`.
 #
 # Required repository secrets:
 #   TAURI_SIGNING_PRIVATE_KEY           minisign key from `bun run updater:keygen`
@@ -225,3 +232,45 @@ jobs:
             --generate-notes \
             "${flags[@]}" \
             "${assets[@]}"
+
+
+      # The feed the app actually reads. `gh-pages` is an orphan branch holding
+      # nothing but these manifests, so `master` is never touched and the channel
+      # this tag does not belong to keeps the manifest it already had.
+      - name: Publish the update feed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A prerelease only ever reaches beta. A finished stable release
+          # supersedes the betas that led to it, so it lands on both channels.
+          channels=(beta)
+          if [[ "$GITHUB_REF_NAME" != *-* ]]; then channels+=(stable); fi
+
+          site=$(mktemp -d)
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # A clone that misses means the branch does not exist yet, so the first
+          # release creates it.
+          if ! git clone --depth 1 --branch gh-pages "$remote" "$site" 2>/dev/null; then
+            git init -q -b gh-pages "$site"
+            git -C "$site" remote add origin "$remote"
+          fi
+
+          for channel in "${channels[@]}"; do
+            mkdir -p "$site/updates/$channel"
+            cp dist-release/latest.json "$site/updates/$channel/latest.json"
+            cp dist-release/altstore.json "$site/updates/$channel/altstore.json"
+          done
+          # Pages runs Jekyll by default. It has nothing to build here and would
+          # hide any path starting with an underscore.
+          touch "$site/.nojekyll"
+
+          git -C "$site" config user.name "github-actions[bot]"
+          git -C "$site" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$site" add -A
+          # Re-running a tag with identical manifests must not fail the job.
+          if git -C "$site" diff --cached --quiet; then
+            echo "Feed already up to date for ${GITHUB_REF_NAME}"
+            exit 0
+          fi
+          git -C "$site" commit -q -m "chore(feed): publish ${GITHUB_REF_NAME} on ${channels[*]}"
+          git -C "$site" push -q origin gh-pages

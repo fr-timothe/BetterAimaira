@@ -298,5 +298,9 @@
   "update_last_checked": "Checked at {time}",
   "update_notes_label": "What's new",
   "update_altstore_hint": "On iOS, updates go through AltStore or SideStore: add the source, then refresh the app.",
-  "update_badge_label": "Update available"
+  "update_badge_label": "Update available",
+  "update_channel_label": "Update channel",
+  "update_channel_stable": "Stable",
+  "update_channel_beta": "Beta",
+  "update_channel_hint": "The beta channel gets test builds before the stable channel."
 }

@@ -5,9 +5,10 @@
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+  import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { connectivity } from '$lib/state/connectivity.svelte';
-  import { updatesSupported } from './update-service';
+  import { isUpdateChannel, updatesSupported } from './update-service';
   import { updates } from './updates.svelte';
   import { cn } from '$lib/utils';
 
@@ -77,6 +78,19 @@
     locale;
     return info?.delivery === 'altStore' ? m.update_handed_off_store() : m.update_handed_off_system();
   });
+
+  const channelOptions = $derived.by(() => {
+    locale;
+    return [
+      { value: 'stable', label: m.update_channel_stable() },
+      { value: 'beta', label: m.update_channel_beta() }
+    ];
+  });
+
+  function handleChannelChange(value: string) {
+    if (!isUpdateChannel(value)) return;
+    void updates.setChannel(value);
+  }
 </script>
 
 {#if supported}
@@ -112,6 +126,12 @@
         {/if}
       </div>
 
+      <!-- The system installer's own wording. It is the only thing that says
+           why an install was refused, so it is shown verbatim. -->
+      {#if status === 'error' && updates.installMessage}
+        <p class="text-sm leading-[1.45] text-muted-foreground">{updates.installMessage}</p>
+      {/if}
+
       {#if status === 'installing'}
         <div
           class="flex flex-col gap-2 text-sm tabular-nums text-muted-foreground"
@@ -145,6 +165,22 @@
 
       {#if info?.delivery === 'altStore'}
         <p class="text-sm leading-[1.45] text-muted-foreground">{m.update_altstore_hint()}</p>
+      {/if}
+
+      <!-- Resolved asynchronously on the first check: rendering the control with
+           no active segment would read as a broken toggle. -->
+      {#if updates.channel}
+        <div class="flex min-w-0 flex-col gap-1.5">
+          <span class="text-sm font-medium">{m.update_channel_label()}</span>
+          <SegmentedControl
+            options={channelOptions}
+            value={updates.channel}
+            label={m.update_channel_label()}
+            size="sm"
+            onChange={handleChannelChange}
+          />
+          <span class="text-sm leading-[1.45] text-muted-foreground">{m.update_channel_hint()}</span>
+        </div>
       {/if}
 
       <div class="flex flex-wrap items-center gap-2">

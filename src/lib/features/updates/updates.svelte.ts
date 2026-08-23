@@ -1,12 +1,16 @@
 import { connectivity } from '$lib/state/connectivity.svelte';
 import {
   checkForUpdate,
+  defaultUpdateChannel,
   installUpdate,
+  isUpdateChannel,
   onDownloadFinished,
   onDownloadProgress,
+  onInstallStatus,
   parseUpdateError,
   updatesSupported,
   type DownloadProgress,
+  type UpdateChannel,
   type UpdateErrorCode,
   type UpdateInfo,
 } from './update-service';
@@ -24,6 +28,7 @@ export type UpdateStatus =
 /** One automatic check per window: more would be noise, not safety. */
 const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const LAST_CHECK_KEY = 'betteraimaira.update.lastCheck';
+const CHANNEL_KEY = 'betteraimaira.update.channel';
 
 function readLastCheck(): number {
   if (typeof localStorage === 'undefined') return 0;
@@ -34,6 +39,22 @@ function readLastCheck(): number {
 function writeLastCheck(at: number): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.setItem(LAST_CHECK_KEY, String(at));
+}
+
+function clearLastCheck(): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(LAST_CHECK_KEY);
+}
+
+function readStoredChannel(): UpdateChannel | null {
+  if (typeof localStorage === 'undefined') return null;
+  const stored = localStorage.getItem(CHANNEL_KEY);
+  return isUpdateChannel(stored) ? stored : null;
+}
+
+function writeStoredChannel(channel: UpdateChannel): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(CHANNEL_KEY, channel);
 }
 
 /**
@@ -50,17 +71,62 @@ class Updates {
   errorCode = $state<UpdateErrorCode | null>(null);
   progress = $state<DownloadProgress | null>(null);
   lastCheckedAt = $state<number | null>(null);
+  /** `null` until the stored choice or the build's own channel is resolved. */
+  channel = $state<UpdateChannel | null>(null);
+  /** The system installer's own wording, when it failed and gave one. */
+  installMessage = $state<string | null>(null);
 
   #inFlight: Promise<void> | null = null;
+  #channelReady: Promise<UpdateChannel> | null = null;
   #listening = false;
 
   get available(): boolean {
     return this.info?.available === true;
   }
 
+  /**
+   * The user's choice if there is one, otherwise the channel this build came
+   * from: a version carrying a prerelease suffix has to watch beta, since the
+   * newest stable is by definition older than the beta already installed.
+   */
+  async resolveChannel(): Promise<UpdateChannel> {
+    if (this.channel) return this.channel;
+    if (!this.#channelReady) {
+      this.#channelReady = (async () => {
+        const stored = readStoredChannel();
+        // Falling back to beta rather than stable: only a broken Rust side can
+        // reach this, and beta is the superset that never strands a build.
+        const resolved =
+          stored ?? (await defaultUpdateChannel().catch((): UpdateChannel => 'beta'));
+        this.channel = resolved;
+        return resolved;
+      })();
+    }
+    return this.#channelReady;
+  }
+
+  /** Switching channel invalidates the previous answer and its throttle. */
+  async setChannel(channel: UpdateChannel): Promise<void> {
+    if (this.channel === channel) return;
+    this.channel = channel;
+    this.#channelReady = Promise.resolve(channel);
+    writeStoredChannel(channel);
+
+    this.info = null;
+    this.progress = null;
+    this.installMessage = null;
+    this.errorCode = null;
+    this.status = 'idle';
+    this.lastCheckedAt = null;
+    clearLastCheck();
+
+    await this.check();
+  }
+
   /** Runs at app start, skips a recent check, and never surfaces an error. */
   async checkOnStart(): Promise<void> {
     if (!updatesSupported()) return;
+    await this.resolveChannel();
     const previous = readLastCheck();
     if (previous && Date.now() - previous < AUTO_CHECK_INTERVAL_MS) {
       this.lastCheckedAt = previous;
@@ -91,7 +157,7 @@ class Updates {
     this.errorCode = null;
 
     try {
-      const info = await checkForUpdate();
+      const info = await checkForUpdate(await this.resolveChannel());
       this.info = info;
       this.status = info.available ? 'available' : 'upToDate';
       const now = Date.now();
@@ -121,10 +187,11 @@ class Updates {
     this.status = 'installing';
     this.errorCode = null;
     this.progress = null;
-    await this.#listenToDownload();
+    this.installMessage = null;
+    await this.#listenToInstall();
 
     try {
-      const outcome = await installUpdate();
+      const outcome = await installUpdate(await this.resolveChannel());
       this.status = outcome.permissionRequired ? 'permissionRequired' : 'handedOff';
     } catch (error) {
       this.errorCode = parseUpdateError(error);
@@ -132,7 +199,7 @@ class Updates {
     }
   }
 
-  async #listenToDownload(): Promise<void> {
+  async #listenToInstall(): Promise<void> {
     if (this.#listening) return;
     this.#listening = true;
     await onDownloadProgress((progress) => {
@@ -140,6 +207,16 @@ class Updates {
     });
     await onDownloadFinished(() => {
       this.progress = null;
+    });
+    // Android only: the package installer refuses or fails long after the
+    // command returned, and until this listener existed that verdict was lost
+    // and the card kept claiming the system had taken over.
+    await onInstallStatus((status) => {
+      this.progress = null;
+      if (status.succeeded) return;
+      this.installMessage = status.message;
+      this.errorCode = 'update_install_failed';
+      this.status = 'error';
     });
   }
 }
