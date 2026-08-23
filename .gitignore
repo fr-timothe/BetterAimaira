@@ -1,0 +1,17 @@
+.DS_Store
+node_modules
+/build
+/dist-desktop
+/.svelte-kit
+/package
+.env
+.env.*
+!.env.example
+.local-notes/
+.impeccable/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+/.vscode
+/project.inlang
+/.claude
+/.agents

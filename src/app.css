@@ -1,0 +1,981 @@
+@import "tailwindcss";
+
+/* Inter ships with the app: a Tauri client has no CDN to fall back on, and the
+   variable weight axis is what makes the 500/600/700/800 steps below real. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ==========================================================================
+   Design tokens — the single source of truth.
+
+   Base palette is the approved FL-Theme. Every derived value below was checked
+   against WCAG for the surface it is actually painted on; the pairings are
+   recorded in DESIGN.md. Two consequences worth knowing before picking a token:
+
+   - `--primary` is a light cyan (L 0.735). It reads as a FILL with
+     `--primary-foreground` (ink) on top. It does NOT clear 3:1 on white, so it
+     must never carry a thin line, icon, or text that means something.
+   - `--primary-deep` is the token for that job: accent text, meaningful
+     strokes, and filled primary buttons with white on top (6.6:1).
+   ========================================================================== */
+
+:root {
+  /* Surfaces */
+  --background: oklch(0.968 0.0059 239.8195);
+  --card: oklch(1 0 0);
+  --surface-sunken: oklch(0.978 0.005 240);
+  --surface-overlay: oklch(0.3098 0.0748 248.9089 / 0.42);
+
+  /* Text */
+  --foreground: oklch(0.3098 0.0748 248.9089);
+  --card-foreground: oklch(0.3098 0.0748 248.9089);
+  --muted-foreground: oklch(0.4186 0.0765 246.7831);
+
+  /* Brand cyan */
+  --primary: oklch(0.7347 0.1447 228.9136);
+  --primary-foreground: oklch(0.3098 0.0748 248.9089);
+  --primary-soft: oklch(0.812 0.098 222);
+  --primary-deep: oklch(0.472 0.097 233);
+  --primary-deep-hover: oklch(0.408 0.085 234);
+
+  /* Ink */
+  --secondary: oklch(0.3098 0.0748 248.9089);
+  --secondary-foreground: oklch(1 0 0);
+  --secondary-hover: oklch(0.258 0.068 249);
+
+  /* Tinted fields */
+  --muted: oklch(0.9352 0.0412 217.6616);
+  --muted-strong: oklch(0.888 0.052 216);
+
+  /* Lines */
+  --border: oklch(0.62 0.035 242);
+  --border-subtle: oklch(0.885 0.014 240);
+  --input: oklch(1 0 0);
+  --ring: oklch(0.3098 0.0748 248.9089);
+
+  /* Status — `*-strong` is the text/icon tone, plain is the fill, `*-surface`
+     is the tinted background. Never signal status with colour alone. */
+  --success: oklch(0.618 0.152 142);
+  --success-strong: oklch(0.442 0.11 143);
+  --success-surface: oklch(0.952 0.048 140);
+  --warning: oklch(0.762 0.132 74);
+  --warning-strong: oklch(0.492 0.108 68);
+  --warning-surface: oklch(0.958 0.046 88);
+  --danger: oklch(0.5014 0.2027 23.8197);
+  --danger-strong: oklch(0.432 0.174 24);
+  --danger-surface: oklch(0.948 0.026 22);
+  --destructive: oklch(0.5014 0.2027 23.8197);
+
+  --chart-3: oklch(0.8353 0.0553 213.7694);
+  --chart-4: oklch(0.963 0.0296 94.3436);
+
+  /* Course categories. Lecture / tutorial / exam reuse the palette already in
+     play; only lab and project need a hue of their own. Six tones is the whole
+     set — a seventh category falls back to `--category-other-*`. */
+  --category-lecture-surface: oklch(0.9352 0.0412 217.6616);
+  --category-lecture-text: oklch(0.472 0.097 233);
+  --category-tutorial-surface: oklch(0.952 0.048 140);
+  --category-tutorial-text: oklch(0.442 0.11 143);
+  --category-lab-surface: oklch(0.955 0.026 305);
+  --category-lab-text: oklch(0.452 0.15 300);
+  --category-exam-surface: oklch(0.948 0.026 22);
+  --category-exam-text: oklch(0.432 0.174 24);
+  --category-project-surface: oklch(0.95 0.023 268);
+  --category-project-text: oklch(0.438 0.15 268);
+  --category-other-surface: oklch(0.978 0.005 240);
+  --category-other-text: oklch(0.4186 0.0765 246.7831);
+
+  /* Radius — FL-Theme's 0.75rem is `--radius-md`. Cards stay at lg/xl; `pill`
+     is for small controls only. */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-pill: 999px;
+  --radius: 0.75rem;
+
+  /* Elevation — every step carries an offset and a soft blur; a flat halo is
+     decoration, not depth. Declare elevation once: border or shadow. */
+  --shadow-xs: 0 1px 2px oklch(0.3098 0.0748 248.9089 / 0.06);
+  --shadow-sm: 0 2px 6px oklch(0.3098 0.0748 248.9089 / 0.07);
+  --shadow-md: 0 4px 14px oklch(0.3098 0.0748 248.9089 / 0.09);
+  --shadow-lg: 0 10px 28px oklch(0.3098 0.0748 248.9089 / 0.13);
+  --shadow-xl: 0 20px 48px oklch(0.3098 0.0748 248.9089 / 0.18);
+
+  /* Type scale — a dense app UI, so the steps stay tight but distinguishable.
+     Anything between two steps is drift. */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.9375rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  /* Spacing — 0.25rem base. */
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-2-5: 0.625rem;
+  --space-3: 0.75rem;
+  --space-3-5: 0.875rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Layer order. The titlebar owns the top: it carries the window's own close
+     button, so no in-app surface may cover it. */
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-sidebar: 40;
+  --z-overlay: 100;
+  --z-drawer: 110;
+  --z-modal: 120;
+  --z-titlebar: 300;
+
+  /* Interaction */
+  --tap-min: 2.75rem;
+  --press-scale: 0.96;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-instant: 120ms;
+  --duration-fast: 160ms;
+  --duration-normal: 220ms;
+  --duration-slow: 350ms;
+  --duration-spin: 650ms;
+
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  color: var(--foreground);
+  background: var(--background);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Expose the same tokens to Tailwind so utilities and hand-written CSS cannot
+   drift apart. `inline` keeps them as references, not copies. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-deep: var(--primary-deep);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --color-danger-surface: var(--danger-surface);
+
+  --radius-xs: var(--radius-xs);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+
+  --text-2xs: var(--text-2xs);
+  --text-xs: var(--text-xs);
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-md: var(--text-md);
+  --text-lg: var(--text-lg);
+  --text-xl: var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+  --text-4xl: var(--text-4xl);
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --ease-out: var(--ease-out);
+  --ease-drawer: var(--ease-drawer);
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--background);
+}
+
+body {
+  height: 100%;
+  height: 100dvh;
+}
+
+/* ==========================================================================
+   Browser surfaces — scrollbar, selection, caret, focus ring. These ship with
+   defaults that belong to no design system, so they are themed from the palette.
+   ========================================================================== */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 24%, transparent) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--foreground) 20%, transparent);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklch, var(--foreground) 42%, transparent);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--primary-deep);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::selection {
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--primary) 38%, white);
+}
+
+:root {
+  caret-color: var(--primary-deep);
+  accent-color: var(--primary-deep);
+}
+
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+button,
+input {
+  font: inherit;
+  letter-spacing: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button[aria-busy="true"] {
+  cursor: progress;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Responsive utility classes for platform-adaptive controls */
+.desktop-only {
+  display: flex;
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .desktop-only {
+    display: none !important;
+  }
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
+html.mobile-app .desktop-only {
+  display: none !important;
+}
+
+html.mobile-app .mobile-only {
+  display: flex !important;
+}
+
+html.desktop-app .desktop-only {
+  display: flex !important;
+}
+
+html.desktop-app .mobile-only {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Shared keyframes. Declared once here so components can reference them by
+   name; a local `@keyframes` in a component gets scoped and shadows these.
+   ========================================================================== */
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes pulse-beacon {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.3); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   Sign-in surface
+   ========================================================================== */
+
+.login-shell {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.84fr) minmax(460px, 1.16fr);
+  flex-grow: 1;
+  min-height: 100%;
+}
+
+.brand-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  overflow: hidden;
+  padding: max(2rem, env(safe-area-inset-top)) 3rem max(2rem, env(safe-area-inset-bottom));
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+}
+
+.brand-field::after {
+  position: absolute;
+  right: -7rem;
+  bottom: 5rem;
+  width: 18rem;
+  height: 18rem;
+  border: 1px solid color-mix(in oklch, var(--primary) 35%, transparent);
+  border-radius: 50%;
+  content: "";
+}
+
+.brand-lockup,
+.mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.schedule-signal {
+  position: relative;
+  z-index: var(--z-raised);
+  width: min(100%, 31rem);
+  margin: auto 0;
+  padding: var(--space-8) 0;
+}
+
+.signal-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid color-mix(in oklch, white 24%, transparent);
+}
+
+.signal-heading div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.signal-heading span {
+  color: color-mix(in oklch, white 70%, var(--primary));
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.signal-heading strong {
+  max-width: 14ch;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.15;
+}
+
+/* The clock reads the real time — the rest of the signal is abstract geometry,
+   so this is the one place the panel states a fact. */
+.signal-heading .signal-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--secondary-foreground);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-status::before {
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--primary);
+  border-radius: 50%;
+  content: "";
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: 2.3rem 1fr;
+  gap: 0.65rem var(--space-4);
+  padding: var(--space-6) 0;
+}
+
+.time {
+  padding-top: 0.2rem;
+  color: color-mix(in oklch, white 62%, var(--primary));
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.course {
+  display: block;
+  height: 2.65rem;
+  background: color-mix(in oklch, var(--primary) 24%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.course-primary { width: 88%; background: var(--primary); }
+.course-soft { width: 63%; background: color-mix(in oklch, var(--chart-3) 52%, transparent); }
+.course-accent { width: 74%; background: color-mix(in oklch, var(--chart-4) 82%, white); }
+.course-short { width: 42%; }
+
+.form-field {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  padding: max(5rem, env(safe-area-inset-top)) max(2rem, 7vw) max(3rem, env(safe-area-inset-bottom));
+  background: var(--background);
+}
+
+.form-wrap,
+.success-state {
+  width: min(100%, 29rem);
+}
+
+.form-wrap header {
+  margin-bottom: var(--space-8);
+}
+
+.form-wrap h1,
+.success-state h1 {
+  margin: 0 0 0.65rem;
+  color: var(--foreground);
+  font-size: clamp(var(--text-3xl), 3.2vw, var(--text-4xl));
+  font-weight: var(--weight-heavy);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.form-wrap header p,
+.success-state > p {
+  max-width: 58ch;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-md);
+  line-height: 1.6;
+}
+
+form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.field-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.field-group label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.field-group > input,
+.input-wrap {
+  width: 100%;
+  min-height: 3.1rem;
+  color: var(--foreground);
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.field-group > input {
+  padding: var(--space-3) var(--space-4);
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  padding-left: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+.input-wrap input {
+  min-width: 0;
+  flex: 1;
+  align-self: stretch;
+  padding: var(--space-3) 0.8rem;
+  color: var(--foreground);
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
+
+.field-group > input:focus,
+.input-wrap:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px var(--ring);
+  outline: 0;
+}
+
+input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.icon-button {
+  display: grid;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  flex: 0 0 var(--tap-min);
+  margin-right: 0.15rem;
+  place-items: center;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out), transform var(--duration-instant) var(--ease-out);
+}
+
+.icon-button:hover {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.icon-button:active {
+  transform: scale(var(--press-scale));
+}
+
+.remember-control {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  min-height: var(--tap-min);
+  gap: 0.65rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.remember-control input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.check-control {
+  display: grid;
+  width: 1.15rem;
+  height: 1.15rem;
+  place-items: center;
+  color: transparent;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  transition: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-instant) var(--ease-out);
+}
+
+.remember-control:active .check-control {
+  transform: scale(var(--press-scale));
+}
+
+.remember-control input:checked + .check-control {
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.remember-control input:focus-visible + .check-control {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.error-message,
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 0.95rem;
+  color: var(--danger-strong);
+  background: var(--danger-surface);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  animation: messageSlideIn var(--duration-fast) var(--ease-out) forwards;
+}
+
+.error-message svg,
+.warning svg {
+  flex: 0 0 auto;
+  margin-top: 0.05rem;
+}
+
+.submit-button {
+  display: flex;
+  width: 100%;
+  min-height: 3.1rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: var(--space-3) var(--space-5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  border: 0;
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-bold);
+  transition: background-color var(--duration-fast) var(--ease-out), transform var(--duration-instant) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.submit-button:hover:not(:disabled) {
+  background: var(--secondary-hover);
+}
+
+.submit-button:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.submit-button:disabled {
+  opacity: 0.7;
+}
+
+.spinner {
+  animation: spin var(--duration-spin) linear infinite;
+}
+
+.language-control {
+  position: absolute;
+  top: max(1.5rem, env(safe-area-inset-top));
+  right: max(1.5rem, env(safe-area-inset-right));
+  display: flex;
+  min-height: var(--tap-min);
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--muted-foreground);
+}
+
+.language-control > svg {
+  margin-right: 0.3rem;
+}
+
+.language-control button {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), transform var(--duration-instant) var(--ease-out);
+}
+
+.language-control button:hover,
+.language-control button.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.language-control button:active {
+  transform: scale(var(--press-scale));
+}
+
+.mobile-brand {
+  display: none;
+}
+
+.success-state {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.success-icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  place-items: center;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border-radius: var(--radius-md);
+}
+
+.success-state dl {
+  display: grid;
+  margin: var(--space-4) 0 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.success-state dl div {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.4fr) 1fr;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.success-state dt {
+  color: var(--muted-foreground);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.success-state dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.warning {
+  margin: var(--space-2) 0 0;
+}
+
+@media (max-width: 820px) {
+  .login-shell {
+    display: block;
+  }
+
+  .brand-field {
+    display: none;
+  }
+
+  .form-field {
+    min-height: 100vh;
+    min-height: 100dvh;
+    place-items: start center;
+    padding: max(6.5rem, calc(env(safe-area-inset-top) + 5rem)) max(1.25rem, env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+  }
+
+  .mobile-brand {
+    position: absolute;
+    top: max(1.25rem, env(safe-area-inset-top));
+    left: max(1.25rem, env(safe-area-inset-left));
+    display: flex;
+  }
+
+  .mobile-brand .brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .language-control {
+    top: max(1.1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 600px) {
+  .mobile-brand > span:last-child {
+    display: none;
+  }
+
+  .form-field {
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .language-control > svg {
+    display: none;
+  }
+
+  .form-wrap h1,
+  .success-state h1 {
+    font-size: var(--text-3xl);
+  }
+
+  .success-state dl div {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}
+
+@media (max-height: 650px) and (min-width: 821px) {
+  .brand-field {
+    padding-top: var(--space-6);
+    padding-bottom: var(--space-6);
+  }
+
+  .schedule-signal {
+    padding: var(--space-4) 0;
+  }
+
+  .signal-grid {
+    padding: var(--space-4) 0;
+  }
+
+  .course {
+    height: 2rem;
+  }
+
+  .form-field {
+    padding-top: 4.5rem;
+    padding-bottom: var(--space-6);
+  }
+
+  .form-wrap header {
+    margin-bottom: var(--space-5);
+  }
+
+  form {
+    gap: 0.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

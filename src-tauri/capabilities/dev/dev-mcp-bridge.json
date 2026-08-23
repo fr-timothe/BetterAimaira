@@ -1,0 +1,8 @@
+{
+  "$schema": "../../gen/schemas/desktop-schema.json",
+  "identifier": "dev-automation",
+  "description": "Development-only automation bridge used to drive the app from the local MCP driver.",
+  "platforms": ["linux", "macOS", "windows"],
+  "windows": ["main"],
+  "permissions": ["mcp-bridge:default"]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "title": "betteraimaira",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 680,
+        "minHeight": 580,
+        "decorations": false,
+        "transparent": false,
+        "shadow": true
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["deb", "appimage"]
+  }
+}
