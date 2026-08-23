@@ -38,6 +38,7 @@
     parseRoomAndTeacher,
   } from './course-utils';
   import { getDisplayName } from './portal-utils';
+  import { cn } from '$lib/utils';
   import type { CalendarEvent, Grade, ScheduleState } from './types';
 
   type Props = {
@@ -255,15 +256,43 @@
   });
 
   const showDaySection = $derived(!isScheduleError);
+  const hero = 'flex min-w-0 flex-col justify-center min-h-[calc(16rem-(2*var(--space-4)))]';
+  const heroPill =
+    'inline-flex items-center gap-1 rounded-xs px-2 py-[0.2rem] text-2xs font-bold whitespace-nowrap';
+  const inkPanel = 'min-h-64 h-full';
+  const statCard = 'px-2.5 py-3 md:p-4';
+  const statLabel =
+    'block truncate text-2xs font-bold tracking-[0.04em] uppercase text-muted-foreground';
+  const statValue =
+    'mt-[0.2rem] flex items-baseline gap-[0.15rem] text-xl font-extrabold tabular-nums' +
+    ' md:mt-1 md:text-2xl';
+  const statUnit = 'truncate text-2xs font-semibold text-muted-foreground md:text-sm';
+  const statSub =
+    'mt-[0.2rem] block truncate text-2xs tabular-nums text-muted-foreground md:mt-1 md:text-xs';
+  const dayCount = 'text-xs font-semibold tabular-nums text-muted-foreground';
+  const widget = 'flex flex-col gap-3';
+  const statRow =
+    'grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] md:gap-3';
+  const progressTime =
+    'text-xs font-semibold tabular-nums text-ink-meta-dim';
+  const countdown =
+    'rounded-xs bg-ink-badge px-2 py-[0.2rem] text-xs font-bold tabular-nums whitespace-nowrap text-secondary-foreground';
+  const metaRow = 'flex flex-wrap items-center gap-3 [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1';
 </script>
 
 <PageShell>
-  <header class="home-head">
-    <div class="head-text">
-      <h1 class="head-greeting">{copy.greeting} {displayName}</h1>
+  <header
+    class="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle pb-3"
+  >
+    <div class="flex min-w-0 flex-col">
+      <h1
+        class="text-xl leading-[1.2] font-extrabold tracking-[-0.02em] wrap-anywhere md:text-2xl"
+      >{copy.greeting} {displayName}</h1>
     </div>
 
-    <div class="head-actions desktop-only">
+    <!-- `desktop-only` owns the display here; a display utility would lose to
+         its !important rules without a word. -->
+    <div class="desktop-only flex-none items-center gap-2">
       <Button variant="primary" size="sm" loading={refreshing} onclick={() => void onRefresh()}>
         {#if !refreshing}<RefreshCw size={15} aria-hidden="true" />{/if}
         {copy.refresh}
@@ -271,11 +300,13 @@
     </div>
   </header>
 
-  <div class="home-primary">
-    <!-- One surface owns the schedule state, so loading never renders as "no class". -->
+  <div class="min-h-64">
+    <!-- One surface owns the schedule state, so loading never renders as "no class".
+         Every branch carries `inkPanel` so the panel never changes height between
+         a fetch, an error and the course itself. -->
     {#if isScheduleLoading}
-      <Card tone="ink" padding="md">
-        <div class="hero hero-skeleton">
+      <Card tone="ink" padding="md" class={inkPanel}>
+        <div class={cn(hero, 'gap-3')}>
           <Skeleton shape="text" width="8rem" />
           <Skeleton shape="title" width="65%" />
           <Skeleton shape="text" width="45%" />
@@ -285,6 +316,7 @@
 
     {:else if isSessionExpired}
       <StateCard
+        class={inkPanel}
         kind="expired"
         icon={AlertCircle}
         title={copy.planningErrorHeading}
@@ -292,6 +324,7 @@
       />
     {:else if isScheduleError}
       <StateCard
+        class={inkPanel}
         kind="error"
         icon={AlertCircle}
         title={copy.planningErrorHeading}
@@ -305,9 +338,9 @@
       {@const startTime = timeFormatter.format(eventStart(featuredEvent))}
       {@const endTime = timeFormatter.format(eventEnd(featuredEvent))}
 
-      <Card tone="ink" padding="md">
-        <section class="hero">
-        <div class="hero-badges">
+      <Card tone="ink" padding="md" class={inkPanel}>
+        <section class={cn(hero, 'gap-2.5')}>
+        <div class="flex flex-wrap items-center gap-2">
           {#if featuredStatus === 'now'}
             <Badge tone="live" dot>{copy.currentCourse}</Badge>
           {:else}
@@ -320,44 +353,52 @@
           <KindBadge event={featuredEvent} />
 
           {#if room}
-            <span class="hero-chip"><MapPin size={13} aria-hidden="true" /> {room}</span>
+            <span class={cn(heroPill, 'bg-ink-chip text-secondary-foreground')}
+              ><MapPin size={13} aria-hidden="true" /> {room}</span
+            >
           {/if}
         </div>
 
-        <h2 class="hero-title">{eventTitle(featuredEvent)}</h2>
+        <h2 class="text-2xl leading-[1.2] font-extrabold tracking-[-0.02em] wrap-anywhere"
+          >{eventTitle(featuredEvent)}</h2
+        >
 
-        <div class="hero-meta">
+        <div class={cn(metaRow, 'text-sm text-ink-meta')}>
           {#if teacher}
             <span><User size={13} aria-hidden="true" /> {teacher}</span>
           {/if}
-          <span class="hero-time">
+          <span class="tabular-nums">
             <Clock size={13} aria-hidden="true" /> {startTime} – {endTime} ({durationText})
           </span>
         </div>
 
         {#if featuredEvent.externalComment}
-          <p class="hero-note">
+          <p class={cn(heroPill, 'w-fit bg-ink-note text-xs font-normal')}>
             <Info size={13} aria-hidden="true" />
             <span>{featuredEvent.externalComment}</span>
           </p>
         {/if}
 
         {#if featuredStatus === 'now'}
-          <div class="hero-progress">
-            <span class="progress-time">{startTime}</span>
-            <div class="progress-track">
-              <div class="progress-fill" style="width: {courseProgress}%"></div>
+          <div class="mt-1 flex flex-wrap items-center gap-3">
+            <span class={progressTime}>{startTime}</span>
+            <div class="h-1.5 min-w-24 flex-1 overflow-hidden rounded-pill bg-ink-track">
+              <div
+                class="h-full rounded-pill bg-primary transition-[width] duration-slow ease-out"
+                style="width: {courseProgress}%"
+              ></div>
             </div>
-            <span class="progress-time">{endTime}</span>
-            <span class="hero-countdown">{endsInLabel}</span>
+            <span class={progressTime}>{endTime}</span>
+            <span class={countdown}>{endsInLabel}</span>
           </div>
         {:else}
-          <p class="hero-countdown hero-countdown-block">{startsInLabel}</p>
+          <p class={cn(countdown, 'mt-1 w-fit')}>{startsInLabel}</p>
         {/if}
         </section>
       </Card>
     {:else}
       <StateCard
+        class={inkPanel}
         kind="empty"
         icon={todayEvents.length > 0 ? CheckCircle2 : Calendar}
         title={todayEvents.length > 0 ? copy.dayFinished : copy.noClassToday}
@@ -369,11 +410,11 @@
   </div>
 
   {#if isScheduleLoading}
-    <div class="stat-row">
+    <div class={statRow}>
       {#each [0, 1, 2] as placeholder (placeholder)}
-        <Card>
+        <Card class={statCard}>
           <Skeleton shape="text" width="6rem" />
-          <div class="stat-value"><Skeleton shape="title" width="4rem" /></div>
+          <div class={statValue}><Skeleton shape="title" width="4rem" /></div>
           <Skeleton shape="text" width="7rem" />
         </Card>
       {/each}
@@ -381,47 +422,52 @@
   {/if}
 
   {#if !isScheduleLoading && !isScheduleError}
-    <div class="stat-row">
-      <Card>
-        <span class="stat-label">{copy.gradeAverage}</span>
-        <p class="stat-value">
+    <div class={statRow}>
+      <Card class={statCard}>
+        <span class={statLabel}>{copy.gradeAverage}</span>
+        <p class={statValue}>
           {formatAverage(overallAverage)}
-          {#if overallAverage !== null}<span class="stat-unit">/20</span>{/if}
+          {#if overallAverage !== null}<span class={statUnit}>/20</span>{/if}
         </p>
-        <small class="stat-sub">{gradesRecordedLabel}</small>
+        <small class={statSub}>{gradesRecordedLabel}</small>
       </Card>
 
-      <Card>
-        <span class="stat-label">{copy.coursesRemaining}</span>
-        <p class="stat-value">
+      <Card class={statCard}>
+        <span class={statLabel}>{copy.coursesRemaining}</span>
+        <p class={statValue}>
           {remainingCoursesCount}
-          <span class="stat-unit">{dayCourseCountLabel}</span>
+          <span class={statUnit}>{dayCourseCountLabel}</span>
         </p>
-        <small class="stat-sub">{endsAtLabel}</small>
+        <small class={statSub}>{endsAtLabel}</small>
       </Card>
 
-      <Card>
-        <span class="stat-label">{copy.dayVolume}</span>
-        <p class="stat-value">{totalClassTimeLabel}</p>
-        <small class="stat-sub">{copy.dayVolumeDescription}</small>
+      <Card class={statCard}>
+        <span class={statLabel}>{copy.dayVolume}</span>
+        <p class={statValue}>{totalClassTimeLabel}</p>
+        <small class={statSub}>{copy.dayVolumeDescription}</small>
       </Card>
     </div>
   {/if}
 
-  <div class="home-columns" class:single={!showDaySection}>
+  <div
+    class={cn(
+      'grid grid-cols-1 items-start gap-5',
+      showDaySection && 'min-[62rem]:grid-cols-[1.7fr_1fr]'
+    )}
+  >
     {#if showDaySection}
-      <section class="home-day">
+      <section class="flex min-w-0 flex-col gap-3">
         <SectionHeader title={copy.daySchedule} icon={CalendarDays}>
           {#snippet actions()}
             {#if isScheduleLoading}
-              <span class="day-count">{copy.planningLoading}</span>
+              <span class={dayCount}>{copy.planningLoading}</span>
             {:else}
-              <span class="day-count">{dayCourseCountLabel} • {totalClassTimeLabel}</span>
+              <span class={dayCount}>{dayCourseCountLabel} • {totalClassTimeLabel}</span>
             {/if}
           {/snippet}
         </SectionHeader>
 
-        <div class="day-list">
+        <div class="flex flex-col gap-3">
           {#if isScheduleLoading}
             {#each [0, 1, 2] as placeholder (placeholder)}
               <Skeleton shape="block" height="5.5rem" />
@@ -436,6 +482,8 @@
               {@const duration = formatDuration(eventDurationMinutes(event), locale)}
 
               <Card interactive padding="none">
+                <!-- The whole information block is one button, and the Tempo
+                     action sits beside it so no control is nested inside another. -->
                 <div
                   class="course-row"
                   class:live={isLive}
@@ -443,27 +491,31 @@
                 >
                   <button
                     type="button"
-                    class="course-open"
+                    class="grid min-h-(--tap-min) min-w-0 flex-1 grid-cols-[4.25rem_1fr]
+                           items-center gap-3 rounded-xl bg-transparent p-3 text-left
+                           text-inherit"
                     aria-pressed={selectedCourseId === event.id}
                     onclick={() => (selectedCourseId = event.id)}
                   >
-                    <span class="course-time">
-                      <span class="time-start">{startTime}</span>
-                      <span class="time-span">{duration}</span>
-                      <span class="time-end">{endTime}</span>
+                    <span class="flex min-w-0 flex-col items-start">
+                      <span class="text-lg font-extrabold tabular-nums">{startTime}</span>
+                      <span class="text-2xs font-bold tabular-nums text-primary-deep"
+                        >{duration}</span
+                      >
+                      <span class="text-xs tabular-nums text-muted-foreground">{endTime}</span>
                     </span>
 
-                    <span class="course-body">
-                      <span class="course-head">
+                    <span class="flex min-w-0 flex-col gap-1">
+                      <span class="flex min-w-0 flex-wrap items-center gap-2">
                         <KindBadge {event} />
-                        <span class="course-name">{eventTitle(event)}</span>
+                        <span class="text-md font-bold wrap-anywhere">{eventTitle(event)}</span>
                         {#if isLive}
                           <Badge tone="accent">{copy.statusLive}</Badge>
                         {/if}
                       </span>
 
                       {#if room || teacher}
-                        <span class="course-meta">
+                        <span class={cn(metaRow, 'text-xs text-muted-foreground')}>
                           {#if room}
                             <span><MapPin size={12} aria-hidden="true" /> {room}</span>
                           {/if}
@@ -474,7 +526,10 @@
                       {/if}
 
                       {#if event.externalComment}
-                        <span class="course-note">
+                        <span
+                          class="inline-flex w-fit items-center gap-1 rounded-xs bg-surface-sunken
+                                 px-2 py-[0.15rem] text-xs"
+                        >
                           <Info size={12} aria-hidden="true" />
                           <span>{event.externalComment}</span>
                         </span>
@@ -482,7 +537,7 @@
                     </span>
                   </button>
 
-                  <div class="course-action">
+                  <div class="flex flex-none items-center pr-2">
                     {#if event.tempoUrl}
                       <IconButton
                         label={copy.openTempo}
@@ -492,14 +547,18 @@
                         <ExternalLink size={15} aria-hidden="true" />
                       </IconButton>
                     {:else}
-                      <ChevronRight size={17} class="course-chevron" aria-hidden="true" />
+                      <ChevronRight size={17} class="text-muted-foreground" aria-hidden="true" />
                     {/if}
                   </div>
                 </div>
               </Card>
             {/each}
           {:else}
-            <div class="day-empty">
+            <div
+              class="flex min-h-22 items-center gap-3 rounded-xl border border-border-subtle
+                     bg-card px-4 py-3 text-sm font-semibold text-muted-foreground
+                     [&>svg]:flex-none [&>svg]:text-primary-deep"
+            >
               <Calendar size={18} aria-hidden="true" />
               <span>{copy.noClassTodayDescription}</span>
             </div>
@@ -508,15 +567,18 @@
       </section>
     {/if}
 
-    <aside class="home-sidebar">
+    <aside class="flex min-w-0 flex-col gap-4">
       {#if gradesLoading}
         <Card>
-          <div class="widget" role="status" aria-live="polite" aria-busy="true" aria-label={copy.planningLoading}>
+          <div class={widget} role="status" aria-live="polite" aria-busy="true" aria-label={copy.planningLoading}>
             <SectionHeader title={copy.recentGrades} icon={Award} level={3} />
-            <div class="grade-list">
+            <div class="flex flex-col gap-2">
               {#each [0, 1] as placeholder (placeholder)}
-                <div class="grade-row-skeleton">
-                  <div class="grade-copy-skeleton">
+                <div
+                  class="flex min-h-16 items-center justify-between gap-3 rounded-lg
+                         bg-surface-sunken p-3"
+                >
+                  <div class="flex min-w-0 flex-1 flex-col gap-2">
                     <Skeleton shape="title" width={placeholder === 0 ? '78%' : '64%'} />
                     <Skeleton shape="text" width="55%" />
                   </div>
@@ -536,7 +598,7 @@
         />
       {:else}
         <Card>
-          <div class="widget">
+          <div class={widget}>
             <SectionHeader title={copy.recentGrades} icon={Award} level={3}>
               {#snippet actions()}
                 <Button variant="ghost" size="sm" onclick={onOpenGrades}>
@@ -546,23 +608,28 @@
               {/snippet}
             </SectionHeader>
 
-            <div class="grade-list">
+            <div class="flex flex-col gap-2">
               {#each recentGrades as grade (grade.id)}
                 <Card tone="sunken" padding="sm">
-                  <div class="grade-row">
-                    <span class="grade-identity">
-                      <span class="grade-subject">{grade.subject}</span>
-                      <span class="grade-label">
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="flex min-w-0 flex-col">
+                      <span class="text-base font-bold wrap-anywhere">{grade.subject}</span>
+                      <span class="text-xs text-muted-foreground">
                         {grade.label} • {coefficientLabel(grade.coefficient || '1.0')}
                       </span>
                     </span>
 
-                    <span class="grade-score">
-                      <span class="grade-value">
-                        {grade.score}<span class="grade-scale">/{grade.scale || '20'}</span>
+                    <span class="flex flex-none flex-col items-end">
+                      <span class="text-xl font-extrabold tabular-nums">
+                        {grade.score}<span class="text-xs font-bold text-muted-foreground"
+                          >/{grade.scale || '20'}</span
+                        >
                       </span>
                       {#if grade.average}
-                        <span class="grade-class-average">{classAverageLabel(grade.average)}</span>
+                        <span
+                          class="text-2xs font-semibold tabular-nums text-muted-foreground"
+                          >{classAverageLabel(grade.average)}</span
+                        >
                       {/if}
                     </span>
                   </div>
@@ -577,337 +644,13 @@
 </PageShell>
 
 <style>
-  /* Header */
-  .home-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .head-text {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .head-greeting {
-    margin: 0;
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    overflow-wrap: anywhere;
-  }
-
-  .head-actions {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    gap: var(--space-2);
-  }
-
-  @media (min-width: 48rem) {
-    .head-greeting {
-      font-size: var(--text-2xl);
-    }
-  }
-
-  /* Hero — the one ink surface, so its own text tones derive from the ink pair. */
-  .home-primary {
-    min-height: 16rem;
-  }
-
-  .home-primary :global(.ui-card),
-  .home-primary :global(.ui-state-card) {
-    min-height: 16rem;
-    height: 100%;
-    box-sizing: border-box;
-  }
-
-  .hero {
-    display: flex;
-    min-width: 0;
-    min-height: calc(16rem - (2 * var(--space-4)));
-    flex-direction: column;
-    justify-content: center;
-    gap: var(--space-2-5);
-  }
-
-  .hero-skeleton {
-    gap: var(--space-3);
-  }
-
-  .hero-badges {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .hero-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: 0.2rem var(--space-2);
-    color: var(--secondary-foreground);
-    background: color-mix(in oklch, var(--secondary-foreground) 16%, transparent);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    white-space: nowrap;
-  }
-
-  .hero-title {
-    margin: 0;
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-heavy);
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    overflow-wrap: anywhere;
-  }
-
-  .hero-meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    color: color-mix(in oklch, var(--secondary-foreground) 84%, var(--secondary));
-    font-size: var(--text-sm);
-  }
-
-  .hero-meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .hero-time {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .hero-note {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    gap: var(--space-1);
-    margin: 0;
-    padding: 0.2rem var(--space-2);
-    background: color-mix(in oklch, var(--secondary-foreground) 14%, transparent);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-xs);
-  }
-
-  .hero-progress {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-top: var(--space-1);
-  }
-
-  .progress-time {
-    color: color-mix(in oklch, var(--secondary-foreground) 80%, var(--secondary));
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .progress-track {
-    min-width: 6rem;
-    height: 0.375rem;
-    flex: 1;
-    background: color-mix(in oklch, var(--secondary-foreground) 24%, transparent);
-    border-radius: var(--radius-pill);
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: var(--primary);
-    border-radius: var(--radius-pill);
-    transition: width var(--duration-slow) var(--ease-out);
-  }
-
-  .hero-countdown {
-    padding: 0.2rem var(--space-2);
-    color: var(--secondary-foreground);
-    background: color-mix(in oklch, var(--secondary-foreground) 18%, transparent);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .hero-countdown-block {
-    width: fit-content;
-    margin: var(--space-1) 0 0;
-  }
-
-  /* Day stats */
-  .stat-row {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
-  .stat-row :global(.ui-card) {
-    padding: var(--space-3) var(--space-2-5);
-  }
-
-  .stat-label {
-    display: block;
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .stat-value {
-    display: flex;
-    align-items: baseline;
-    gap: 0.15rem;
-    margin: 0.2rem 0 0;
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .stat-unit {
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .stat-sub {
-    display: block;
-    margin-top: 0.2rem;
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-variant-numeric: tabular-nums;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  @media (min-width: 48rem) {
-    .stat-row {
-      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-      gap: var(--space-3);
-    }
-
-    .stat-row :global(.ui-card) {
-      padding: var(--space-4);
-    }
-
-    .stat-value {
-      font-size: var(--text-2xl);
-      margin: var(--space-1) 0 0;
-    }
-
-    .stat-unit {
-      font-size: var(--text-sm);
-    }
-
-    .stat-sub {
-      font-size: var(--text-xs);
-      margin-top: var(--space-1);
-    }
-  }
-
-  /* Columns */
-  .home-columns {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: var(--space-5);
-  }
-
-  @media (min-width: 62rem) {
-    .home-columns {
-      grid-template-columns: 1.7fr 1fr;
-    }
-
-    .home-columns.single {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .home-day {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .day-count {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .day-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .day-empty {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-height: 5.5rem;
-    padding: var(--space-3) var(--space-4);
-    color: var(--muted-foreground);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  .day-empty :global(svg) {
-    flex: 0 0 auto;
-    color: var(--primary-deep);
-  }
-
-  .grade-row-skeleton {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    min-height: 4rem;
-    padding: var(--space-3);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-lg);
-  }
-
-  .grade-copy-skeleton {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  /* Course row — the whole information block is one button, and the Tempo action
-     sits beside it so no control is nested inside another. */
+  /* The row is one flex line whose parts are utilities; only the two states that
+     paint the whole row stay here, because they key off a class this component
+     sets on the row itself rather than on any single element. */
   .course-row {
     display: flex;
-    align-items: center;
     min-width: 0;
+    align-items: center;
     gap: var(--space-2);
     border-radius: var(--radius-xl);
   }
@@ -918,175 +661,5 @@
 
   .course-row.selected {
     box-shadow: inset 0 0 0 2px var(--primary-deep);
-  }
-
-  .course-open {
-    display: grid;
-    grid-template-columns: 4.25rem 1fr;
-    align-items: center;
-    min-width: 0;
-    min-height: var(--tap-min);
-    flex: 1;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    color: inherit;
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-xl);
-    text-align: left;
-  }
-
-  .course-time {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .time-start {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .time-span {
-    color: var(--primary-deep);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .time-end {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .course-body {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .course-head {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    min-width: 0;
-    gap: var(--space-2);
-  }
-
-  .course-name {
-    font-size: var(--text-md);
-    font-weight: var(--weight-bold);
-    overflow-wrap: anywhere;
-  }
-
-  .course-meta {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .course-meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .course-note {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    gap: var(--space-1);
-    padding: 0.15rem var(--space-2);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-xs);
-  }
-
-  .course-action {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    padding-right: var(--space-2);
-  }
-
-  :global(.course-chevron) {
-    color: var(--muted-foreground);
-  }
-
-  /* Sidebar */
-  .home-sidebar {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .widget {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .grade-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .grade-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .grade-identity {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-  }
-
-  .grade-subject {
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    overflow-wrap: anywhere;
-  }
-
-  .grade-label {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .grade-score {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-
-  .grade-value {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .grade-scale {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .grade-class-average {
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
   }
 </style>
