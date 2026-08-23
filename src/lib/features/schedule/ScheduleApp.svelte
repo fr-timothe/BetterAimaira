@@ -18,6 +18,7 @@
   import * as m from "$lib/paraglide/messages.js";
   import type { Locale } from "$lib/paraglide/runtime.js";
   import { connectivity } from "$lib/state/connectivity.svelte";
+  import { updates } from "$lib/features/updates/updates.svelte";
   import HomeView from "./HomeView.svelte";
   import AcademicViewSkeleton from "./AcademicViewSkeleton.svelte";
   import AbsencesViewSkeleton from "./AbsencesViewSkeleton.svelte";
@@ -27,6 +28,7 @@
   import { isSameWeek, startOfDay, startOfWeek } from "./date-utils";
   import { openExternalUrl } from "./course-utils";
   import { getDisplayName, getPortalHost } from "./portal-utils";
+  import { cn } from '$lib/utils';
   import type {
     CalendarEvent,
     Grade,
@@ -154,10 +156,14 @@
     startClock();
     document.addEventListener("visibilitychange", handleVisibilityChange);
     const preloadTimer = window.setTimeout(() => void preloadViewComponents(), 0);
+    // The update check is the least urgent request of the session: it waits for
+    // the schedule to be on screen, and the store throttles repeat runs.
+    const updateTimer = window.setTimeout(() => void updates.checkOnStart(), 3_000);
     void loadInitialSchedule();
     void syncGrades();
     return () => {
       window.clearTimeout(preloadTimer);
+      window.clearTimeout(updateTimer);
       stopClock();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
@@ -385,72 +391,141 @@
         break;
     }
   }
+  // The rail is the only desktop shape: fixed-width icon targets, each name
+  // served on hover rather than by a panel that stays expanded.
+  const railTarget =
+    'group relative grid size-[2.85rem] place-items-center rounded-md bg-transparent' +
+    ' transition-control active:scale-(--press-scale)';
+
+  const tooltip =
+    'pointer-events-none absolute top-1/2 left-[calc(100%+var(--space-2))] z-raised flex flex-col' +
+    ' rail-tooltip -translate-x-1 -translate-y-1/2 rounded-sm bg-primary-deep px-3 py-2' +
+    ' text-left whitespace-nowrap text-card shadow-md opacity-0' +
+    ' transition-[opacity,translate] duration-fast ease-out' +
+    ' group-focus-visible:translate-x-0 group-focus-visible:opacity-100' +
+    ' fine-group-hover:translate-x-0 fine-group-hover:opacity-100';
+
+  const tooltipTitle = 'text-xs leading-[1.3] font-bold';
+  const tooltipSub = 'text-2xs leading-[1.3] font-semibold opacity-72';
+
+  // A count badge hangs off the icon's own box: the offsets are optical nudges,
+  // not spacing steps, and a hairline ring detaches it from the glyph beneath.
+  const countBadge =
+    'absolute grid place-items-center rounded-pill border-[1.5px] border-card bg-primary' +
+    ' px-1 text-2xs font-extrabold tabular-nums text-primary-foreground';
+
+  const dockPill =
+    'flex min-h-11 flex-col items-center justify-center gap-[0.15rem] rounded-lg' +
+    ' bg-transparent px-[0.15rem] py-1 transition-control active:scale-(--press-scale)';
+
+  // An available update is worth a mark on the door to it, not a number.
+  const updateDot =
+    'absolute -top-px -right-[3px] size-[0.55rem] rounded-full border-[1.5px]' +
+    ' border-card bg-primary';
+
+  const dockLabel = 'text-2xs leading-[1.1] font-bold tracking-[-0.01em]';
+
+  const viewEnter = 'flex w-full flex-1 flex-col animate-fade-in-fast-forwards';
+
+  const banner =
+    'mx-5 mt-4 flex items-center gap-3 rounded-md px-4 py-3 text-base';
 </script>
 
-<div class="app-shell">
+<div
+  class="app-shell relative flex size-full max-h-full flex-row overflow-hidden
+         bg-background text-foreground"
+>
   <!-- Reaching the content past the titlebar, brand, rail toggle, five
        destinations and avatar is ten stops otherwise. -->
-  <a class="skip-to-content" href="#app-main-content">{copy.skipToContent}</a>
+  <a
+    class="absolute top-2 left-2 z-overlay -translate-y-[250%] rounded-md bg-secondary px-4 py-2
+           text-sm font-semibold text-secondary-foreground no-underline
+           transition-[translate] duration-fast ease-out focus-visible:translate-y-0"
+    href="#app-main-content">{copy.skipToContent}</a
+  >
 
   <!-- 1. LEFT NAVIGATION RAIL (icons only; the label is a hover tooltip) -->
-  <aside class="desktop-app-sidebar" aria-label={copy.navLabel}>
-    <div class="sidebar-brand-box">
+  <!-- Tooltips hang outside the rail's box, so nothing here may clip. -->
+  <aside
+    class="desktop-app-sidebar z-sidebar h-full max-h-full w-[3.85rem] min-w-[3.85rem]
+           max-w-[3.85rem] flex-col items-center gap-5 overflow-visible border-r
+           border-border-subtle bg-card px-1 py-4"
+    aria-label={copy.navLabel}
+  >
+    <div class="flex shrink-0 justify-center">
       <button
         type="button"
-        class="brand-click-wrap rail-tip-anchor"
+        class={cn(railTarget, 'text-inherit fine-hover:bg-muted fine-hover:text-primary-deep')}
         onclick={() => setView("today")}
         aria-label={copy.appName}
       >
         <Logo size={22} variant="icon" />
-        <span class="rail-tooltip" aria-hidden="true">
-          <span class="rail-tooltip-title">{copy.appName}</span>
-          <span class="rail-tooltip-sub">{portalHost}</span>
+        <span class={tooltip} aria-hidden="true">
+          <span class={tooltipTitle}>{copy.appName}</span>
+          <span class={tooltipSub}>{portalHost}</span>
         </span>
       </button>
     </div>
 
-    <nav class="sidebar-nav-list" aria-label={copy.navSectionTitle}>
+    <nav
+      class="sidebar-nav-list flex min-h-0 flex-1 flex-col items-center gap-1"
+      aria-label={copy.navSectionTitle}
+    >
       {#each navigationItems as item (item.id)}
         {@const Icon = item.icon}
         {@const isActive = activeView === item.id}
         <button
-          class="sidebar-nav-btn rail-tip-anchor"
-          class:active={isActive}
+          class={cn(
+            railTarget,
+            'p-2 fine-hover:bg-muted fine-hover:text-primary-deep',
+            isActive ? 'bg-muted text-primary-deep' : 'text-muted-foreground'
+          )}
           onclick={() => setView(item.id)}
           type="button"
           aria-current={isActive ? "page" : undefined}
           aria-label={item.label}
         >
-          <div class="sidebar-icon-wrap">
+          <div class="relative grid shrink-0 place-items-center">
             <Icon size={19} aria-hidden="true" />
             {#if item.id === "grades" && unreadGradeAlerts.length > 0}
-              <span class="sidebar-badge">{unreadGradeAlerts.length}</span>
+              <span class={cn(countBadge, '-top-[3px] -right-[6px] h-[0.85rem] min-w-[0.85rem]')}
+                >{unreadGradeAlerts.length}</span
+              >
             {/if}
           </div>
-          <span class="rail-tooltip" aria-hidden="true">
-            <span class="rail-tooltip-title">{item.label}</span>
+          <span class={tooltip} aria-hidden="true">
+            <span class={tooltipTitle}>{item.label}</span>
           </span>
         </button>
       {/each}
     </nav>
 
-    <div class="sidebar-user-footer">
+    <div
+      class="flex w-full shrink-0 flex-col items-center gap-1 border-t border-border-subtle pt-3"
+    >
       <!-- The account entry is the single door to the "more" surface: it used to
            share it with a redundant ellipsis destination. -->
       <button
         type="button"
-        class="user-avatar-circle rail-tip-anchor"
-        class:active={activeView === "more"}
+        class={cn(
+          'group relative grid size-(--tap-min) shrink-0 place-items-center rounded-full',
+          'bg-primary-deep text-card transition-control active:scale-(--press-scale)',
+          'fine-hover:bg-primary-deep-hover',
+          activeView === "more" ? 'shadow-[0_0_0_3px_var(--primary)]' : 'shadow-[0_0_0_0_transparent]'
+        )}
         aria-current={activeView === "more" ? "page" : undefined}
         aria-label={copy.accountLabel}
         onclick={() => setView("more")}
       >
         <UserRound size={16} aria-hidden="true" />
-        <span class="rail-tooltip" aria-hidden="true">
-          <span class="rail-tooltip-title">{displayName}</span>
+        {#if updates.available}
+          <span class={updateDot} role="img" aria-label={m.update_badge_label()}></span>
+        {/if}
+        <span class={tooltip} aria-hidden="true">
+          <span class={tooltipTitle}>{displayName}</span>
           <!-- A username that is not an address is already the display name. -->
           {#if username && username !== displayName}
-            <span class="rail-tooltip-sub">{username}</span>
+            <span class={tooltipSub}>{username}</span>
           {/if}
         </span>
       </button>
@@ -458,59 +533,102 @@
   </aside>
 
   <!-- 2. MAIN CONTENT VIEWPORT -->
-  <div class="main-content-viewport" bind:this={viewportElement}>
+  <div
+    class="main-content-viewport flex h-full max-h-full min-w-0 flex-1 flex-col
+           overflow-x-hidden overflow-y-auto overscroll-y-contain"
+    bind:this={viewportElement}
+  >
     <!-- The dock is the primary navigation on compact windows, so it comes
          before the content it navigates rather than last in the tab order. -->
-    <nav class="bottom-nav" aria-label={copy.navLabel}>
-      <div class="bottom-nav-container">
+    <nav
+      class="bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-nav justify-center
+             px-3 pt-1 pb-[max(var(--space-2),env(safe-area-inset-bottom))]"
+      aria-label={copy.navLabel}
+    >
+      <!-- A dock that genuinely floats above the content, on frosted glass. -->
+      <div
+        class="pointer-events-auto grid w-[min(100%,32rem)] grid-cols-5 gap-1 rounded-xl
+               border border-dock-edge bg-dock-veil px-1 py-[0.3rem] shadow-lg
+               backdrop-blur-[20px]"
+      >
         {#each navigationItems as item (item.id)}
           {@const Icon = item.icon}
           {@const isActive = activeView === item.id}
           <button
-            class="bottom-nav-pill"
-            class:active={isActive}
+            class={cn(
+              dockPill,
+              isActive ? 'bg-muted text-primary-deep' : 'text-muted-foreground'
+            )}
             type="button"
             aria-current={isActive ? "page" : undefined}
             onclick={() => setView(item.id)}
           >
-            <div class="tab-icon-wrap">
+            <div class="relative flex items-center justify-center">
               <Icon size={20} strokeWidth={isActive ? 2.4 : 1.9} aria-hidden="true" />
               {#if item.id === "grades" && unreadGradeAlerts.length > 0}
-                <span class="dock-badge">{unreadGradeAlerts.length}</span>
+                <span class={cn(countBadge, '-top-[3px] -right-[7px] h-[0.95rem] min-w-[0.95rem]')}
+                  >{unreadGradeAlerts.length}</span
+                >
               {/if}
             </div>
-            <span>{item.label}</span>
+            <span class={cn(dockLabel, isActive && 'font-extrabold')}>{item.label}</span>
           </button>
         {/each}
 
         <!-- Same single door as the rail's avatar: the ellipsis tab it replaces
              pointed at this very view. -->
         <button
-          class="bottom-nav-pill"
-          class:active={activeView === "more"}
+          class={cn(
+            dockPill,
+            activeView === "more" ? 'bg-muted text-primary-deep' : 'text-muted-foreground'
+          )}
           type="button"
           aria-current={activeView === "more" ? "page" : undefined}
           onclick={() => setView("more")}
         >
-          <div class="tab-icon-wrap">
+          <div class="relative flex items-center justify-center">
             <UserRound size={20} strokeWidth={activeView === "more" ? 2.4 : 1.9} aria-hidden="true" />
+            {#if updates.available}
+              <span class={updateDot} role="img" aria-label={m.update_badge_label()}></span>
+            {/if}
           </div>
-          <span>{copy.navAccount}</span>
+          <span class={cn(dockLabel, activeView === "more" && 'font-extrabold')}
+            >{copy.navAccount}</span
+          >
         </button>
       </div>
     </nav>
 
     <PullToRefresh onRefresh={handleGlobalRefresh} scrollElement={viewportElement}>
-      <div class="main-viewport" id="app-main-content" tabindex="-1">
+      <div
+        class="main-viewport flex w-full flex-1 flex-col focus-visible:outline-none"
+        id="app-main-content"
+        tabindex="-1"
+      >
         {#if credentialsWarning}
-          <div class="credentials-warning-banner" role="status">
+          <div
+            class={cn(
+              banner,
+              'border border-warning bg-warning-surface font-semibold text-warning-strong'
+            )}
+            role="status"
+          >
             <AlertCircle size={18} aria-hidden="true" />
             <span>{copy.credentialsWarning}</span>
           </div>
         {/if}
 
         {#if unreadGradeAlerts.length > 0 && activeView === "today"}
-          <button class="new-grades-banner" type="button" onclick={openGradeAlerts}>
+          <button
+            class={cn(
+              banner,
+              'min-h-(--tap-min) border border-muted-strong bg-muted text-left font-bold',
+              'text-primary-deep transition-control active:scale-(--press-scale)',
+              'fine-hover:bg-muted-strong'
+            )}
+            type="button"
+            onclick={openGradeAlerts}
+          >
             <BookOpenCheck size={19} aria-hidden="true" />
             <span>{m.new_grades_banner({ count: unreadGradeAlerts.length })}</span>
           </button>
@@ -519,7 +637,7 @@
         {#if !backendAvailable}
           <!-- No Rust side means no portal session and no data. Naming that is the
                only honest thing this shell can render. -->
-          <div class="shell-state-slot">
+          <div class="mx-5 my-8">
             <StateCard
               kind="error"
               icon={MonitorSmartphone}
@@ -527,7 +645,7 @@
             />
           </div>
         {:else if activeView === "today"}
-          <div class="view-fade-enter">
+          <div class={viewEnter}>
             <HomeView
               {username}
               events={schedule.kind === "ready" ? schedule.events : []}
@@ -548,11 +666,11 @@
             />
           </div>
         {:else if activeView === "schedule"}
-          <div class="view-fade-enter">
+          <div class={viewEnter}>
             {#if schedule.kind === "error"}
               <!-- A dead network on this machine is not the portal being down, and
                    the recovery differs, so the two are never merged. -->
-              <div class="shell-state-slot">
+              <div class="mx-5 my-8">
                 {#if !connectivity.online}
                   <StateCard
                     kind="error"
@@ -600,7 +718,7 @@
             {/if}
           </div>
         {:else if activeView === "grades"}
-          <div class="portal-view-wrapper view-fade-enter">
+          <div class={cn(viewEnter, 'min-w-0 flex-auto')}>
             {#if GradesView}
               <GradesView {locale} {onLogout} bind:refresh={gradesRefresh} />
             {:else}
@@ -610,7 +728,7 @@
             {/if}
           </div>
         {:else if activeView === "absences"}
-          <div class="portal-view-wrapper view-fade-enter">
+          <div class={cn(viewEnter, 'min-w-0 flex-auto')}>
             {#if AbsencesView}
               <AbsencesView {locale} {onLogout} bind:refresh={absencesRefresh} />
             {:else}
@@ -620,7 +738,7 @@
             {/if}
           </div>
         {:else if activeView === "more"}
-          <div class="portal-view-wrapper view-fade-enter">
+          <div class={cn(viewEnter, 'min-w-0 flex-auto')}>
             {#if MoreView}
               <MoreView
                 {username}
@@ -652,221 +770,8 @@
 </div>
 
 <style>
-  .app-shell {
-    position: relative;
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    height: 100%;
-    max-height: 100%;
-    overflow: hidden;
-    box-sizing: border-box;
-    color: var(--foreground);
-    background: var(--background);
-  }
-
-  .skip-to-content {
-    position: absolute;
-    top: var(--space-2);
-    left: var(--space-2);
-    z-index: var(--z-overlay);
-    padding: var(--space-2) var(--space-4);
-    color: var(--secondary-foreground);
-    background: var(--secondary);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    text-decoration: none;
-    transform: translateY(-250%);
-    transition: transform var(--duration-fast) var(--ease-out);
-  }
-
-  .skip-to-content:focus-visible {
-    transform: translateY(0);
-  }
-
-  .main-viewport:focus-visible {
-    outline: none;
-  }
-
-  /* ---------------- Desktop Navigation Rail ---------------- */
-  /* The rail is the only desktop shape: fixed-width icons, each name served on
-     hover rather than by a panel that stays expanded. */
-  .desktop-app-sidebar {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    width: 3.85rem;
-    min-width: 3.85rem;
-    max-width: 3.85rem;
-    height: 100%;
-    max-height: 100%;
-    padding: var(--space-4) var(--space-1);
-    gap: var(--space-5);
-    box-sizing: border-box;
-    z-index: var(--z-sidebar);
-    background: var(--card);
-    border-right: 1px solid var(--border-subtle);
-    /* Tooltips hang outside the rail's box, so nothing here may clip. */
-    overflow: visible;
-  }
-
-  .sidebar-brand-box {
-    display: flex;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-
-  .brand-click-wrap {
-    display: grid;
-    width: 2.85rem;
-    height: 2.85rem;
-    place-items: center;
-    padding: 0;
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-md);
-    color: inherit;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .brand-click-wrap:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .sidebar-nav-list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    flex: 1;
-    min-height: 0;
-  }
-
-  .sidebar-nav-btn {
-    position: relative;
-    display: grid;
-    width: 2.85rem;
-    height: 2.85rem;
-    place-items: center;
-    padding: var(--space-2);
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-md);
-    color: var(--muted-foreground);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .sidebar-nav-btn:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .sidebar-nav-btn.active {
-    background: var(--muted);
-    color: var(--primary-deep);
-  }
-
-  .sidebar-icon-wrap {
-    position: relative;
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-
-  .sidebar-badge {
-    /* Optical nudge, not a spacing step: the badge has to hang off the icon's
-       own box, and a 0.25rem step would clear the 19px glyph entirely. */
-    position: absolute;
-    top: -3px;
-    right: -6px;
-    display: grid;
-    min-width: 0.85rem;
-    height: 0.85rem;
-    place-items: center;
-    padding: 0 var(--space-1);
-    color: var(--primary-foreground);
-    background: var(--primary);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-    /* Hairline ring so the badge reads as detached from the icon underneath. */
-    border: 1.5px solid var(--card);
-  }
-
-  .sidebar-user-footer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-1);
-    width: 100%;
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--border-subtle);
-    flex-shrink: 0;
-  }
-
-  .user-avatar-circle {
-    position: relative;
-    display: grid;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    flex-shrink: 0;
-    place-items: center;
-    padding: 0;
-    color: var(--card);
-    background: var(--primary-deep);
-    border: 0;
-    border-radius: 50%;
-    /* The ring is the rail's only room for an active marker on a round target. */
-    box-shadow: 0 0 0 0 transparent;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .user-avatar-circle:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .user-avatar-circle.active {
-    box-shadow: 0 0 0 3px var(--primary);
-  }
-
-  /* ---------------- Rail Hover Labels ---------------- */
-  .rail-tip-anchor {
-    position: relative;
-  }
-
-  .rail-tooltip {
-    position: absolute;
-    top: 50%;
-    left: calc(100% + var(--space-2));
-    z-index: var(--z-raised);
-    display: flex;
-    flex-direction: column;
-    padding: var(--space-2) var(--space-3);
-    color: var(--card);
-    background: var(--primary-deep);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow-md);
-    text-align: left;
-    white-space: nowrap;
-    opacity: 0;
-    transform: translate(-0.25rem, -50%);
-    pointer-events: none;
-    transition:
-      opacity var(--duration-fast) var(--ease-out),
-      transform var(--duration-fast) var(--ease-out);
-  }
-
-  /* Rotated square rather than a border triangle: it inherits the bubble's own
-     background, so a theme change cannot desync the two. */
+  /* The rail's tooltip arrow: a rotated square rather than a border triangle, so
+     it inherits the bubble's own background and cannot desync from it. */
   .rail-tooltip::before {
     content: "";
     position: absolute;
@@ -878,228 +783,20 @@
     transform: translate(50%, -50%) rotate(45deg);
   }
 
-  .rail-tooltip-title {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-  }
-
-  .rail-tooltip-sub {
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-    line-height: 1.3;
-    opacity: 0.72;
-  }
-
-  .rail-tip-anchor:focus-visible .rail-tooltip {
-    opacity: 1;
-    transform: translate(0, -50%);
-  }
-
-  /* ---------------- Main Content Viewport ---------------- */
-  .main-content-viewport {
-    flex: 1 1 0%;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    height: 100%;
-    max-height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior-y: contain;
-    box-sizing: border-box;
-  }
-
-  .main-viewport {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .view-fade-enter {
-    animation: fade-in var(--duration-fast) var(--ease-out) forwards;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  .credentials-warning-banner {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    margin: var(--space-4) var(--space-5) 0;
-    padding: var(--space-3) var(--space-4);
-    color: var(--warning-strong);
-    background: var(--warning-surface);
-    border: 1px solid var(--warning);
-    border-radius: var(--radius-md);
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-  }
-
-  .new-grades-banner {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-height: var(--tap-min);
-    margin: var(--space-4) var(--space-5) 0;
-    padding: var(--space-3) var(--space-4);
-    color: var(--primary-deep);
-    background: var(--muted);
-    border: 1px solid var(--muted-strong);
-    border-radius: var(--radius-md);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    text-align: left;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .new-grades-banner:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .shell-state-slot {
-    margin: var(--space-8) var(--space-5);
-  }
-
-  .portal-view-wrapper {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    min-width: 0;
-  }
-
-  /* ---------------- Mobile Bottom Nav (Floating Dock) ---------------- */
-  .bottom-nav {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: var(--z-nav);
-    display: flex;
-    justify-content: center;
-    padding: var(--space-1) var(--space-3) max(var(--space-2), env(safe-area-inset-bottom));
-    pointer-events: none;
-  }
-
-  /* A dock that genuinely floats above the content with frosted glass effect */
-  .bottom-nav-container {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: min(100%, 32rem);
-    gap: var(--space-1);
-    padding: 0.3rem var(--space-1);
-    background: color-mix(in oklch, var(--card) 94%, transparent);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid color-mix(in oklch, var(--border-subtle) 80%, transparent);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-    pointer-events: auto;
-  }
-
-  .bottom-nav-pill {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.15rem;
-    min-height: 2.75rem;
-    padding: 0.25rem 0.15rem;
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-lg);
-    color: var(--muted-foreground);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .bottom-nav-pill:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .bottom-nav-pill.active {
-    background: var(--muted);
-    color: var(--primary-deep);
-  }
-
-  .bottom-nav-pill.active span {
-    font-weight: var(--weight-heavy);
-  }
-
-  .bottom-nav-pill span {
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: -0.01em;
-    line-height: 1.1;
-  }
-
-  .tab-icon-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .dock-badge {
-    /* Optical nudge so badge sits cleanly at top right of icon glyph */
-    position: absolute;
-    top: -3px;
-    right: -7px;
-    min-width: 0.95rem;
-    height: 0.95rem;
-    padding: 0 var(--space-1);
-    display: grid;
-    place-items: center;
-    color: var(--primary-foreground);
-    background: var(--primary);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-    border: 1.5px solid var(--card);
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    /* The rail has no room for a written label, so hover is where the name
-       lives — the only place it is ever shown. */
-    .rail-tip-anchor:hover .rail-tooltip {
-      opacity: 1;
-      transform: translate(0, -50%);
-    }
-
-    .brand-click-wrap:hover {
-      background: var(--muted);
-      color: var(--primary-deep);
-    }
-
-    .sidebar-nav-btn:hover {
-      background: var(--muted);
-      color: var(--primary-deep);
-    }
-
-    .user-avatar-circle:hover {
-      background: var(--primary-deep-hover);
-    }
-
-    .new-grades-banner:hover {
-      background: var(--muted-strong);
-    }
-  }
-
   /* =========================================================================
-     RESPONSIVE LAYOUT MODES
-     ========================================================================= */
+     LAYOUT MODE
 
-  /* Compact windows: dock navigation, no sidebar. */
+     This block stays hand-written CSS on purpose. The shell picks between the
+     dock and the rail on window width, and TitleBar's `mobile-app` /
+     `desktop-app` root classes have to override that width query — `mobile:dev`
+     runs the mobile shell in a wide desktop window. The root-class selectors
+     carry one class more than the query's, and a media query adds no
+     specificity, so they win on specificity alone. Expressed as utilities both
+     sides would tie at (0,1,0) and the outcome would hang on source order.
+
+     Consequence: never put a `display` or `padding-bottom` utility on these
+     three elements. It would lose here, silently.
+     ========================================================================= */
   .desktop-app-sidebar {
     display: none;
   }
@@ -1126,11 +823,6 @@
     }
   }
 
-  /* TitleBar stamps `mobile-app` / `desktop-app` on the root from the platform,
-     not the window width, and that decision has to win over the width query
-     above — `mobile:dev` runs the mobile shell in a wide desktop window. These
-     selectors already carry one class more than the query's, and a media query
-     adds no specificity, so they win without `!important`. */
   :global(html.mobile-app) .desktop-app-sidebar {
     display: none;
   }

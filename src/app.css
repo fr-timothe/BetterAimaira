@@ -21,6 +21,28 @@
 @custom-variant app-windowed (&:where(html.desktop-app:not(.window-maximized) *));
 @custom-variant app-maximized (&:where(html.desktop-app.window-maximized *));
 
+/* Tailwind's own `hover:` only asks for (hover: hover). Where a control reveals
+   something on hover and has no other affordance, the pointer has to be precise
+   too, or a stylus gets a tooltip it cannot dismiss. The block form is required:
+   the shorthand would wrap the rule in the media query without ever adding
+   `:hover`, so the style would apply to every pointer-capable desktop. */
+@custom-variant fine-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/* Same, for a child that reveals on the hover of its `group` ancestor. */
+@custom-variant fine-group-hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:is(:where(.group):hover *) {
+      @slot;
+    }
+  }
+}
+
 /* Inter ships with the app: a Tauri client has no CDN to fall back on, and the
    variable weight axis is what makes the 500/600/700/800 steps below real. */
 @font-face {
@@ -452,6 +474,11 @@
   --color-window-edge: color-mix(in oklch, var(--border) 60%, transparent);
   --color-ink-wash: color-mix(in oklch, var(--foreground) 8%, transparent);
   --color-ink-wash-strong: color-mix(in oklch, var(--foreground) 14%, transparent);
+
+  /* The floating dock: frosted card, and a line thinned so the blur reads
+     through it rather than being fenced off by it. */
+  --color-dock-veil: color-mix(in oklch, var(--card) 94%, transparent);
+  --color-dock-edge: color-mix(in oklch, var(--border-subtle) 80%, transparent);
 }
 
 /* Everything below is global, so it has to be layered. Unlayered CSS wins over
