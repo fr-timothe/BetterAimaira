@@ -304,7 +304,7 @@ Tauri returns the command body through its raw binary response path. Treat it as
 ## Updates
 
 Three commands, one per step of the update flow. The implementation differs by
-platform, the contract does not. Full mechanics: [UPDATES.md](UPDATES.md).
+platform, the contract does not.
 
 ```ts
 type UpdateDelivery = "inApp" | "androidPackage" | "altStore";

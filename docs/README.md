@@ -7,7 +7,6 @@
 <a href="../README.md"><img src="https://img.shields.io/badge/%E2%86%90_Project_README-000000?style=for-the-badge" alt="Project README"></a>
 <a href="ARCHITECTURE.md"><img src="https://img.shields.io/badge/Architecture-000000?style=for-the-badge" alt="Architecture"></a>
 <a href="BACKEND_API.md"><img src="https://img.shields.io/badge/Backend_API-000000?style=for-the-badge" alt="Backend API"></a>
-<a href="UPDATES.md"><img src="https://img.shields.io/badge/Updates-000000?style=for-the-badge" alt="Updates"></a>
 </p>
 </div>
 
@@ -20,7 +19,6 @@
 | [APP_STRUCTURE_AND_PLATFORMS.md](APP_STRUCTURE_AND_PLATFORMS.md) | Adaptive layout decisions, per-platform expression, native boundaries, release matrix | mixed |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Tokens, palette, breakpoints, adaptive layout rules | implemented |
 | [PERFORMANCE.md](PERFORMANCE.md) | Baseline commands, platform profiling tools, budgets, current safeguards | implemented |
-| [UPDATES.md](UPDATES.md) | Update feed, per-platform install paths, signing keys, release workflow | implemented |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | iCal export, webhooks, widgets, in-app grade alerts | mostly planned |
 
 Two more documents live at the repository root because they are not scoped to the backend:

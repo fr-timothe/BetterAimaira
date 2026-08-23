@@ -133,7 +133,6 @@ strictly read-only: administrative, billing and remote write actions are out of 
 - `Signed In-Place Install` on desktop (minisign-verified, NSIS passive)
 - `PackageInstaller Handover` on Android
 - `AltStore Source Check` on iOS
-- See [docs/UPDATES.md](docs/UPDATES.md)
 </details>
 
 <details>
@@ -163,8 +162,7 @@ The planned group is specified in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 <a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/badge/Download-Latest_Release-000000?style=for-the-badge" alt="Download latest release"></a>
 
 Every platform reads the same release feed, and an installed build checks it three seconds after
-launch. Install paths, signing material and the release workflow are documented in
-[docs/UPDATES.md](docs/UPDATES.md).
+launch.
 
 ## Documentation
 
@@ -177,7 +175,6 @@ launch. Install paths, signing material and the release workflow are documented 
 | [Design guidelines](DESIGN.md) | How the tokens are applied, shared primitives, honest state |
 | [Integrations](docs/INTEGRATIONS.md) | iCal feeds, webhooks, widgets, in-app alerts |
 | [Performance](docs/PERFORMANCE.md) | Baseline commands, profiling tools, bundle budgets |
-| [Updates](docs/UPDATES.md) | Update feed, per-platform install paths, signing keys, release workflow |
 | [Product](PRODUCT.md) | Users, scope, constraints, product principles |
 | [Brand assets](assets/README.md) | Logo files, geometry, palette, Svelte component |
 

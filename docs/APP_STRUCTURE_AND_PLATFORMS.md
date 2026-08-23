@@ -300,8 +300,6 @@ Update delivery, implemented in `.github/workflows/release.yml`:
 - Android reads the same manifest and hands the APK to `PackageInstaller`.
 - iOS reads an AltStore source; AltStore or SideStore performs the install.
 
-Details, keys, and secrets: [UPDATES.md](UPDATES.md).
-
 ## 11. Development workflows and flavor configurations
 
 BetterAimaira provides dedicated development targets to test both desktop and mobile behaviors rapidly:

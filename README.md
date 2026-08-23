@@ -132,7 +132,6 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 - `Installation en place signée` sur bureau (vérification minisign, NSIS passif)
 - `Passage de relais à PackageInstaller` sur Android
 - `Vérification de source AltStore` sur iOS
-- Voir [docs/UPDATES.md](docs/UPDATES.md)
 </details>
 
 <details>
@@ -161,7 +160,7 @@ Le groupe des fonctionnalités prévues est détaillé dans [docs/INTEGRATIONS.m
 
 <a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Derni%C3%A8re_Version-000000?style=for-the-badge" alt="Télécharger la dernière version"></a>
 
-Chaque plateforme lit le même flux de publication, et une version installée vérifie les mises à jour trois secondes après son lancement. Les chemins d'installation, le matériel de signature et le workflow de publication sont documentés dans [docs/UPDATES.md](docs/UPDATES.md).
+Chaque plateforme lit le même flux de publication, et une version installée vérifie les mises à jour trois secondes après son lancement.
 
 ## Documentation
 
@@ -174,7 +173,6 @@ Chaque plateforme lit le même flux de publication, et une version installée v�
 | [Directives de design](DESIGN.md) | Application des tokens, primitives partagées, états honnêtes |
 | [Intégrations](docs/INTEGRATIONS.md) | Flux iCal, webhooks, widgets, alertes in-app |
 | [Performance](docs/PERFORMANCE.md) | Commandes de référence, outils de profilage, budgets de bundle |
-| [Mises à jour](docs/UPDATES.md) | Flux de mise à jour, chemins d'installation par plateforme, clés de signature, workflow de release |
 | [Produit](PRODUCT.md) | Utilisateurs, périmètre, contraintes, principes produit |
 | [Ressources de marque](assets/README.md) | Fichiers de logo, géométrie, palette, composant Svelte |
 
