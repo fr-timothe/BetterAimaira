@@ -44,6 +44,7 @@
     splitBlockLabel,
   } from './portal-utils';
   import type { AbsenceBlock, PortalDocument, PortalResourceState } from './types';
+  import { cn } from '$lib/utils';
 
   type Props = {
     locale: Locale;
@@ -263,6 +264,14 @@
       downloadingPath = null;
     }
   }
+  const cellLabel = 'cell-label text-xs font-bold text-muted-foreground';
+
+  // The tint repeats what the status badge already says in words.
+  const cardTones = {
+    excused: 'border-success-edge bg-success-surface',
+    unexcused: 'border-danger-edge bg-danger-surface',
+    pending: 'border-border-subtle bg-surface-sunken'
+  } as const;
 </script>
 
 <PageShell>
@@ -303,7 +312,7 @@
     {:else}
       <!-- The year is always named and always steppable, so an older year is one
            click away and the current one is never guessed from the sessions. -->
-      <div class="year-switch">
+      <div class="flex w-full items-center justify-between gap-2 md:w-auto">
         <IconButton
           label={copy.previousYear}
           variant="ghost"
@@ -313,9 +322,13 @@
           <ChevronLeft size={17} aria-hidden="true" />
         </IconButton>
 
-        <p class="year-current">
-          <span>{copy.yearLabel}</span>
-          <strong>{selectedPeriod?.label ?? '--'}</strong>
+        <p class="flex flex-1 flex-wrap items-baseline justify-center gap-2">
+          <span class="text-xs font-bold tracking-[0.04em] uppercase text-muted-foreground"
+            >{copy.yearLabel}</span
+          >
+          <strong class="text-base font-bold tabular-nums text-foreground"
+            >{selectedPeriod?.label ?? '--'}</strong
+          >
         </p>
 
         <IconButton
@@ -384,11 +397,14 @@
       </HeroStat>
 
       {#if downloadFailed}
-        <p class="download-error" role="alert">{copy.downloadFailed}</p>
+        <p
+          class="rounded-md bg-danger-surface px-3 py-2 text-sm font-semibold text-danger-strong"
+          role="alert"
+        >{copy.downloadFailed}</p>
       {/if}
 
-      <div class="view-toolbar">
-        <div class="toolbar-actions">
+      <div class="flex flex-wrap items-center justify-end gap-3">
+        <div class="flex min-w-0 items-center gap-2">
           {#if periodEntryList.length > 0}
             <SegmentedControl
               options={viewOptions}
@@ -423,41 +439,70 @@
       {/if}
 
       {#if viewMode === 'cards'}
-        <div class="block-list">
+        <!-- Year to block accordion, mirroring how the portal groups absences. -->
+        <div class="flex flex-col gap-3">
           {#each blocks as block (block.id)}
             {@const label = splitBlockLabel(block.label)}
             {@const entries = sortEntriesByDateDesc(block.entries)}
             {@const open = openBlockIds.includes(block.id)}
             {@const report = blockReport(block)}
-            <section class="block-card" class:is-open={open}>
-              <h2 class="block-heading">
+            <section
+              class={cn(
+                'overflow-hidden rounded-xl border bg-card',
+                open ? 'border-border' : 'border-border-subtle'
+              )}
+            >
+              <h2>
                 <button
                   type="button"
-                  class="block-toggle"
+                  class="flex w-full cursor-pointer items-center gap-3 bg-transparent p-4
+                         text-left hover:bg-surface-sunken"
                   aria-expanded={open}
                   aria-controls={`absence-block-panel-${block.id}`}
                   onclick={() => toggleBlock(block.id)}
                 >
-                  <span class="block-chevron" class:is-open={open}>
+                  <span
+                    class={cn(
+                      'inline-flex shrink-0 text-muted-foreground transition-transform',
+                      'duration-fast ease-[ease]',
+                      open && 'rotate-180'
+                    )}
+                  >
                     <ChevronDown size={18} aria-hidden="true" />
                   </span>
-                  <span class="block-identity">
-                    <span class="block-title">{label.title}</span>
-                    {#if label.range}<small class="block-range">{label.range}</small>{/if}
+                  <span class="flex min-w-0 flex-1 flex-col gap-[0.15rem]">
+                    <span class="text-base leading-[1.3] font-bold text-foreground"
+                      >{label.title}</span
+                    >
+                    {#if label.range}
+                      <small class="text-xs tabular-nums text-muted-foreground">{label.range}</small>
+                    {/if}
                   </span>
-                  <span class="block-hours" title={copy.blockHours}>
-                    <strong>{formatHours(blockHours(block))}</strong>
-                    <small>h</small>
+                  <span class="inline-flex shrink-0 items-baseline gap-[0.1rem]" title={copy.blockHours}>
+                    <strong class="text-xl font-extrabold tabular-nums text-primary-deep"
+                      >{formatHours(blockHours(block))}</strong
+                    >
+                    <small class="text-xs font-semibold text-muted-foreground">h</small>
                   </span>
                 </button>
               </h2>
 
-              <div id={`absence-block-panel-${block.id}`} class="block-panel" hidden={!open}>
+              <!-- The header keeps its own padding, so the panel only re-opens the
+                   gap the separator needs. -->
+              <div
+                id={`absence-block-panel-${block.id}`}
+                class="mx-4 flex flex-col gap-4 border-t border-border-subtle py-4
+                       [&[hidden]]:hidden"
+                hidden={!open}
+              >
                 {#if report}
-                  <div class="block-documents">
+                  <div class="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      class="document-button"
+                      class="inline-flex cursor-pointer items-center gap-2 rounded-pill border
+                             border-border-subtle bg-surface-sunken px-3 py-[0.35rem] text-xs
+                             font-semibold text-foreground disabled:cursor-progress
+                             disabled:opacity-70 enabled:hover:bg-muted"
                       disabled={downloadingPath === report.requestPath}
                       onclick={() => downloadBlockDocument(report)}
                     >
@@ -472,22 +517,37 @@
                 {/if}
 
                 {#if entries.length === 0}
-                  <p class="block-empty">{copy.blockEmpty}</p>
+                  <p class="text-sm text-muted-foreground">{copy.blockEmpty}</p>
                 {:else}
-                  <div class="absence-timeline">
+                  <div class="flex flex-col gap-3">
                     {#each entries as entry (entry.id)}
                       {@const status = absenceStatus(entry)}
-                      <article class="timeline-item">
-                        <div class="item-datetime">
-                          <strong>{entry.date}</strong>
+                      <article
+                        class="grid grid-cols-[minmax(0,1fr)] items-stretch gap-1
+                               md:grid-cols-[7rem_minmax(0,1fr)] md:gap-4"
+                      >
+                        <div
+                          class="flex items-baseline gap-2 text-sm tabular-nums md:flex-col
+                                 md:items-start md:justify-center md:gap-1"
+                        >
+                          <strong class="font-bold text-foreground">{entry.date}</strong>
                           {#if entry.time}
-                            <span>{entry.time}</span>
+                            <span class="text-xs text-muted-foreground">{entry.time}</span>
                           {/if}
                         </div>
 
-                        <div class="item-card" class:is-excused={status === 'excused'} class:is-unexcused={status === 'unexcused'}>
-                          <div class="card-topline">
-                            <span class="duration-chip">
+                        <div
+                          class={cn(
+                            'flex flex-col gap-2 rounded-lg border px-4 py-3',
+                            cardTones[status] ?? cardTones.pending
+                          )}
+                        >
+                          <div class="flex items-center justify-between gap-2">
+                            <span
+                              class="inline-flex items-center gap-1 rounded-sm bg-card px-2
+                                     py-[0.2rem] text-2xs font-bold tabular-nums
+                                     text-muted-foreground"
+                            >
                               <Clock size={12} aria-hidden="true" />
                               {formatDuration(entry.duration)}
                             </span>
@@ -504,12 +564,16 @@
                             </Badge>
                           </div>
 
-                          <h3 class="course-name">{entry.course}</h3>
+                          <h3 class="text-md leading-[1.3] font-bold text-foreground"
+                            >{entry.course}</h3
+                          >
 
                           {#if entry.reason}
-                            <p class="reason-row">
-                              <span class="reason-label">{copy.reasonLabel}</span>
-                              <span class="reason-text">{entry.reason}</span>
+                            <p class="flex items-baseline gap-1 text-sm">
+                              <span class="font-semibold text-muted-foreground"
+                                >{copy.reasonLabel}</span
+                              >
+                              <span class="font-medium text-foreground">{entry.reason}</span>
                             </p>
                           {/if}
                         </div>
@@ -522,8 +586,8 @@
           {/each}
         </div>
       {:else}
-        <section class="table-container">
-          <div class="table-scroll">
+        <section class="overflow-hidden rounded-xl border border-border-subtle bg-card">
+          <div class="overflow-x-auto [-webkit-overflow-scrolling:touch]">
             <table class="data-table">
               <thead>
                 <tr>
@@ -538,28 +602,28 @@
               <tbody>
                 {#each tableRows as row (row.id)}
                   <tr>
-                    <td class="table-secondary-cell">
-                      <span class="cell-label">{copy.tableBlock}</span>
+                    <td class="text-sm text-muted-foreground">
+                      <span class={cellLabel}>{copy.tableBlock}</span>
                       <span>{row.block}</span>
                     </td>
                     <td>
-                      <span class="cell-label">{copy.tableDate}</span>
-                      <span class="table-date-cell">{row.date}</span>
+                      <span class={cellLabel}>{copy.tableDate}</span>
+                      <span class="tabular-nums">{row.date}</span>
                     </td>
                     <td>
-                      <span class="cell-label">{copy.tableCourse}</span>
+                      <span class={cellLabel}>{copy.tableCourse}</span>
                       <strong>{row.course}</strong>
                     </td>
                     <td class="text-right">
-                      <span class="cell-label">{copy.tableDuration}</span>
-                      <span class="table-duration-badge">{row.duration}</span>
+                      <span class={cellLabel}>{copy.tableDuration}</span>
+                      <span class="inline-block rounded-sm bg-muted px-2 py-[0.2rem] font-bold tabular-nums text-primary-deep">{row.duration}</span>
                     </td>
                     <td>
-                      <span class="cell-label">{copy.tableStatus}</span>
+                      <span class={cellLabel}>{copy.tableStatus}</span>
                       <Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge>
                     </td>
-                    <td class="table-secondary-cell">
-                      <span class="cell-label">{copy.tableReason}</span>
+                    <td class="text-sm text-muted-foreground">
+                      <span class={cellLabel}>{copy.tableReason}</span>
                       <span>{row.reason}</span>
                     </td>
                   </tr>
@@ -574,312 +638,11 @@
 </PageShell>
 
 <style>
-  /* Toolbar */
-  .view-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-3);
-  }
-
-  .toolbar-actions {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .year-switch {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    width: 100%;
-  }
-
-  .year-current {
-    display: flex;
-    flex: 1;
-    justify-content: center;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-2);
-    margin: 0;
-  }
-
-  .year-current span {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .year-current strong {
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-bold);
-  }
-
-  .download-error {
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    color: var(--danger-strong);
-    background: var(--danger-surface);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  /* Year → block accordion, mirroring how the portal groups the absences. */
-  .block-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .block-card {
-    overflow: hidden;
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .block-card.is-open {
-    border-color: var(--border);
-  }
-
-  .block-heading {
-    margin: 0;
-    font-size: inherit;
-    font-weight: inherit;
-  }
-
-  .block-toggle {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .block-chevron {
-    display: inline-flex;
-    flex-shrink: 0;
-    color: var(--muted-foreground);
-    transition: transform var(--duration-fast, 150ms) ease;
-  }
-
-  .block-chevron.is-open {
-    transform: rotate(180deg);
-  }
-
-  .block-identity {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .block-title {
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-  }
-
-  .block-range {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .block-hours {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: baseline;
-    gap: 0.1rem;
-  }
-
-  .block-hours strong {
-    color: var(--primary-deep);
-    font-size: var(--text-xl);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-heavy);
-  }
-
-  .block-hours small {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .block-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    /* The header keeps its own padding, so the panel only re-opens the gap the
-       separator needs. */
-    margin: 0 var(--space-4);
-    padding: var(--space-4) 0;
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .block-panel[hidden] {
-    display: none;
-  }
-
-  .block-documents {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .document-button {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 0.35rem var(--space-3);
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .document-button:disabled {
-    cursor: progress;
-    opacity: 0.7;
-  }
-
-  .block-empty {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  /* Timeline */
-  .absence-timeline {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .timeline-item {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-1);
-    align-items: stretch;
-  }
-
-  .item-datetime {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .item-datetime strong {
-    color: var(--foreground);
-    font-weight: var(--weight-bold);
-  }
-
-  .item-datetime span {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .item-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-  }
-
-  /* The tint repeats what the status badge already says in words. */
-  .item-card.is-excused {
-    background: var(--success-surface);
-    border-color: color-mix(in oklch, var(--success) 30%, transparent);
-  }
-
-  .item-card.is-unexcused {
-    background: var(--danger-surface);
-    border-color: color-mix(in oklch, var(--danger) 30%, transparent);
-  }
-
-  .card-topline {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
-  .duration-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: 0.2rem var(--space-2);
-    color: var(--muted-foreground);
-    background: var(--card);
-    border-radius: var(--radius-sm);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .course-name {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-md);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-  }
-
-  .reason-row {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-1);
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
-  .reason-label {
-    color: var(--muted-foreground);
-    font-weight: var(--weight-semibold);
-  }
-
-  .reason-text {
-    color: var(--foreground);
-    font-weight: var(--weight-medium);
-  }
-
-  /* Table view. Base layout is the small-screen card fallback; the real table
-     only assembles once there is room for six columns. */
-  .table-container {
-    overflow: hidden;
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
+  /* Table view. The base layout is the small-screen card fallback; the real
+     table only assembles once there is room for six columns. Switching a
+     table's own display model means rewriting table, thead, tbody, tr, td and
+     th together, so it stays one block of CSS rather than a class on every
+     cell — and `.cell-label` belongs to that mechanism. */
   .data-table {
     display: block;
     width: 100%;
@@ -917,48 +680,7 @@
     padding: var(--space-1) 0;
   }
 
-  .cell-label {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .table-date-cell {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .table-duration-badge {
-    display: inline-block;
-    padding: 0.2rem var(--space-2);
-    color: var(--primary-deep);
-    background: var(--muted);
-    border-radius: var(--radius-sm);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .table-secondary-cell {
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
   @media (min-width: 48rem) {
-    .year-switch {
-      width: auto;
-    }
-
-    .timeline-item {
-      grid-template-columns: 7rem minmax(0, 1fr);
-      gap: var(--space-4);
-    }
-
-    .item-datetime {
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: center;
-      gap: var(--space-1);
-    }
-
     .data-table {
       display: table;
       padding: 0;
@@ -1005,21 +727,9 @@
     .cell-label {
       display: none;
     }
-
-    .text-right {
-      text-align: right;
-    }
   }
 
   @media (hover: hover) {
-    .block-toggle:hover {
-      background: var(--surface-sunken);
-    }
-
-    .document-button:hover:not(:disabled) {
-      background: var(--muted);
-    }
-
     .data-table tbody tr:hover td {
       background: var(--surface-sunken);
     }
