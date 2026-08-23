@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '$lib/invoke';
 import * as m from '$lib/paraglide/messages.js';
 import type {
   PortalDocument,

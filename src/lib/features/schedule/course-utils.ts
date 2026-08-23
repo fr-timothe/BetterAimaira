@@ -232,7 +232,7 @@ export function parseCourseDetails(event: CalendarEvent): ParsedCourseDetails {
   };
 }
 
-export function eventTitle(event: CalendarEvent, fallback = 'Cours sans titre'): string {
+export function eventTitle(event: CalendarEvent, fallback: string = m.untitled_course()): string {
   const details = parseCourseDetails(event);
   return details.title || fallback;
 }
