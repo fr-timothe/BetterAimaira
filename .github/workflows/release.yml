@@ -216,7 +216,12 @@ jobs:
           for directory in windows android ios; do
             if [ -d "artifacts/$directory" ]; then assets+=("artifacts/$directory"/*); fi
           done
+          flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
           gh release create "$GITHUB_REF_NAME" \
             --title "BetterAimaira ${GITHUB_REF_NAME#v}" \
             --generate-notes \
+            "${flags[@]}" \
             "${assets[@]}"
