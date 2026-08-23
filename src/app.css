@@ -388,8 +388,17 @@
   --transition-duration-normal: var(--duration-normal);
   --transition-duration-slow: var(--duration-slow);
 
-  /* Tailwind's `animate-spin` is 1s; this system spins in 650ms. */
+  /* The shared keyframes, bound to the one duration and easing each is used
+     with. Tailwind's own `animate-spin` is 1s; this system spins in 650ms. */
   --animate-spin: spin var(--duration-spin) linear infinite;
+  --animate-pulse-soft: pulse-soft 1.6s var(--ease-in-out) infinite;
+  --animate-pulse-beacon: pulse-beacon 1.6s var(--ease-in-out) infinite;
+  --animate-fade-in-fast: fade-in var(--duration-fast) var(--ease-out);
+  --animate-fade-in-fast-forwards: fade-in var(--duration-fast) var(--ease-out) forwards;
+  --animate-fade-in: fade-in var(--duration-normal) var(--ease-out);
+  --animate-slide-up-in: slide-up-in var(--duration-normal) var(--ease-out);
+  --animate-slide-up-drawer: slide-up-in var(--duration-normal) var(--ease-drawer);
+  --animate-message-in: messageSlideIn var(--duration-fast) var(--ease-out) forwards;
 
   /* Course categories, applied only through KindBadge. The class names must
      stay literal in a lookup map or the scanner never emits them. */
@@ -409,7 +418,9 @@
   --color-surface-overlay: var(--surface-overlay);
   --color-primary-deep-hover: var(--primary-deep-hover);
   --color-secondary-hover: var(--secondary-hover);
-  --color-card-veil: color-mix(in oklch, var(--card) 78%, transparent);
+  /* The translucent pill surface: card, thinned just enough to let the content
+     behind it read as motion. */
+  --color-card-veil: color-mix(in oklch, var(--card) 92%, transparent);
 }
 
 /* Everything below is global, so it has to be layered. Unlayered CSS wins over
@@ -543,6 +554,19 @@ html.desktop-app .desktop-only {
 
 html.desktop-app .mobile-only {
   display: none !important;
+}
+
+/* The interaction recipe every control shares: colour and elevation on the fast
+   step, the press scale on the instant one. A utility cannot give one property
+   its own duration, so this is a utility rather than a class list. Note it
+   transitions `scale`, not `transform` — that is the property `scale-*` writes. */
+@utility transition-control {
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    scale var(--duration-instant) var(--ease-out);
 }
 
 /* ==========================================================================

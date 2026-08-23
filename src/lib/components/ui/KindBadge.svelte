@@ -1,60 +1,36 @@
 <script lang="ts">
   import { courseCategory, courseTypeBadge } from '$lib/features/schedule/course-utils';
   import type { CalendarEvent } from '$lib/features/schedule/types';
+  import { cn } from '$lib/utils';
 
   type Props = {
     event: CalendarEvent;
+    class?: string;
   };
 
-  const { event }: Props = $props();
+  const { event, class: className }: Props = $props();
 
   const category = $derived(courseCategory(event.kind));
   const label = $derived(courseTypeBadge(event));
+
+  // One badge, six category tones, all resolved from tokens — so the same
+  // category shows the same colour in every view. The class names are spelled
+  // out because the scanner only emits what it can read as a literal.
+  const tones = {
+    lecture: 'bg-category-lecture-surface text-category-lecture-text',
+    tutorial: 'bg-category-tutorial-surface text-category-tutorial-text',
+    lab: 'bg-category-lab-surface text-category-lab-text',
+    exam: 'bg-category-exam-surface text-category-exam-text',
+    project: 'bg-category-project-surface text-category-project-text',
+    other: 'bg-category-other-surface text-category-other-text'
+  } as const satisfies Record<ReturnType<typeof courseCategory>, string>;
 </script>
 
-<span class="ui-kind-badge {category}">{label}</span>
-
-<style>
-  /* One badge, six category tones, all resolved from tokens — so the same class
-     shows the same colour in every view. */
-  .ui-kind-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.2rem var(--space-2);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    line-height: 1.5;
-    white-space: nowrap;
-  }
-
-  .lecture {
-    color: var(--category-lecture-text);
-    background: var(--category-lecture-surface);
-  }
-
-  .tutorial {
-    color: var(--category-tutorial-text);
-    background: var(--category-tutorial-surface);
-  }
-
-  .lab {
-    color: var(--category-lab-text);
-    background: var(--category-lab-surface);
-  }
-
-  .exam {
-    color: var(--category-exam-text);
-    background: var(--category-exam-surface);
-  }
-
-  .project {
-    color: var(--category-project-text);
-    background: var(--category-project-surface);
-  }
-
-  .other {
-    color: var(--category-other-text);
-    background: var(--category-other-surface);
-  }
-</style>
+<span
+  class={cn(
+    'ui-kind-badge inline-flex items-center rounded-xs px-2 py-[0.2rem]',
+    'text-2xs font-bold whitespace-nowrap',
+    tones[category],
+    className
+  )}>{label}</span
+>

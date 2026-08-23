@@ -2,6 +2,7 @@
   import { CloudOff, RefreshCw, TriangleAlert } from 'lucide-svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { connectivity } from '$lib/state/connectivity.svelte';
+  import { cn } from '$lib/utils';
 
   type Props = {
     /** Epoch ms of the last successful fetch, or null if nothing has landed yet. */
@@ -11,9 +12,16 @@
     refreshing?: boolean;
     /** The last refresh failed while data was already on screen. */
     failed?: boolean;
+    class?: string;
   };
 
-  const { fetchedAt, locale, refreshing = false, failed = false }: Props = $props();
+  const {
+    fetchedAt,
+    locale,
+    refreshing = false,
+    failed = false,
+    class: className
+  }: Props = $props();
 
   const timeLabel = $derived(
     fetchedAt === null
@@ -37,6 +45,15 @@
     return stale ? 'stale' : 'fresh';
   });
 
+  const tones = {
+    fresh: 'text-success-strong',
+    stale: 'text-muted-foreground',
+    refreshing: 'text-muted-foreground',
+    never: 'text-muted-foreground',
+    failed: 'text-danger-strong',
+    offline: 'text-danger-strong'
+  } as const satisfies Record<Tone, string>;
+
   const text = $derived.by(() => {
     locale;
     switch (tone) {
@@ -58,53 +75,22 @@
 
 <!-- Freshness is a promise this product makes, so it is stated in words and not
      signalled by colour alone. -->
-<p class="ui-freshness {tone}" aria-label={m.freshness_label()}>
+<p
+  class={cn(
+    'ui-freshness inline-flex items-center gap-2 text-xs font-medium tabular-nums',
+    tones[tone],
+    className
+  )}
+  aria-label={m.freshness_label()}
+>
   {#if tone === 'offline'}
     <CloudOff size={14} aria-hidden="true" />
   {:else if tone === 'failed'}
     <TriangleAlert size={14} aria-hidden="true" />
   {:else if tone === 'refreshing'}
-    <RefreshCw size={14} class="freshness-spin" aria-hidden="true" />
+    <RefreshCw size={14} class="animate-spin" aria-hidden="true" />
   {:else}
-    <span class="freshness-dot" aria-hidden="true"></span>
+    <span class="size-[0.4rem] rounded-full bg-current" aria-hidden="true"></span>
   {/if}
   <span>{text}</span>
 </p>
-
-<style>
-  .ui-freshness {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .freshness-dot {
-    width: 0.4rem;
-    height: 0.4rem;
-    border-radius: 50%;
-    background: currentColor;
-  }
-
-  :global(.freshness-spin) {
-    animation: spin var(--duration-spin) linear infinite;
-  }
-
-  .fresh {
-    color: var(--success-strong);
-  }
-
-  .stale,
-  .refreshing,
-  .never {
-    color: var(--muted-foreground);
-  }
-
-  .failed,
-  .offline {
-    color: var(--danger-strong);
-  }
-</style>

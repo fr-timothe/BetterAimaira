@@ -3,6 +3,7 @@
   import Button from './Button.svelte';
   import Spinner from './Spinner.svelte';
   import type { IconComponent } from './icon';
+  import { cn } from '$lib/utils';
 
   type Props = {
     /**
@@ -18,20 +19,43 @@
     onAction?: () => void;
     /** Extra content below the action, e.g. a secondary link. */
     footer?: Snippet;
+    class?: string;
   };
 
-  const { kind, title, description, icon, actionLabel, onAction, footer }: Props = $props();
+  const {
+    kind,
+    title,
+    description,
+    icon,
+    actionLabel,
+    onAction,
+    footer,
+    class: className
+  }: Props = $props();
 
   const Icon = $derived(icon);
+
+  const iconTones = {
+    loading: 'bg-muted text-primary-deep',
+    empty: 'bg-surface-sunken text-muted-foreground',
+    error: 'bg-danger-surface text-danger-strong',
+    expired: 'bg-danger-surface text-danger-strong'
+  } as const satisfies Record<Props['kind'], string>;
 </script>
 
+<!-- The one card that covers loading, empty, error and expired. Elevation is
+     declared once — a border, no shadow — so it reads as a panel, not a float. -->
 <div
-  class="ui-state-card {kind}"
+  class={cn(
+    'ui-state-card grid min-h-64 content-center justify-items-center gap-3',
+    'rounded-xl border border-border-subtle bg-card px-5 py-8 text-center',
+    className
+  )}
   role={kind === 'loading' ? 'status' : 'alert'}
   aria-live={kind === 'loading' ? 'polite' : 'assertive'}
   aria-busy={kind === 'loading' ? 'true' : undefined}
 >
-  <span class="state-icon">
+  <span class={cn('grid size-12 place-items-center rounded-md', iconTones[kind])}>
     {#if kind === 'loading'}
       <Spinner size={22} />
     {:else if Icon}
@@ -39,8 +63,12 @@
     {/if}
   </span>
 
-  <h2>{title}</h2>
-  {#if description}<p>{description}</p>{/if}
+  <h2 class="max-w-[32ch] text-lg leading-[1.25] font-bold text-balance">{title}</h2>
+  {#if description}
+    <p class="max-w-[46ch] text-base leading-[1.55] text-pretty text-muted-foreground">
+      {description}
+    </p>
+  {/if}
 
   {#if actionLabel && onAction}
     <Button variant={kind === 'expired' ? 'ink' : 'primary'} onclick={onAction}>
@@ -49,70 +77,6 @@
   {/if}
 
   {#if footer}
-    <div class="state-footer">{@render footer()}</div>
+    <div class="mt-1 text-sm">{@render footer()}</div>
   {/if}
 </div>
-
-<style>
-  /* The one card that covers loading, empty, error and expired. Elevation is
-     declared once — a border, no shadow — so it reads as a panel, not a float. */
-  .ui-state-card {
-    display: grid;
-    justify-items: center;
-    gap: var(--space-3);
-    min-height: 16rem;
-    align-content: center;
-    padding: var(--space-8) var(--space-5);
-    text-align: center;
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .state-icon {
-    display: grid;
-    width: 3rem;
-    height: 3rem;
-    place-items: center;
-    border-radius: var(--radius-md);
-  }
-
-  .loading .state-icon {
-    color: var(--primary-deep);
-    background: var(--muted);
-  }
-
-  .empty .state-icon {
-    color: var(--muted-foreground);
-    background: var(--surface-sunken);
-  }
-
-  .error .state-icon,
-  .expired .state-icon {
-    color: var(--danger-strong);
-    background: var(--danger-surface);
-  }
-
-  h2 {
-    max-width: 32ch;
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-    line-height: 1.25;
-    text-wrap: balance;
-  }
-
-  p {
-    max-width: 46ch;
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-base);
-    line-height: 1.55;
-    text-wrap: pretty;
-  }
-
-  .state-footer {
-    margin-top: var(--space-1);
-    font-size: var(--text-sm);
-  }
-</style>

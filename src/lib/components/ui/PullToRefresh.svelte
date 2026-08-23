@@ -2,6 +2,7 @@
   import { onDestroy, onMount, type Snippet } from 'svelte';
   import { RefreshCw } from 'lucide-svelte';
   import * as m from '$lib/paraglide/messages.js';
+  import { cn } from '$lib/utils';
 
   type Props = {
     onRefresh: () => Promise<void>;
@@ -211,34 +212,49 @@
   });
 </script>
 
-<div class="ui-pull-to-refresh-container" bind:this={containerRef}>
-  <!-- Floating pull indicator pill -->
+<div
+  class="ui-pull-to-refresh-container relative flex min-h-full w-full flex-1 flex-col"
+  bind:this={containerRef}
+>
+  <!-- Floating pull indicator pill. The transform and opacity are written per
+       frame from the gesture, so the transition here is what they ride on. -->
   <div
-    class="pull-indicator-track"
+    class="pointer-events-none absolute top-0 left-1/2 z-sticky transition-[transform,opacity]
+           duration-fast ease-out will-change-[transform,opacity]"
     style:transform={`translate3d(-50%, ${indicatorOffset}px, 0)`}
     style:opacity={indicatorOpacity}
-    class:is-active={isPulling || isRefreshing}
-    class:is-refreshing={isRefreshing}
-    class:is-ready={isThresholdReached}
     aria-hidden={!isRefreshing}
     role={isRefreshing ? 'status' : undefined}
     aria-live={isRefreshing ? 'polite' : undefined}
   >
-    <div class="pull-indicator-bubble">
+    <div
+      class={cn(
+        'inline-flex items-center gap-2 rounded-pill border px-[0.85rem] py-[0.4rem]',
+        'bg-card-veil backdrop-blur-lg text-xs font-bold tracking-[-0.01em] select-none',
+        isThresholdReached
+          ? 'border-border text-primary-deep shadow-lg'
+          : isRefreshing
+            ? 'border-border text-primary-deep shadow-md'
+            : 'border-border-subtle text-muted-foreground shadow-md'
+      )}
+    >
       <div
-        class="pull-icon-spinner"
-        class:is-spinning={isRefreshing}
+        class={cn(
+          'grid shrink-0 place-items-center transition-colors duration-fast ease-out',
+          isRefreshing && 'animate-spin'
+        )}
         style:transform={isRefreshing ? undefined : `rotate(${pullProgress * 320}deg) scale(${0.85 + pullProgress * 0.15})`}
       >
         <RefreshCw size={15} strokeWidth={2.4} aria-hidden="true" />
       </div>
-      <span class="pull-status-text">{statusLabel}</span>
+      <span class="whitespace-nowrap">{statusLabel}</span>
     </div>
   </div>
 
-  <!-- Content with elastic push down -->
+  <!-- Content with elastic push down. `transition` is written inline because it
+       is switched off mid-gesture, so it must stay the only source of truth. -->
   <div
-    class="pull-content-wrap"
+    class="flex min-h-full w-full flex-1 flex-col will-change-transform"
     style:transform={`translate3d(0, ${isPulling ? pullDistance * 0.42 : isRefreshing ? REFRESH_REST_HEIGHT * 0.42 : 0}px, 0)`}
     style:transition={isPulling ? 'none' : 'transform var(--duration-normal) var(--ease-out)'}
   >
@@ -246,80 +262,3 @@
   </div>
 </div>
 
-<style>
-  .ui-pull-to-refresh-container {
-    position: relative;
-    width: 100%;
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0%;
-  }
-
-  .pull-indicator-track {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    z-index: var(--z-sticky);
-    pointer-events: none;
-    transition:
-      transform var(--duration-fast) var(--ease-out),
-      opacity var(--duration-fast) var(--ease-out);
-    will-change: transform, opacity;
-  }
-
-  .pull-indicator-bubble {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 0.4rem 0.85rem;
-    background: color-mix(in oklch, var(--card) 92%, transparent);
-    color: var(--muted-foreground);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-md);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: -0.01em;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .pull-indicator-track.is-ready .pull-indicator-bubble {
-    color: var(--primary-deep);
-    border-color: var(--border);
-    box-shadow: var(--shadow-lg);
-  }
-
-  .pull-indicator-track.is-refreshing .pull-indicator-bubble {
-    color: var(--primary-deep);
-    border-color: var(--border);
-    box-shadow: var(--shadow-md);
-  }
-
-  .pull-icon-spinner {
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    transition: color var(--duration-fast) var(--ease-out);
-  }
-
-  .pull-icon-spinner.is-spinning {
-    animation: spin var(--duration-spin) linear infinite;
-  }
-
-  .pull-status-text {
-    white-space: nowrap;
-  }
-
-  .pull-content-wrap {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0%;
-    min-height: 100%;
-    will-change: transform;
-  }
-</style>
