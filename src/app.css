@@ -469,6 +469,11 @@
   --color-success-edge: color-mix(in oklch, var(--success) 30%, transparent);
   --color-danger-edge: color-mix(in oklch, var(--danger) 30%, transparent);
 
+  /* A course card's tint. `--subject-color` arrives as a raw hex from
+     `getSubjectColor()`, set inline per card, so this is the one surface here
+     whose base is not a token — hence the srgb mix. */
+  --color-subject-veil: color-mix(in srgb, var(--subject-color, var(--muted)) 45%, var(--card));
+
   /* Window chrome. The bar is translucent over the desktop, so its surfaces are
      the palette thinned rather than a colour of their own, and the two ink
      washes are the neutral hover/press states the OS controls use. */
