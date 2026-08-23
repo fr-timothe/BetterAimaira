@@ -1,0 +1,14 @@
+# Normalize line endings so a Windows checkout does not churn the diff.
+* text=auto eol=lf
+
+# Binary and vendored assets keep their bytes.
+*.png binary
+*.jpg binary
+*.woff2 binary
+*.jks binary
+*.ipa binary
+*.apk binary
+
+# Windows scripts need CRLF to run.
+*.bat text eol=crlf
+*.cmd text eol=crlf

@@ -1,3 +1,5 @@
+[← Documentation index](README.md)
+
 # Performance
 
 BetterAimaira measures performance separately for the shared Svelte frontend and each Tauri target. A change is considered an optimization only when the relevant metric improves without regressions in memory, energy use, package size, or correctness.

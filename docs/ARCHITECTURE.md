@@ -1,3 +1,5 @@
+[← Documentation index](README.md)
+
 # Architecture and technical specifications
 
 This document describes the internal architecture of BetterAimaira, detailing communication between the Rust backend (Tauri 2.0) and the Svelte 5 frontend, data persistence, and security.

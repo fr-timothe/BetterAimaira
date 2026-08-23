@@ -1,3 +1,5 @@
+[← Documentation index](README.md)
+
 # Rust backend API
 
 This document describes the client-facing contract exposed by the Tauri backend. The Rust process owns portal authentication, cookies, HTML parsing, URL validation, and document downloads. Client code must not call Aimaira routes directly or parse portal HTML.
@@ -17,6 +19,9 @@ This document describes the client-facing contract exposed by the Tauri backend.
 | `sync_grades` | `{ force?: boolean }` | `GradeSyncResult` |
 | `mark_grade_alerts_read` | none | `null` |
 | `download_portal_document` | `{ request: { requestPath: string } }` | binary PDF response |
+| `check_for_update` | none | `UpdateInfo` |
+| `install_update` | none | `InstallOutcome` |
+| `update_feed_base` | none | `string` |
 
 Every command in this table is reachable from the webview, so the surface stays
 minimal on purpose: a command that no client calls is removed rather than left
@@ -296,6 +301,43 @@ Pass only a `requestPath` returned by `get_portal_resource` to `download_portal_
 
 Tauri returns the command body through its raw binary response path. Treat it as an `ArrayBuffer` and use the matching `PortalDocument` metadata for the visible label and suggested filename.
 
+## Updates
+
+Three commands, one per step of the update flow. The implementation differs by
+platform, the contract does not. Full mechanics: [UPDATES.md](UPDATES.md).
+
+```ts
+type UpdateDelivery = "inApp" | "androidPackage" | "altStore";
+
+type UpdateInfo = {
+  available: boolean;
+  currentVersion: string;
+  latestVersion: string | null;
+  notes: string | null;
+  publishedAt: string | null;
+  delivery: UpdateDelivery;
+  downloadUrl: string | null;
+  storeUrl: string | null;
+};
+
+type InstallOutcome = {
+  handedOff: boolean;
+  permissionRequired: boolean;
+};
+```
+
+`install_update` never returns on desktop: the signed bundle is installed and the
+process restarts. On Android it returns once the system package installer has the
+APK, or with `permissionRequired` when the user still has to allow installs from
+this app. On iOS it opens the AltStore source deep link.
+
+Progress events during a download:
+
+| Event | Payload |
+|---|---|
+| `update://download-progress` | `{ downloaded: number, total: number \| null }` |
+| `update://downloaded` | none |
+
 ## Stable error codes
 
 | Code | Meaning |
@@ -324,6 +366,12 @@ Tauri returns the command body through its raw binary response path. Treat it as
 | `document_unavailable` | PDF request failed. |
 | `document_invalid_response` | Response is not a valid PDF. |
 | `document_too_large` | PDF exceeds the 25 MiB IPC limit. |
+| `update_check_failed` | Update feed request failed or the updater could not start. |
+| `update_manifest_invalid` | Update manifest parsed but carries no usable entry for this platform. |
+| `update_not_available` | Install was requested while no newer version is published. |
+| `update_download_failed` | Update payload request or local write failed. |
+| `update_install_failed` | Bundle install, or the Android package installer handover, failed. |
+| `update_store_unavailable` | AltStore deep link could not be opened. |
 | `internal_error` | Backend state lock or system time failed. |
 
 ## Verification

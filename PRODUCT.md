@@ -8,70 +8,87 @@ adaptive
 
 ## Users
 
-La première version cible les étudiants d'un établissement utilisant le portail Aimaira. Elle permet à chaque utilisateur de saisir l'adresse de son portail sur l'écran de connexion sans supposer qu'il colle la page d'accueil exacte.
+The first version targets students of a school that runs the Aimaira portal. Each user enters their
+own portal address on the login screen; nothing assumes they paste the exact home page.
 
 ## Product purpose
 
-BetterAimaira est un client Tauri pour consulter les informations étudiantes Aimaira. Le premier jalon couvre la connexion au portail, le chargement du planning réel, le cache local et un écran Aujourd'hui utilisable.
+BetterAimaira is a Tauri client for reading Aimaira student information. The first milestone covers
+portal sign-in, loading the real schedule, the local cache, and a Today screen that is actually
+usable.
 
-Le produit répond au besoin lorsque l'étudiant identifie immédiatement son cours actuel ou suivant, sa salle et l'état de synchronisation des données, y compris hors ligne.
+The product answers the need when the student immediately sees their current or next course, its
+room, and how fresh the data is — including offline.
 
 ## Positioning
 
-BetterAimaira remplace la navigation dans le portail web par une interface étudiante locale, réactive et centrée sur les informations quotidiennes. Le client communique directement avec le portail sélectionné par l'utilisateur, sans relais cloud, et conserve les données utiles hors ligne.
+BetterAimaira replaces navigating the web portal with a local, responsive student interface focused
+on daily information. The client talks directly to the portal the user selected, with no cloud
+relay, and keeps useful data available offline.
 
 ## Operating context
 
-- Utilisation sur mobile entre deux cours et sur ordinateur pour consulter un planning plus dense.
-- Le portail validé en référence est une instance Aimaira unique, dite instance de référence.
-- Le champ d'URL du portail est vide à la première connexion. L'utilisateur peut coller une URL Aimaira profonde ou avec paramètres. L'application nettoie la saisie pour extraire l'origine HTTPS avant connexion.
-- Aimaira repose sur des pages HTML, des formulaires ASP.NET, des cookies de session et un point de terminaison de planning renvoyant du JSON dans une réponse déclarée HTML.
+- Used on a phone between two classes, and on a computer for a denser schedule view.
+- The reference portal is a single Aimaira instance, called the reference instance.
+- The portal URL field is empty on first sign-in. The user may paste a deep or parameterized Aimaira
+  URL; the application reduces it to its HTTPS origin before connecting.
+- Aimaira is built on HTML pages, ASP.NET forms, session cookies, and a schedule endpoint that
+  returns JSON inside a response declared as HTML.
 
 ## Capabilities and constraints
 
-- Première version strictement en lecture seule.
-- Parcours actuel: configuration du portail, authentification, planning réel et écrans Aujourd'hui/Planning.
-- Système de traduction complet dès le premier jalon, avec français et anglais comme langues initiales via Paraglide JS.
-- Interface Svelte 5 et coeur Rust Tauri 2 partagés entre les plateformes.
-- Application Tauri uniquement. Aucune version web ou PWA n'est prévue.
-- Les identifiants, cookies et données étudiantes ne quittent jamais l'appareil, hors requêtes directes avec le portail choisi.
-- Les cookies restent dans le backend Rust et ne sont pas exposés au frontend.
-- Les identifiants persistants utilisent le trousseau sécurisé de chaque système. Aucun mot de passe en clair dans SQLite ou les préférences frontend.
-- HTTPS est obligatoire pour tout portail. Les connexions HTTP sont refusées avant l'envoi des identifiants.
-- Les identifiants opaques restent des chaînes.
-- Les données en cache affichent leur date de synchronisation et leur état de fraîcheur.
-- La facturation, les paiements, les démarches administratives et les écritures distantes sont hors périmètre.
-- La compatibilité avec les variations d'autres établissements Aimaira sera évaluée après validation de l'instance de référence.
-- Aucune donnée de démonstration ne figure dans les surfaces authentifiées de cette verticale.
+- The first version is strictly read-only.
+- Current path: portal configuration, authentication, the real schedule, and the Today/Schedule
+  screens.
+- A complete translation system from the first milestone, with French and English as the initial
+  languages, through Paraglide JS.
+- One Svelte 5 interface and one Rust Tauri 2 core shared across platforms.
+- Tauri application only. No web or PWA version is planned.
+- Credentials, cookies and student data never leave the device, apart from direct requests to the
+  chosen portal.
+- Cookies stay in the Rust backend and are not exposed to the frontend.
+- Persistent credentials use each system's secure store. No plaintext password in SQLite or in
+  frontend preferences.
+- HTTPS is mandatory for any portal. HTTP connections are refused before credentials are sent.
+- Opaque identifiers stay strings.
+- Cached data displays its sync time and freshness state.
+- Billing, payments, administrative procedures and remote writes are out of scope.
+- Compatibility with other Aimaira instances will be assessed after the reference instance is
+  validated.
+- No demo data appears in the authenticated surfaces of this vertical slice.
 
 ## Brand commitments
 
-- Nom: BetterAimaira.
-- Inspiration produit: principes Papillon d'accès direct à l'information, d'adaptation aux plateformes et de transparence sur les données estimées ou obsolètes.
-- Identité visuelle propre à BetterAimaira. Papillon sert de référence méthodologique, pas de modèle graphique à reproduire.
-- Le thème FL-Theme publié sur `https://tweakcn.com/themes/cmq57ht7w000204l2axo6ho9v` est la base visuelle approuvée.
-- Le premier jalon livre le thème clair. Le mode sombre est prévu pour une étape ultérieure.
-- Les fonctions principales restent accessibles à toutes les tailles de fenêtre.
+- Name: BetterAimaira.
+- Product inspiration: the Papillon principles of direct information access, platform adaptation,
+  and transparency about estimated or stale data.
+- The visual identity is BetterAimaira's own. Papillon is a methodological reference, not a graphic
+  model to reproduce.
+- The FL-Theme published at `https://tweakcn.com/themes/cmq57ht7w000204l2axo6ho9v` is the approved
+  visual base.
+- The first milestone ships the light theme. Dark mode comes in a later step.
+- Core features stay reachable at every window size.
 
 ## Evidence on hand
 
-- Reconnaissance locale anonymisée du portail, conservée hors dépôt.
-- Notes d'authentification et de routes, conservées hors dépôt.
-- Architecture cible: `docs/ARCHITECTURE.md` et `docs/APP_STRUCTURE_AND_PLATFORMS.md`.
-- Système visuel initial: `docs/DESIGN_SYSTEM.md` et `src/app.css`.
-- Aucune capture brute du portail, donnée personnelle, valeur de cookie ou fixture HTML réelle ne doit être ajoutée au dépôt.
+- Anonymized local reconnaissance of the portal, kept outside the repository.
+- Authentication and route notes, kept outside the repository.
+- Target architecture: `docs/ARCHITECTURE.md` and `docs/APP_STRUCTURE_AND_PLATFORMS.md`.
+- Initial visual system: `docs/DESIGN_SYSTEM.md` and `src/app.css`.
+- No raw portal capture, personal data, cookie value or real HTML fixture may be added to the
+  repository.
 
 ## Product principles
 
-1. Présenter l'information utile avec un minimum d'actions.
-2. Afficher le cache immédiatement, puis actualiser en arrière-plan sans bloquer l'interface.
-3. Rendre visibles la fraîcheur, le mode hors ligne et les erreurs du portail.
-4. Conserver les secrets et les données étudiantes localement.
-5. Adapter la densité et les interactions aux capacités de l'appareil sans retirer de fonction essentielle.
+1. Present the useful information with a minimum of actions.
+2. Show the cache immediately, then refresh in the background without blocking the interface.
+3. Make freshness, offline mode and portal errors visible.
+4. Keep secrets and student data local.
+5. Adapt density and interaction to the device without removing an essential feature.
 
 ## Accessibility and inclusion
 
-- Navigation complète au clavier et focus visible sur ordinateur.
-- Cibles tactiles d'au moins 44px sur mobile.
-- Aucun état communiqué uniquement par la couleur.
-- Prise en charge de `prefers-reduced-motion`, des zones sûres et du zoom de texte sans troncature.
+- Full keyboard navigation and visible focus on desktop.
+- Touch targets of at least 44px on mobile.
+- No state communicated by colour alone.
+- Support for `prefers-reduced-motion`, safe areas, and text zoom without truncation.
