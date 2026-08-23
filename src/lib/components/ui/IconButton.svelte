@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Spinner from './Spinner.svelte';
+  import { cn } from '$lib/utils';
 
   type Props = {
     /** The icon. Skipped entirely while `loading` is true. */
@@ -14,6 +15,7 @@
     loading?: boolean;
     ariaPressed?: boolean;
     onclick?: (event: MouseEvent) => void;
+    class?: string;
   };
 
   const {
@@ -24,13 +26,34 @@
     disabled = false,
     loading = false,
     ariaPressed,
-    onclick
+    onclick,
+    class: className
   }: Props = $props();
+
+  const variants = {
+    ghost: 'bg-transparent text-muted-foreground enabled:hover:bg-muted enabled:hover:text-foreground',
+    surface:
+      'border-border-subtle bg-card text-primary-deep enabled:hover:border-primary-deep enabled:hover:bg-muted',
+    primary: 'bg-primary-deep text-card enabled:hover:bg-primary-deep-hover'
+  } as const satisfies Record<NonNullable<Props['variant']>, string>;
+
+  // `sm` is the only step allowed below the 44px floor, and only where an
+  // ancestor row already guarantees the target.
+  const sizes = {
+    sm: 'size-7 rounded-sm',
+    md: 'size-(--tap-min) rounded-md'
+  } as const satisfies Record<NonNullable<Props['size']>, string>;
 </script>
 
 <button
   type="button"
-  class="ui-icon-button {variant} {size}"
+  class={cn(
+    'ui-icon-button grid flex-none place-items-center border border-transparent transition-control',
+    'disabled:opacity-62 enabled:active:scale-(--press-scale)',
+    sizes[size],
+    variants[variant],
+    className
+  )}
   title={label}
   aria-label={label}
   aria-pressed={ariaPressed}
@@ -44,65 +67,3 @@
     {@render children()}
   {/if}
 </button>
-
-<style>
-  .ui-icon-button {
-    display: grid;
-    width: var(--tap-min);
-    height: var(--tap-min);
-    flex: 0 0 var(--tap-min);
-    place-items: center;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .ui-icon-button.sm {
-    width: 1.75rem;
-    height: 1.75rem;
-    flex: 0 0 1.75rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .ui-icon-button:active:not(:disabled) {
-    transform: scale(var(--press-scale));
-  }
-
-  .ui-icon-button:disabled {
-    opacity: 0.62;
-  }
-
-  .ghost {
-    color: var(--muted-foreground);
-    background: transparent;
-  }
-
-  .ghost:hover:not(:disabled) {
-    color: var(--foreground);
-    background: var(--muted);
-  }
-
-  .surface {
-    color: var(--primary-deep);
-    background: var(--card);
-    border-color: var(--border-subtle);
-  }
-
-  .surface:hover:not(:disabled) {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  .primary {
-    color: var(--card);
-    background: var(--primary-deep);
-  }
-
-  .primary:hover:not(:disabled) {
-    background: var(--primary-deep-hover);
-  }
-</style>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { cn } from '$lib/utils';
 
   type Props = {
     children: Snippet;
@@ -11,67 +12,34 @@
     tone?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger' | 'live';
     /** Small leading dot for live/attention states. */
     dot?: boolean;
+    class?: string;
   };
 
-  const { children, tone = 'neutral', dot = false }: Props = $props();
+  const { children, tone = 'neutral', dot = false, class: className }: Props = $props();
+
+  const tones = {
+    neutral: 'bg-category-other-surface text-category-other-text',
+    accent: 'bg-muted text-primary-deep',
+    success: 'bg-success-surface text-success-strong',
+    warning: 'bg-warning-surface text-warning-strong',
+    danger: 'bg-danger-surface text-danger-strong',
+    live: 'bg-primary-deep text-card'
+  } as const satisfies Record<NonNullable<Props['tone']>, string>;
 </script>
 
-<span class="ui-badge {tone}">
-  {#if dot}<span class="dot" aria-hidden="true"></span>{/if}
+<span
+  class={cn(
+    'ui-badge inline-flex items-center gap-1 rounded-pill px-2 py-[0.2rem]',
+    'text-2xs font-bold whitespace-nowrap',
+    tones[tone],
+    className
+  )}
+>
+  {#if dot}
+    <span
+      class={cn('size-[0.4rem] rounded-full bg-current', tone === 'live' && 'animate-pulse-beacon')}
+      aria-hidden="true"
+    ></span>
+  {/if}
   {@render children()}
 </span>
-
-<style>
-  .ui-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    padding: 0.2rem var(--space-2);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    line-height: 1.5;
-    white-space: nowrap;
-  }
-
-  .dot {
-    width: 0.4rem;
-    height: 0.4rem;
-    border-radius: 50%;
-    background: currentColor;
-  }
-
-  .neutral {
-    color: var(--category-other-text);
-    background: var(--category-other-surface);
-  }
-
-  .accent {
-    color: var(--primary-deep);
-    background: var(--muted);
-  }
-
-  .success {
-    color: var(--success-strong);
-    background: var(--success-surface);
-  }
-
-  .warning {
-    color: var(--warning-strong);
-    background: var(--warning-surface);
-  }
-
-  .danger {
-    color: var(--danger-strong);
-    background: var(--danger-surface);
-  }
-
-  .live {
-    color: var(--card);
-    background: var(--primary-deep);
-  }
-
-  .live .dot {
-    animation: pulse-beacon 1.6s var(--ease-in-out) infinite;
-  }
-</style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { cn } from '$lib/utils';
+
   type Option = {
     value: string;
     label: string;
@@ -11,9 +13,10 @@
     label: string;
     size?: 'sm' | 'md';
     onChange: (value: string) => void;
+    class?: string;
   };
 
-  let { options, value, label, size = 'md', onChange }: Props = $props();
+  let { options, value, label, size = 'md', onChange, class: className }: Props = $props();
 
   let container: HTMLDivElement | undefined = $state();
 
@@ -35,17 +38,46 @@
     onChange(options[next].value);
     container?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus();
   }
+
+  const trackSizes = {
+    sm: 'gap-[2px] rounded-sm p-[2px]',
+    md: 'gap-1 rounded-md p-1'
+  } as const satisfies Record<NonNullable<Props['size']>, string>;
+
+  const segmentSizes = {
+    sm: 'min-h-7 rounded-xs px-2 text-xs font-medium',
+    md: 'min-h-(--tap-min) rounded-sm px-3 text-sm font-semibold'
+  } as const satisfies Record<NonNullable<Props['size']>, string>;
 </script>
 
-<div class="ui-segmented {size}" role="tablist" aria-label={label} bind:this={container}>
+<div
+  class={cn(
+    'ui-segmented flex overflow-x-auto border border-border-subtle bg-surface-sunken',
+    // `scrollbar-width` is not universal across the platform webviews yet, so
+    // the WebKit pseudo-element stays alongside it.
+    'scrollbar-none [&::-webkit-scrollbar]:hidden',
+    trackSizes[size],
+    className
+  )}
+  role="tablist"
+  aria-label={label}
+  bind:this={container}
+>
   {#each options as option, index (option.value)}
+    {@const active = option.value === value}
     <button
       type="button"
       role="tab"
-      class="segment {size}"
-      class:active={option.value === value}
-      aria-selected={option.value === value}
-      tabindex={option.value === value ? 0 : -1}
+      class={cn(
+        'min-w-0 flex-1 bg-transparent text-center whitespace-nowrap',
+        'transition-control active:scale-(--press-scale)',
+        segmentSizes[size],
+        active
+          ? 'bg-card text-primary-deep shadow-xs'
+          : 'text-muted-foreground hover:text-foreground'
+      )}
+      aria-selected={active}
+      tabindex={active ? 0 : -1}
       onclick={() => onChange(option.value)}
       onkeydown={(event) => handleKeyDown(event, index)}
     >
@@ -53,67 +85,3 @@
     </button>
   {/each}
 </div>
-
-<style>
-  .ui-segmented {
-    display: flex;
-    gap: var(--space-1);
-    padding: var(--space-1);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .ui-segmented.sm {
-    gap: 2px;
-    padding: 2px;
-    border-radius: var(--radius-sm);
-  }
-
-  .ui-segmented::-webkit-scrollbar {
-    display: none;
-  }
-
-  .segment {
-    flex: 1 1 0%;
-    min-width: 0;
-    min-height: var(--tap-min);
-    padding: 0 var(--space-3);
-    color: var(--muted-foreground);
-    background: transparent;
-    border: 0;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    white-space: nowrap;
-    text-align: center;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .segment.sm {
-    min-height: 1.75rem;
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-xs);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-medium);
-  }
-
-  .segment:hover:not(.active) {
-    color: var(--foreground);
-  }
-
-  .segment:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .segment.active {
-    color: var(--primary-deep);
-    background: var(--card);
-    box-shadow: var(--shadow-xs);
-  }
-</style>
