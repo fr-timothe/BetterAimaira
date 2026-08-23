@@ -1,66 +1,70 @@
 <div align="center">
   <img src="assets/logo.svg" height="200">
 <h1>BetterAimaira</h1>
-<p><strong>A local client that replaces the Aimaira student portal with an adaptive Tauri app.</strong>
+<p><strong>Un client local qui remplace le portail étudiant Aimaira par une application adaptative Tauri.</strong>
 <br>
-<strong>Supporting <code>Windows</code>, <code>macOS</code>, <code>Linux</code>, <code>Android</code> and <code>iOS</code></strong></p>
+<strong>Compatible <code>Windows</code>, <code>macOS</code>, <code>Linux</code>, <code>Android</code> et <code>iOS</code></strong></p>
 <br>
 <p>
-<a href="https://github.com/fr-timothe/BetterAimaira/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/fr-timothe/BetterAimaira/release.yml?style=for-the-badge&label=Release&color=white&labelColor=black" alt="Release workflow"></a>
-<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/github/v/release/fr-timothe/BetterAimaira?style=for-the-badge&label=Latest&color=white&labelColor=black" alt="Latest release"></a>
-<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/github/downloads/fr-timothe/BetterAimaira/total?style=for-the-badge&label=Downloads&color=white&labelColor=black" alt="Downloads"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-white?style=for-the-badge&labelColor=black" alt="License"></a>
+<a href="https://github.com/fr-timothe/BetterAimaira/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/fr-timothe/BetterAimaira/release.yml?style=for-the-badge&label=Release&color=white&labelColor=black" alt="Workflow de release"></a>
+<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/github/v/release/fr-timothe/BetterAimaira?style=for-the-badge&label=Derni%C3%A8re%20version&color=white&labelColor=black" alt="Dernière version"></a>
+<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/github/downloads/fr-timothe/BetterAimaira/total?style=for-the-badge&label=T%C3%A9l%C3%A9chargements&color=white&labelColor=black" alt="Téléchargements"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/Licence-GPL--3.0-white?style=for-the-badge&labelColor=black" alt="Licence"></a>
 </p>
 <br>
-<p><strong>Quick Links</strong></p>
 <p>
-<a href="#screenshots"><img src="https://img.shields.io/badge/Screenshots-000000?style=for-the-badge" alt=""></a>
-<a href="#main-features"><img src="https://img.shields.io/badge/Main_Features-000000?style=for-the-badge" alt=""></a>
-<a href="#download"><img src="https://img.shields.io/badge/Download-000000?style=for-the-badge" alt=""></a>
+  <a href="README.md"><strong>🇫🇷 Français</strong></a> &bull;
+  <a href="README.en.md">🇬🇧 English</a>
+</p>
+<br>
+<p><strong>Liens rapides</strong></p>
+<p>
+<a href="#captures-décran"><img src="https://img.shields.io/badge/Captures_d'%C3%A9cran-000000?style=for-the-badge" alt=""></a>
+<a href="#principales-fonctionnalités"><img src="https://img.shields.io/badge/Fonctionnalit%C3%A9s-000000?style=for-the-badge" alt=""></a>
+<a href="#téléchargement"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9chargement-000000?style=for-the-badge" alt=""></a>
 <a href="docs/README.md"><img src="https://img.shields.io/badge/Documentation-000000?style=for-the-badge" alt=""></a>
 </p>
 <p>
-<a href="#development"><img src="https://img.shields.io/badge/Development-000000?style=for-the-badge" alt=""></a>
-<a href="#privacy"><img src="https://img.shields.io/badge/Privacy-000000?style=for-the-badge" alt=""></a>
-<a href="#tech-stack"><img src="https://img.shields.io/badge/Tech_Stack-000000?style=for-the-badge" alt=""></a>
-<a href="#license"><img src="https://img.shields.io/badge/License-000000?style=for-the-badge" alt=""></a>
+<a href="#développement"><img src="https://img.shields.io/badge/D%C3%A9veloppement-000000?style=for-the-badge" alt=""></a>
+<a href="#confidentialité"><img src="https://img.shields.io/badge/Confidentialit%C3%A9-000000?style=for-the-badge" alt=""></a>
+<a href="#stack-technique"><img src="https://img.shields.io/badge/Stack_Technique-000000?style=for-the-badge" alt=""></a>
+<a href="#licence"><img src="https://img.shields.io/badge/Licence-000000?style=for-the-badge" alt=""></a>
 </p>
 
 <p align="center">
-  <img src="assets/showcase/betteraimaira-demo.webp" alt="BetterAimaira Animated Showcase" width="100%" style="border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);" />
+  <img src="assets/showcase/betteraimaira-demo.webp" alt="Démonstration animée de BetterAimaira" width="100%" style="border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);" />
 </p>
 <p align="center">
-  <small>🎥 <a href="assets/showcase/betteraimaira-presentation.mp4">Download 1080p Presentation Video (MP4)</a></small>
+  <small>🎥 <a href="assets/showcase/betteraimaira-presentation.mp4">Télécharger la vidéo de présentation 1080p (MP4)</a></small>
 </p>
 </div>
 
 ## Introduction
 
-Aimaira is a web intranet used by schools for schedules, grades, attendance and documents.
-BetterAimaira is a native client for it: the student pastes any page of their own portal, the Rust
-core normalizes it to an HTTPS origin, authenticates, and the interface shows what matters first —
-the current or next course, its room, and how fresh the data is.
+Aimaira est un intranet web utilisé par les établissements d'enseignement pour les emplois du temps, les notes, les absences et les documents administratifs.
+BetterAimaira en est un client natif : l'étudiant colle n'importe quelle page de son propre portail, le cœur en Rust la normalise vers son origine HTTPS, s'authentifie, et l'interface affiche l'essentiel en priorité — le cours actuel ou suivant, sa salle et la fraîcheur des données.
 
-The app talks to the configured portal and to nothing else. No cloud relay sits in the middle,
-credentials live in the operating system credential store, and every view says whether it is
-loading, empty, stale, offline, expired or broken instead of guessing. This first vertical slice is
-strictly read-only: administrative, billing and remote write actions are out of scope.
+L'application communique exclusivement avec le portail configuré et rien d'autre. Aucun relais cloud intermédiaire n'est utilisé, les identifiants résident dans le trousseau sécurisé du système d'exploitation, et chaque vue indique explicitement son état (en chargement, vide, obsolète, hors ligne, expiré ou en erreur) sans jamais deviner. Cette première version est strictement en lecture seule : les actions administratives, de facturation et d'écriture distante sont hors périmètre.
 
-## Screenshots
+## Captures d'écran
+
+<p align="center">
+  <em>(Captures d'écran issues de l'interface de l'application en anglais)</em>
+</p>
 
 <div align="center">
  <table>
   <tr>
-   <td align="center"><strong>Today — Live Course & Metrics</strong></td>
-   <td align="center"><strong>Schedule — Day View</strong></td>
+   <td align="center"><strong>Aujourd'hui — Cours en direct & Métriques</strong></td>
+   <td align="center"><strong>Emploi du temps — Vue Jour</strong></td>
   </tr>
   <tr>
    <td><img src="assets/showcase/screenshot-1.png" width="100%"></td>
    <td><img src="assets/showcase/screenshot-2.png" width="100%"></td>
   </tr>
   <tr>
-   <td align="center"><strong>Schedule — Week Grid</strong></td>
-   <td align="center"><strong>Grades & Evaluations</strong></td>
+   <td align="center"><strong>Emploi du temps — Grille Semaine</strong></td>
+   <td align="center"><strong>Notes & Évaluations</strong></td>
   </tr>
   <tr>
    <td><img src="assets/showcase/screenshot-3.png" width="100%"></td>
@@ -69,159 +73,155 @@ strictly read-only: administrative, billing and remote write actions are out of 
  </table>
 </div>
 
-## Main Features
+## Principales fonctionnalités
 
 <details>
-  <summary>Session and portal</summary>
+  <summary>Session et portail</summary>
 
-- `Portal URL Normalization` (any pasted deep link reduces to its HTTPS origin)
-- `HTTPS Only` (an HTTP portal is refused before credentials are sent)
-- `Form Authentication In Rust` (anti-forgery token, private cookie jar)
-- `Optional Password Persistence` (Windows Credential Manager, Keychain, Keystore, Secret Service)
-- `Automatic Session Restore` on launch
-- `Stable Error Codes` (translated in the interface, never raw diagnostics)
-- `French And English` interface, complete from the first milestone
+- `Normalisation de l'URL du portail` (tout lien profond collé est réduit à son origine HTTPS)
+- `HTTPS uniquement` (un portail en HTTP est rejeté avant tout envoi d'identifiants)
+- `Authentification par formulaire en Rust` (jeton anti-falsification, gestionnaire privé de cookies)
+- `Persistance optionnelle du mot de passe` (Windows Credential Manager, Trousseau macOS, Keystore Android, Secret Service Linux)
+- `Restauration automatique de session` au lancement
+- `Codes d'erreur stables` (traduits dans l'interface, jamais de diagnostics bruts)
+- `Interface en français et en anglais`, complète dès la première version
 </details>
 
 <details>
-  <summary>Schedule and planning</summary>
+  <summary>Emploi du temps et planning</summary>
 
-- `Monday-Anchored Week` (matches the portal 7-day request window)
-- `Current Or Next Course` with room, instructor and portal note
-- `Countdown And Progress` for the ongoing course
-- `Day Picker` on compact windows, `Week Grid` once the window fits it
-- `Portal Planning Settings` (`urlTempoSeance`, `tempoLinkVisible`, `sundaysVisible`)
-- `Tempo Session Link`, only when the portal reports it as visible
-- `Sanitized Portal Text` (portal HTML becomes plain text before it leaves Rust)
+- `Semaine ancrée le lundi` (correspondant à la fenêtre de requête de 7 jours du portail)
+- `Cours actuel ou suivant` avec salle, enseignant et note du portail
+- `Compte à rebours et progression` pour le cours en cours
+- `Sélecteur de jour` sur fenêtres compactes, `Grille hebdomadaire` dès que la largeur le permet
+- `Paramètres de planning du portail` (`urlTempoSeance`, `tempoLinkVisible`, `sundaysVisible`)
+- `Lien de séance Tempo`, uniquement lorsque le portail le signale comme visible
+- `Nettoyage du texte du portail` (le HTML du portail est converti en texte brut avant de quitter Rust)
 </details>
 
 <details>
-  <summary>Grades, attendance and documents</summary>
+  <summary>Notes, présences et documents</summary>
 
-- `Grades` (read-only `/Note`, semantic Rust adapter)
-- `Launch Grade Sync` (SQLite fingerprints, silent first baseline)
-- `In-App Grade Alerts` (home banner and notification drawer, no push service)
-- `Attendance` (read-only `/Absence`)
-- `Profile` (read-only `/Profil`)
-- `Documents` (read-only `/Document`)
-- `Questionnaires` (read-only, including response detail)
-- `Safe PDF Download` (same-origin allowlist, PDF signature check, 25 MiB limit)
+- `Notes` (lecture seule `/Note`, adaptateur sémantique en Rust)
+- `Synchronisation des notes au lancement` (empreintes SQLite, premier état silencieux)
+- `Alertes de notes dans l'application` (bannière d'accueil et tiroir de notifications, sans service push)
+- `Présences et absences` (lecture seule `/Absence`)
+- `Profil` (lecture seule `/Profil`)
+- `Documents` (lecture seule `/Document`)
+- `Questionnaires` (lecture seule, avec détail des réponses)
+- `Téléchargement sécurisé de PDF` (liste blanche same-origin, vérification de signature PDF, limite à 25 Mio)
 </details>
 
 <details>
   <summary>Interface</summary>
 
-- `Adaptive Layout` driven by window width, not device name
-- `Five Destinations` (Today, Schedule, Grades, Attendance, More)
-- `Floating Bottom Bar` on compact windows, `Drawer And Top Bar` on desktop
-- `Honest State` (loading, empty, error, expired, offline, stale — never a lie)
-- `Freshness Labels` on every cached surface
-- `44px Interactive Floor`, visible focus, full keyboard navigation
-- `Reduced Motion` and `Safe Area` support
-- `Frameless Custom Titlebar` on desktop
+- `Mise en page adaptative` dictée par la largeur de fenêtre, et non par le nom du terminal
+- `Cinq destinations` (Aujourd'hui, Planning, Notes, Présences, Plus)
+- `Barre inférieure flottante` sur fenêtres compactes, `Tiroir latéral et barre supérieure` sur bureau
+- `États explicites et honnêtes` (chargement, vide, erreur, expiré, hors ligne, obsolète — sans faux-semblant)
+- `Indicateurs de fraîcheur` sur chaque vue en cache
+- `Cible tactile interactive minimale de 44px`, focus visible, navigation complète au clavier
+- `Support de Reduced Motion` et des zones de sécurité (`Safe Area`)
+- `Barre de titre personnalisée sans bordure` sur bureau
 </details>
 
 <details>
-  <summary>Updates and delivery</summary>
+  <summary>Mises à jour et distribution</summary>
 
-- `Single Update Feed` (one GitHub release read by every platform)
-- `Signed In-Place Install` on desktop (minisign-verified, NSIS passive)
-- `PackageInstaller Handover` on Android
-- `AltStore Source Check` on iOS
-- See [docs/UPDATES.md](docs/UPDATES.md)
+- `Flux de mise à jour unifié` (une seule release GitHub lue par toutes les plateformes)
+- `Installation en place signée` sur bureau (vérification minisign, NSIS passif)
+- `Passage de relais à PackageInstaller` sur Android
+- `Vérification de source AltStore` sur iOS
+- Voir [docs/UPDATES.md](docs/UPDATES.md)
 </details>
 
 <details>
-  <summary>Planned — not implemented yet</summary>
+  <summary>Prévu — pas encore implémenté</summary>
 
-- `Dark Mode` (tokens exist, the slice ships light only)
-- `Grade Analytics` (trend curves, class distribution, grade simulator)
-- `Attendance Analytics` (radial quota and ECTS indicators)
-- `Campus Directory` (faculty and student lists)
-- `iCal Export` (`.ics` generation and local subscription server)
-- `Webhook Alerts` (Discord, Telegram)
-- `Widgets And Tray` (Android/iOS home screen, Windows tray, macOS menu bar)
-- `Biometric Unlock` (Face ID, Touch ID, Windows Hello)
+- `Mode sombre` (les tokens existent, la version actuelle est livrée en mode clair)
+- `Analyses des notes` (courbes de tendances, distribution de classe, simulateur de moyenne)
+- `Analyses des présences` (jauge de quota et indicateurs ECTS)
+- `Annuaire du campus` (listes du corps enseignant et des étudiants)
+- `Export iCal` (génération `.ics` et serveur local d'abonnement)
+- `Alertes Webhook` (Discord, Telegram)
+- `Widgets et barre système` (écran d'accueil Android/iOS, zone de notification Windows, barre de menus macOS)
+- `Déverrouillage biométrique` (Face ID, Touch ID, Windows Hello)
 </details>
 
-The planned group is specified in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+Le groupe des fonctionnalités prévues est détaillé dans [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
-## Download
+## Téléchargement
 
-| Platform | Asset | Install |
+| Plateforme | Fichier | Installation |
 |---|---|---|
-| Windows | `*-setup.exe` | NSIS installer, updates itself in place |
-| macOS, Linux | `.dmg`, `.app`, `.AppImage`, `.deb` | built locally for now, same updater path |
-| Android | `*.apk` | universal release APK, then the system install prompt |
-| iOS | `*.ipa` | AltStore/SideStore source, published manually |
+| Windows | `*-setup.exe` | Installeur NSIS, se met à jour en place |
+| macOS, Linux | `.dmg`, `.app`, `.AppImage`, `.deb` | Compilé localement pour l'instant, même système de mise à jour |
+| Android | `*.apk` | APK release universel, puis invite d'installation du système |
+| iOS | `*.ipa` | Source AltStore/SideStore, publié manuellement |
 
-<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/badge/Download-Latest_Release-000000?style=for-the-badge" alt="Download latest release"></a>
+<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Derni%C3%A8re_Version-000000?style=for-the-badge" alt="Télécharger la dernière version"></a>
 
-Every platform reads the same release feed, and an installed build checks it three seconds after
-launch. Install paths, signing material and the release workflow are documented in
-[docs/UPDATES.md](docs/UPDATES.md).
+Chaque plateforme lit le même flux de publication, et une version installée vérifie les mises à jour trois secondes après son lancement. Les chemins d'installation, le matériel de signature et le workflow de publication sont documentés dans [docs/UPDATES.md](docs/UPDATES.md).
 
 ## Documentation
 
-| Document | Covers |
+| Document | Sujet |
 |---|---|
-| [Architecture](docs/ARCHITECTURE.md) | Rust backend, Tauri IPC, cache strategy, security boundaries |
-| [Application structure and platforms](docs/APP_STRUCTURE_AND_PLATFORMS.md) | Adaptive layout rules, platform expression, release matrix |
-| [Backend API](docs/BACKEND_API.md) | Tauri commands, serialized contracts, document downloads, error codes |
-| [Design system](docs/DESIGN_SYSTEM.md) | Tokens, breakpoints, responsive layouts |
-| [Design guidelines](DESIGN.md) | How the tokens are applied, shared primitives, honest state |
-| [Integrations](docs/INTEGRATIONS.md) | iCal feeds, webhooks, widgets, in-app alerts |
-| [Performance](docs/PERFORMANCE.md) | Baseline commands, profiling tools, bundle budgets |
-| [Updates](docs/UPDATES.md) | Update feed, per-platform install paths, signing keys, release workflow |
-| [Product](PRODUCT.md) | Users, scope, constraints, product principles |
-| [Brand assets](assets/README.md) | Logo files, geometry, palette, Svelte component |
+| [Architecture](docs/ARCHITECTURE.md) | Backend Rust, IPC Tauri, stratégie de cache, frontières de sécurité |
+| [Structure de l'application et plateformes](docs/APP_STRUCTURE_AND_PLATFORMS.md) | Règles de mise en page adaptative, spécificités par plateforme, matrice de release |
+| [API Backend](docs/BACKEND_API.md) | Commandes Tauri, contrats sérialisés, téléchargement de documents, codes d'erreur |
+| [Système de design](docs/DESIGN_SYSTEM.md) | Tokens, points de rupture (breakpoints), mises en page responsives |
+| [Directives de design](DESIGN.md) | Application des tokens, primitives partagées, états honnêtes |
+| [Intégrations](docs/INTEGRATIONS.md) | Flux iCal, webhooks, widgets, alertes in-app |
+| [Performance](docs/PERFORMANCE.md) | Commandes de référence, outils de profilage, budgets de bundle |
+| [Mises à jour](docs/UPDATES.md) | Flux de mise à jour, chemins d'installation par plateforme, clés de signature, workflow de release |
+| [Produit](PRODUCT.md) | Utilisateurs, périmètre, contraintes, principes produit |
+| [Ressources de marque](assets/README.md) | Fichiers de logo, géométrie, palette, composant Svelte |
 
-## Development
+## Développement
 
-### Prerequisites
+### Prérequis
 
 - [Bun](https://bun.sh/) >= 1.2
-- [Rust and Cargo](https://rustup.rs/) >= 1.80
-- [Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/) for the targets you build
+- [Rust et Cargo](https://rustup.rs/) >= 1.80
+- [Prérequis de plateforme Tauri](https://v2.tauri.app/start/prerequisites/) pour les cibles à compiler
 
-### Commands
+### Commandes
 
 ```bash
-# Clone and install
+# Cloner et installer
 git clone https://github.com/fr-timothe/BetterAimaira.git
 cd BetterAimaira
 bun install
 
-# Desktop (1280x800, frameless custom titlebar)
+# Desktop (1280x800, barre de titre personnalisée sans bordure)
 bun run desktop:dev
 
-# Mobile preview on desktop (412x892 viewport, forced mobile mode)
+# Aperçu mobile sur desktop (résolution 412x892, mode mobile forcé)
 bun run mobile:dev
 
-# Native mobile, on an emulator or a device
+# Mobile natif, sur émulateur ou appareil physique
 bun run android:dev
 bun run ios:dev
 ```
 
 ```bash
-# Release bundle
+# Compilation release
 bun run desktop:build
 
-# Release bundle exported to dist-desktop/, target/ purged
+# Compilation release exportée vers dist-desktop/, purge de target/
 bun run desktop:build:export
 
-# Build artifacts (src-tauri/target, .svelte-kit, build)
+# Nettoyage des artefacts de build (src-tauri/target, .svelte-kit, build)
 bun run clean
 
-# Intermediate compiler cache only, release bundles kept
+# Cache intermédiaire du compilateur uniquement, bundles release conservés
 bun run clean:cache
 ```
 
-Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which
-builds the Windows installer and the Android APK, writes both update manifests, and publishes the
-release the app polls.
+Pousser un tag `v*` déclenche le workflow [`.github/workflows/release.yml`](.github/workflows/release.yml), qui compile l'installeur Windows ainsi que l'APK Android, génère les manifestes de mise à jour et publie la release interrogée par l'application.
 
-### Verification
+### Vérification
 
 ```bash
 bun run check
@@ -231,56 +231,47 @@ cargo test
 cargo clippy --all-targets -- -D warnings
 ```
 
-`bun run dev` renders the interface in a browser but has no Rust side, so portal authentication and
-the credential store are unavailable there. Use `bun run desktop:dev` or `bun run mobile:dev` to
-exercise the real backend.
+`bun run dev` affiche l'interface dans un navigateur mais sans le backend Rust : l'authentification au portail et le trousseau de clés n'y sont donc pas disponibles. Utilisez `bun run desktop:dev` ou `bun run mobile:dev` pour exécuter le backend complet.
 
-### Development automation bridge
+### Pont d'automatisation pour le développement
 
-`bun run desktop:dev` starts a local automation bridge (`tauri-plugin-mcp-bridge`) on
-`127.0.0.1:9223` to drive and verify the running app against the portal during development. It is
-excluded from release builds by the `dev-automation` Cargo feature and a `#[cfg(debug_assertions)]`
-guard in `src-tauri/src/lib.rs`, and its capability lives in
-`src-tauri/capabilities/dev/dev-mcp-bridge.json`.
+`bun run desktop:dev` démarre un pont local d'automatisation (`tauri-plugin-mcp-bridge`) sur `127.0.0.1:9223` afin de piloter et vérifier l'application face au portail durant le développement. Il est exclu des builds de release via la fonctionnalité Cargo `dev-automation` et un garde `#[cfg(debug_assertions)]` dans `src-tauri/src/lib.rs`. Ses permissions sont déclarées dans `src-tauri/capabilities/dev/dev-mcp-bridge.json`.
 
-Do not enable this bridge in distributed builds.
+N'activez pas ce pont dans les versions distribuées.
 
-## Privacy
+## Confidentialité
 
-- **No cloud relay.** Requests go from the device to the portal the user configured, and nowhere else.
-- **No telemetry, no analytics, no push service.** Grade checks run only while the app is open.
-- **Cookies stay in Rust.** The session jar is in memory and never crosses the IPC boundary.
-- **Passwords go to the OS vault.** No plaintext password in SQLite or frontend preferences, and
-  explicit sign-out clears the stored entry.
-- **HTTPS is mandatory.** An HTTP portal is refused before credentials are sent.
-- **Local cache only.** SQLite holds grade fingerprints, display data and unread alert state.
-- **Read-only.** The client never writes to the portal.
-- **Portal strings are untrusted.** They are rendered as plain text.
+- **Aucun relais cloud.** Les requêtes transitent directement de l'appareil vers le portail configuré par l'étudiant, nulle part ailleurs.
+- **Ni télémétrie, ni analytique, ni service push.** La vérification des notes ne tourne que lorsque l'application est active.
+- **Les cookies restent dans Rust.** Le gestionnaire de cookies de session réside en mémoire et ne franchit jamais la frontière IPC.
+- **Mots de passe stockés dans le coffre-fort de l'OS.** Aucun mot de passe en clair dans SQLite ou les préférences frontend. La déconnexion explicite supprime l'entrée enregistrée.
+- **HTTPS obligatoire.** Tout portail en HTTP est immédiatement rejeté avant la transmission des identifiants.
+- **Cache local uniquement.** SQLite conserve les empreintes de notes, les données d'affichage et l'état des alertes non lues.
+- **Strictement en lecture seule.** Le client n'écrit jamais sur le portail distant.
+- **Données du portail non fiables.** Le contenu distant est rendu sous forme de texte brut sécurisé.
 
-## Tech Stack
+## Stack technique
 
-| Layer | Technologies |
+| Couche | Technologies |
 |---|---|
-| **Core and backend** | [Rust](https://www.rust-lang.org/), [Tauri 2.0](https://v2.tauri.app/), `reqwest` (cookie jar), `scraper` (HTML parsing), `rusqlite` (cache), `keyring` (OS vault) |
-| **Frontend** | [Svelte 5](https://svelte.dev/) (runes), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS v4](https://tailwindcss.com/), [SvelteKit](https://svelte.dev/docs/kit) static adapter |
-| **Theme and tokens** | [FL-Theme via tweakcn](https://tweakcn.com/r/themes/cmq57ht7w000204l2axo6ho9v), republished as Tailwind utilities by the `@theme inline` block in `src/app.css` — see [DESIGN.md](DESIGN.md) |
-| **Typography** | [Inter](https://rsms.me/inter/) variable, self-hosted through `@fontsource-variable/inter` (a Tauri client has no CDN fallback) |
-| **Icons and charts** | [Lucide Svelte](https://lucide.dev/), hand-written Svelte 5 SVG |
-| **Internationalisation** | [Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) (French, English) |
-| **Package manager** | [Bun](https://bun.sh/) |
+| **Cœur et backend** | [Rust](https://www.rust-lang.org/), [Tauri 2.0](https://v2.tauri.app/), `reqwest` (cookie jar), `scraper` (parsing HTML), `rusqlite` (cache), `keyring` (coffre-fort OS) |
+| **Frontend** | [Svelte 5](https://svelte.dev/) (runes), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS v4](https://tailwindcss.com/), adaptateur statique [SvelteKit](https://svelte.dev/docs/kit) |
+| **Thème et tokens** | [FL-Theme via tweakcn](https://tweakcn.com/r/themes/cmq57ht7w000204l2axo6ho9v), republié en utilitaires Tailwind via le bloc `@theme inline` dans `src/app.css` — voir [DESIGN.md](DESIGN.md) |
+| **Typographie** | [Inter](https://rsms.me/inter/) variable, auto-hébergée avec `@fontsource-variable/inter` (un client Tauri ne dépend pas d'un CDN externe) |
+| **Icônes et graphiques** | [Lucide Svelte](https://lucide.dev/), SVG Svelte 5 sur mesure |
+| **Internationalisation** | [Paraglide JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) (Français, Anglais) |
+| **Gestionnaire de paquets** | [Bun](https://bun.sh/) |
 
-## Contributing
+## Contribution
 
-Contributions are welcome. Before opening a pull request:
+Les contributions sont les bienvenues. Avant d'ouvrir une pull request :
 
-- Read [DESIGN.md](DESIGN.md): utilities at the element, tokens from `src/app.css`, no local colour
-  or radius declarations.
-- Keep every user-visible string in the Paraglide catalogue (`messages/`).
-- Keep the read-only boundary. No new portal write route.
-- Run the verification block above. `bun run check` and `cargo clippy -- -D warnings` must be clean.
-- Commit messages in English, imperative, one short summary line.
+- Consultez [DESIGN.md](DESIGN.md) : utilitaires au niveau de l'élément, tokens issus de `src/app.css`, aucune déclaration locale de couleur ou de rayon d'arrondi.
+- Placez chaque texte visible par l'utilisateur dans le catalogue Paraglide (`messages/`).
+- Respectez la contrainte de lecture seule : aucune nouvelle route d'écriture vers le portail.
+- Exécutez le bloc de vérification ci-dessus : `bun run check` et `cargo clippy -- -D warnings` doivent s'exécuter sans erreur ni avertissement.
+- Messages de commit rédigés en anglais, à l'impératif, avec une ligne de résumé courte.
 
-## License
+## Licence
 
-[GPL-3.0](LICENSE). Aimaira is a third-party product; this project is an independent client and is
-not affiliated with it.
+[GPL-3.0](LICENSE). Aimaira est un produit tiers ; ce projet est un client indépendant et n'est aucunement affilié à son éditeur.
