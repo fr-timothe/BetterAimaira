@@ -26,6 +26,7 @@
   import HeroMetric from './HeroMetric.svelte';
   import HeroStat from './HeroStat.svelte';
   import AcademicViewSkeleton from './AcademicViewSkeleton.svelte';
+  import { cn } from '$lib/utils';
   import { loadPortalResource } from './portal-cache';
   import {
     averageOfCourses,
@@ -307,6 +308,12 @@
       downloadingPath = null;
     }
   }
+  const uppercaseLabel =
+    'text-xs font-bold tracking-[0.04em] uppercase text-muted-foreground';
+  const chevron =
+    'inline-flex shrink-0 text-muted-foreground transition-transform duration-fast ease-[ease]';
+  const stackTight = 'flex min-w-0 flex-1 flex-col gap-[0.15rem]';
+  const cellLabel = 'cell-label text-xs font-bold text-muted-foreground';
 </script>
 
 <PageShell>
@@ -347,7 +354,7 @@
     {:else}
       <!-- The year is always named and always steppable, so an older year is one
            click away and the current one is never guessed from the marks. -->
-      <div class="year-switch">
+      <div class="flex w-full items-center justify-between gap-2 md:w-auto">
         <IconButton
           label={copy.previousYear}
           variant="ghost"
@@ -357,9 +364,11 @@
           <ChevronLeft size={17} aria-hidden="true" />
         </IconButton>
 
-        <p class="year-current">
-          <span>{copy.yearLabel}</span>
-          <strong>{selectedPeriod?.label ?? '--'}</strong>
+        <p class="flex flex-1 flex-wrap items-baseline justify-center gap-2">
+          <span class={uppercaseLabel}>{copy.yearLabel}</span>
+          <strong class="text-base font-bold tabular-nums text-foreground"
+            >{selectedPeriod?.label ?? '--'}</strong
+          >
         </p>
 
         <IconButton
@@ -401,11 +410,14 @@
       </HeroStat>
 
       {#if downloadFailed}
-        <p class="download-error" role="alert">{copy.downloadFailed}</p>
+        <p
+          class="rounded-md bg-danger-surface px-3 py-2 text-sm font-semibold text-danger-strong"
+          role="alert"
+        >{copy.downloadFailed}</p>
       {/if}
 
-      <div class="view-toolbar">
-        <div class="toolbar-actions">
+      <div class="flex flex-wrap items-center justify-end gap-3">
+        <div class="flex min-w-0 items-center gap-2">
           {#if periodCourseList.length > 0}
             <SegmentedControl
               options={viewOptions}
@@ -431,7 +443,8 @@
       </div>
 
       {#if viewMode === 'cards'}
-        <div class="block-list">
+        <!-- Year to block accordion, mirroring how the portal groups grades. -->
+        <div class="flex flex-col gap-3">
           {#each blocks as block (block.id)}
             {@const label = splitBlockLabel(block.label)}
             {@const courses = blockCourses(block)}
@@ -439,36 +452,61 @@
             {@const open = openBlockIds.includes(block.id)}
             {@const bulletin = blockDocument(block, 'gradeBulletin')}
             {@const transcript = blockDocument(block, 'gradeTranscript')}
-            <section class="block-card" class:is-open={open}>
-              <h2 class="block-heading">
+            <section
+              class={cn(
+                'overflow-hidden rounded-xl border bg-card',
+                open ? 'border-border' : 'border-border-subtle'
+              )}
+            >
+              <h2>
                 <button
                   type="button"
-                  class="block-toggle"
+                  class="flex w-full cursor-pointer items-center gap-3 bg-transparent p-4
+                         text-left hover:bg-surface-sunken"
                   aria-expanded={open}
                   aria-controls={`block-panel-${block.id}`}
                   onclick={() => toggleBlock(block.id)}
                 >
-                  <span class="block-chevron" class:is-open={open}>
+                  <span class={cn(chevron, open && 'rotate-180')}>
                     <ChevronDown size={18} aria-hidden="true" />
                   </span>
-                  <span class="block-identity">
-                    <span class="block-title">{label.title}</span>
-                    {#if label.range}<small class="block-range">{label.range}</small>{/if}
+                  <span class={stackTight}>
+                    <span class="text-base leading-[1.3] font-bold text-foreground"
+                      >{label.title}</span
+                    >
+                    {#if label.range}
+                      <small class="text-xs tabular-nums text-muted-foreground">{label.range}</small>
+                    {/if}
                   </span>
-                  <span class="block-average" title={copy.blockAverage}>
-                    <strong>{formatGrade(average)}</strong>
-                    <small>/20</small>
+                  <span
+                    class="inline-flex shrink-0 items-baseline gap-[0.1rem]"
+                    title={copy.blockAverage}
+                  >
+                    <strong class="text-xl font-extrabold tabular-nums text-primary-deep"
+                      >{formatGrade(average)}</strong
+                    >
+                    <small class="text-xs font-semibold text-muted-foreground">/20</small>
                   </span>
                 </button>
               </h2>
 
-              <div id={`block-panel-${block.id}`} class="block-panel" hidden={!open}>
+              <!-- The header keeps its own padding, so the panel only re-opens the
+                   gap the separator needs. -->
+              <div
+                id={`block-panel-${block.id}`}
+                class="mx-4 flex flex-col gap-4 border-t border-border-subtle py-4
+                       [&[hidden]]:hidden"
+                hidden={!open}
+              >
                 {#if bulletin || transcript}
-                  <div class="block-documents">
+                  <div class="flex flex-wrap gap-2">
                     {#each [bulletin, transcript].filter((document) => document !== null) as document (document.requestPath)}
                       <button
                         type="button"
-                        class="document-button"
+                        class="inline-flex cursor-pointer items-center gap-2 rounded-pill border
+                               border-border-subtle bg-surface-sunken px-3 py-[0.35rem] text-xs
+                               font-semibold text-foreground disabled:cursor-progress
+                               disabled:opacity-70 enabled:hover:bg-muted"
                         disabled={downloadingPath === document.requestPath}
                         onclick={() => downloadBlockDocument(document)}
                       >
@@ -486,52 +524,86 @@
                 {/if}
 
                 {#if courses.length === 0}
-                  <p class="block-empty">{copy.blockEmpty}</p>
+                  <p class="text-sm text-muted-foreground">{copy.blockEmpty}</p>
                 {:else}
                   {#each block.sections as section, sectionIndex (section.label ?? sectionIndex)}
                     {#if section.label}
-                      <h3 class="section-title">{section.label}</h3>
+                      <h3 class={cn('mt-2', uppercaseLabel)}>{section.label}</h3>
                     {/if}
-                    <div class="course-grid">
+                    <div
+                      class="grid grid-cols-1 gap-3
+                             md:grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))]"
+                    >
                       {#each section.courses as course (course.id)}
                         {@const average = courseAverage(course)}
-                        <article class="course-card" style:--subject-color={getSubjectColor(course.name)}>
-                          <header class="course-header">
-                            <div class="course-identity">
-                              <h4 class="course-name" title={course.name}>{course.name}</h4>
-                              {#if course.code}<small class="course-code">{course.code}</small>{/if}
+                        <article
+                          class="flex flex-col gap-3 rounded-lg border border-border-subtle
+                                 bg-subject-veil p-3"
+                          style:--subject-color={getSubjectColor(course.name)}
+                        >
+                          <header class="flex items-start justify-between gap-2">
+                            <div class="flex min-w-0 flex-col gap-[0.1rem]">
+                              <h4
+                                class="line-clamp-2 text-base leading-[1.3] font-bold text-foreground"
+                                title={course.name}>{course.name}</h4
+                              >
+                              {#if course.code}
+                                <small class="text-2xs tabular-nums text-muted-foreground"
+                                  >{course.code}</small
+                                >
+                              {/if}
                             </div>
-                            <span class="course-average" class:is-empty={average === null}>
-                              <strong>{formatGrade(average)}</strong>
-                              <small>/20</small>
+                            <span
+                              class={cn(
+                                'inline-flex shrink-0 items-baseline gap-[0.1rem] rounded-pill',
+                                'bg-card px-2 py-[0.1rem]',
+                                average === null && '[&>strong]:text-muted-foreground'
+                              )}
+                            >
+                              <strong class="text-md font-extrabold tabular-nums text-primary-deep"
+                                >{formatGrade(average)}</strong
+                              >
+                              <small class="text-2xs font-semibold text-muted-foreground">/20</small>
                             </span>
                           </header>
 
                           {#if course.evaluations.length === 0}
-                            <p class="course-empty">{copy.noGradeYet}</p>
+                            <p class="text-sm text-muted-foreground">{copy.noGradeYet}</p>
                           {:else}
-                            <ul class="evaluation-list">
+                            <ul class="flex list-none flex-col gap-2">
                               {#each course.evaluations as evaluation, index (`${course.id}-${index}`)}
-                                <li class="evaluation">
-                                  <span class="evaluation-score">
+                                <li class="flex items-baseline gap-3">
+                                  <span
+                                    class="min-w-18 shrink-0 text-sm font-bold tabular-nums
+                                           text-foreground"
+                                  >
                                     {formatEvaluationScore(evaluation)}
                                   </span>
-                                  <span class="evaluation-identity">
-                                    <span class="evaluation-label">{evaluation.label}</span>
+                                  <span
+                                    class="flex min-w-0 flex-wrap items-baseline gap-1"
+                                  >
+                                    <span class="text-sm text-foreground">{evaluation.label}</span>
                                     {#if evaluation.weight}
-                                      <small class="evaluation-weight">{evaluation.weight}</small>
+                                      <small class="text-2xs tabular-nums text-muted-foreground">{evaluation.weight}</small>
                                     {/if}
                                   </span>
                                 </li>
                                 {#each evaluation.children as child, childIndex (`${course.id}-${index}-${childIndex}`)}
-                                  <li class="evaluation is-child">
-                                    <span class="evaluation-score">
+                                  <!-- A sub-evaluation is a detail of the line above
+                                       it, not a mark of its own. -->
+                                  <li class="flex items-baseline gap-3 pl-4 opacity-75">
+                                    <span
+                                      class="min-w-18 shrink-0 text-xs font-semibold tabular-nums
+                                             text-foreground"
+                                    >
                                       {formatEvaluationScore(child)}
                                     </span>
-                                    <span class="evaluation-identity">
-                                      <span class="evaluation-label">{child.label}</span>
+                                    <span
+                                      class="flex min-w-0 flex-wrap items-baseline gap-1"
+                                    >
+                                      <span class="text-xs text-foreground">{child.label}</span>
                                       {#if child.weight}
-                                        <small class="evaluation-weight">{child.weight}</small>
+                                        <small class="text-2xs tabular-nums text-muted-foreground">{child.weight}</small>
                                       {/if}
                                     </span>
                                   </li>
@@ -549,8 +621,8 @@
           {/each}
         </div>
       {:else}
-        <section class="table-container">
-          <div class="table-scroll">
+        <section class="overflow-hidden rounded-xl border border-border-subtle bg-card">
+          <div class="overflow-x-auto [-webkit-overflow-scrolling:touch]">
             <table class="data-table">
               <thead>
                 <tr>
@@ -564,26 +636,26 @@
               <tbody>
                 {#each tableRows as row (row.id)}
                   <tr class:is-child={row.isChild}>
-                    <td class="table-secondary-cell">
-                      <span class="cell-label">{copy.tableBlock}</span>
+                    <td class="text-sm text-muted-foreground">
+                      <span class={cellLabel}>{copy.tableBlock}</span>
                       <span>{row.block}</span>
                     </td>
                     <td>
-                      <span class="cell-label">{copy.tableCourse}</span>
+                      <span class={cellLabel}>{copy.tableCourse}</span>
                       <strong>{row.course}</strong>
                     </td>
                     <td>
-                      <span class="cell-label">{copy.tableEvaluation}</span>
-                      <span class="table-evaluation-cell" class:is-child={row.isChild}>
+                      <span class={cellLabel}>{copy.tableEvaluation}</span>
+                      <span class={row.isChild ? 'text-sm text-muted-foreground' : ''}>
                         {row.label}
                       </span>
                     </td>
                     <td class="text-right">
-                      <span class="cell-label">{copy.tableGrade}</span>
-                      <span class="table-score-badge">{row.score}</span>
+                      <span class={cellLabel}>{copy.tableGrade}</span>
+                      <span class="inline-block rounded-sm bg-muted px-2 py-[0.2rem] font-bold tabular-nums text-primary-deep">{row.score}</span>
                     </td>
-                    <td class="text-right table-secondary-cell">
-                      <span class="cell-label">{copy.tableWeight}</span>
+                    <td class="text-right text-sm text-muted-foreground">
+                      <span class={cellLabel}>{copy.tableWeight}</span>
                       <span>{row.weight}</span>
                     </td>
                   </tr>
@@ -598,359 +670,11 @@
 </PageShell>
 
 <style>
-  /* Toolbar */
-  .view-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-3);
-  }
-
-  .toolbar-actions {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .year-switch {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    width: 100%;
-  }
-
-  .year-current {
-    display: flex;
-    flex: 1;
-    justify-content: center;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-2);
-    margin: 0;
-  }
-
-  .year-current span {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .year-current strong {
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-bold);
-  }
-
-  .download-error {
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    color: var(--danger-strong);
-    background: var(--danger-surface);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  /* Year → block accordion, mirroring how the portal groups the grades. */
-  .block-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .block-card {
-    overflow: hidden;
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .block-card.is-open {
-    border-color: var(--border);
-  }
-
-  .block-heading {
-    margin: 0;
-    font-size: inherit;
-    font-weight: inherit;
-  }
-
-  .block-toggle {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .block-chevron {
-    display: inline-flex;
-    flex-shrink: 0;
-    color: var(--muted-foreground);
-    transition: transform var(--duration-fast, 150ms) ease;
-  }
-
-  .block-chevron.is-open {
-    transform: rotate(180deg);
-  }
-
-  .block-identity {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .block-title {
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-  }
-
-  .block-range {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .block-average {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: baseline;
-    gap: 0.1rem;
-  }
-
-  .block-average strong {
-    color: var(--primary-deep);
-    font-size: var(--text-xl);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-heavy);
-  }
-
-  .block-average small {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .block-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    /* The header keeps its own padding, so the panel only re-opens the gap the
-       separator needs. */
-    margin: 0 var(--space-4);
-    padding: var(--space-4) 0;
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .block-panel[hidden] {
-    display: none;
-  }
-
-  .block-documents {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .document-button {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 0.35rem var(--space-3);
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-pill);
-    cursor: pointer;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .document-button:disabled {
-    cursor: progress;
-    opacity: 0.7;
-  }
-
-  .block-empty,
-  .course-empty {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  .section-title {
-    margin: var(--space-2) 0 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .course-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-
-  .course-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-3);
-    /* The subject tint arrives as a raw hex from `getSubjectColor`, so it is the
-       one colour here that is not a token. */
-    background: color-mix(in srgb, var(--subject-color, var(--muted)) 45%, var(--card));
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-  }
-
-  .course-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-2);
-  }
-
-  .course-identity {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.1rem;
-  }
-
-  .course-name {
-    display: -webkit-box;
-    margin: 0;
-    overflow: hidden;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  .course-code {
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .course-average {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: baseline;
-    gap: 0.1rem;
-    padding: 0.1rem var(--space-2);
-    background: var(--card);
-    border-radius: var(--radius-pill);
-  }
-
-  .course-average strong {
-    color: var(--primary-deep);
-    font-size: var(--text-md);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-heavy);
-  }
-
-  .course-average.is-empty strong {
-    color: var(--muted-foreground);
-  }
-
-  .course-average small {
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .evaluation-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .evaluation {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-3);
-  }
-
-  /* A sub-evaluation is a detail of the line above it, not a mark of its own. */
-  .evaluation.is-child {
-    padding-left: var(--space-4);
-    opacity: 0.75;
-  }
-
-  .evaluation-score {
-    flex-shrink: 0;
-    min-width: 4.5rem;
-    color: var(--foreground);
-    font-size: var(--text-sm);
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-bold);
-  }
-
-  .evaluation.is-child .evaluation-score {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .evaluation-identity {
-    display: flex;
-    min-width: 0;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-1);
-  }
-
-  .evaluation-label {
-    color: var(--foreground);
-    font-size: var(--text-sm);
-  }
-
-  .evaluation.is-child .evaluation-label {
-    font-size: var(--text-xs);
-  }
-
-  .evaluation-weight {
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Table view. Base layout is the small-screen card fallback; the real table
-     only assembles once there is room for five columns. */
-  .table-container {
-    overflow: hidden;
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
+  /* Table view. The base layout is the small-screen card fallback; the real
+     table only assembles once there is room for five columns. Switching a
+     table's own display model means rewriting table, thead, tbody, tr, td and
+     th together, so it stays one block of CSS rather than a class on every
+     cell — and `.cell-label` is part of the same mechanism. */
   .data-table {
     display: block;
     width: 100%;
@@ -988,41 +712,7 @@
     padding: var(--space-1) 0;
   }
 
-  .cell-label {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .table-evaluation-cell.is-child {
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  .table-score-badge {
-    display: inline-block;
-    padding: 0.2rem var(--space-2);
-    color: var(--primary-deep);
-    background: var(--muted);
-    border-radius: var(--radius-sm);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .table-secondary-cell {
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
   @media (min-width: 48rem) {
-    .year-switch {
-      width: auto;
-    }
-
-    .course-grid {
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-    }
-
     .data-table {
       display: table;
       padding: 0;
@@ -1066,6 +756,7 @@
       border-bottom: 0;
     }
 
+    /* A child row is indented in its first column only. */
     .data-table tr.is-child td:first-child {
       padding-left: var(--space-5);
     }
@@ -1073,21 +764,9 @@
     .cell-label {
       display: none;
     }
-
-    .text-right {
-      text-align: right;
-    }
   }
 
   @media (hover: hover) {
-    .block-toggle:hover {
-      background: var(--surface-sunken);
-    }
-
-    .document-button:hover:not(:disabled) {
-      background: var(--muted);
-    }
-
     .data-table tbody tr:hover td {
       background: var(--surface-sunken);
     }
