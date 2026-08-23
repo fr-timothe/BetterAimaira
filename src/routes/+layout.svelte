@@ -10,54 +10,18 @@
   });
 </script>
 
-<div class="app-window-root">
+<!-- The window edge, not an in-app card: on a desktop window that is not
+     maximized the border draws the frame the OS no longer draws, and the shadow
+     lifts it off the desktop, so both are needed there. -->
+<div
+  class="relative flex h-dvh max-h-dvh w-screen flex-col overflow-hidden bg-background
+         text-foreground transition-[border-radius,border-color] duration-fast ease-out
+         app-windowed:rounded-md app-windowed:border app-windowed:border-window-edge
+         app-windowed:shadow-xl
+         app-maximized:rounded-none app-maximized:border-0 app-maximized:shadow-none"
+>
   <TitleBar />
-  <div class="app-window-content">
+  <div class="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
     {@render children()}
   </div>
 </div>
-
-<style>
-  .app-window-root {
-    display: flex;
-    flex-direction: column;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100vh;
-    max-height: 100dvh;
-    background: var(--background);
-    color: var(--foreground);
-    overflow: hidden;
-    position: relative;
-    box-sizing: border-box;
-    transition:
-      border-radius var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out);
-  }
-
-  /* Desktop window rounded corners when not maximized. This is the window edge,
-     not an in-app card: the border draws the frame the OS no longer draws and
-     the shadow lifts it off the desktop, so both are needed here. */
-  :global(html.desktop-app:not(.window-maximized)) .app-window-root {
-    border-radius: var(--radius-md);
-    border: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
-    box-shadow: var(--shadow-xl);
-  }
-
-  :global(html.desktop-app.window-maximized) .app-window-root {
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
-  }
-
-  .app-window-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 0%;
-    min-height: 0;
-    width: 100%;
-    overflow: hidden;
-    position: relative;
-  }
-</style>
