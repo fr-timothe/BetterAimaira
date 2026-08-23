@@ -13,6 +13,10 @@ name: release
 #   ANDROID_KEY_ALIAS                   key alias inside the keystore
 #   ANDROID_KEY_PASSWORD                key password
 #
+# The Rust and Gradle caches are read-only here: they are published by the
+# `warm-cache` workflow on the default branch, because a cache written by a tag
+# run cannot be restored by the next tag.
+#
 # The IPA is built without code signing: AltStore and SideStore re-sign with the
 # installing user's own Apple ID, so no Apple Developer material is needed here.
 # That job is best-effort — `publish` does not wait on it, and a release without
@@ -36,6 +40,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          shared-key: windows
+          save-if: false
 
       - run: bun install --frozen-lockfile
 
@@ -74,13 +80,25 @@ jobs:
         with:
           ndk-version: r27c
 
+      # arm64-v8a and armeabi-v7a only: x86 and x86_64 are emulator ABIs, and
+      # each extra target is a full Rust compile of the whole graph.
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android,armv7-linux-androideabi
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          shared-key: android
+          save-if: false
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('src-tauri/gen/android/**/*.gradle.kts', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - run: bun install --frozen-lockfile
 
@@ -105,7 +123,7 @@ jobs:
       - name: Build APK
         run: |
           bun run android:sync
-          bun tauri android build --apk
+          bun tauri android build --apk --target aarch64 --target armv7
         env:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
 
@@ -132,6 +150,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
+          shared-key: ios
+          save-if: false
 
       - run: bun install --frozen-lockfile
 

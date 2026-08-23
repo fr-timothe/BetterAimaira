@@ -1,0 +1,121 @@
+name: warm-cache
+
+# Fills the caches the `release` workflow reads.
+#
+# GitHub scopes a cache to the ref that wrote it, plus the default branch. A
+# cache written by a `v*` tag run is therefore invisible to the next tag, which
+# is why every release used to compile from scratch. Only the default branch can
+# publish a cache every tag run can restore, so the dependency compilation is
+# done here and `release` restores it read-only.
+#
+# The builds are unsigned and their outputs are thrown away: the point is the
+# `target` directory and the Gradle caches, not the artifacts.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "src-tauri/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/warm-cache.yml"
+  # The cache key embeds the rustc version, so a new stable release invalidates
+  # every entry. A weekly run puts a usable cache back without waiting for a
+  # source change.
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: warm-cache
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          shared-key: windows
+
+      - run: bun install --frozen-lockfile
+
+      # `--no-bundle` stops before NSIS and before updater signing, so no
+      # signing secrets are needed to compile the dependency graph.
+      - run: bun tauri build --no-bundle
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r27c
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          shared-key: android
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('src-tauri/gen/android/**/*.gradle.kts', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - run: bun install --frozen-lockfile
+
+      # No `keystore.properties` here, so this produces an unsigned APK. The
+      # target list must match `release` or the cached artifacts are unusable.
+      - run: |
+          bun run android:sync
+          bun tauri android build --apk --target aarch64 --target armv7
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          shared-key: ios
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun tauri ios init --ci
+
+      - run: bun tauri ios build --ci --no-sign
