@@ -85,7 +85,6 @@
       <SectionHeader
         icon={ArrowDownToLine}
         title={m.update_section_title()}
-        subtitle={info ? m.update_current_version({ version: info.currentVersion }) : undefined}
         level={3}
       />
 

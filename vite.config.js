@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
+import tauriConfig from "./src-tauri/tauri.conf.json" with { type: "json" };
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -16,6 +17,12 @@ export default defineConfig(async () => ({
     tailwindcss(),
     sveltekit(),
   ],
+
+  // The bundle ships with the binary, so the version stamped at build time is
+  // the version the user is running - no IPC round trip needed to read it.
+  define: {
+    __APP_VERSION__: JSON.stringify(tauriConfig.version),
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

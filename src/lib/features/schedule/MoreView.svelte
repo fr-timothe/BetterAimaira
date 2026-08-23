@@ -76,6 +76,9 @@
     };
   });
 
+  /** Stamped by Vite from `tauri.conf.json` at build time; see `vite.config.js`. */
+  const appVersion = __APP_VERSION__;
+
   let activeTab = $state<MoreSection>('profile');
   let profileState = $state<PortalResourceState>({ kind: 'loading' });
   let documentsState = $state<PortalResourceState>({ kind: 'loading' });
@@ -129,6 +132,8 @@
       download: m.download_document(),
       downloading: m.downloading_document(),
       downloadError: m.document_download_error(),
+      aboutTitle: m.about_section_title(),
+      versionLabel: m.about_version_label(),
     };
   });
 
@@ -572,6 +577,19 @@
       </Card>
 
       <UpdateCard {locale} />
+
+      <Card>
+        <div class="flex min-w-0 flex-col gap-3">
+          <SectionHeader icon={Info} title={copy.aboutTitle} level={3} />
+
+          <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <span class="text-base font-semibold text-foreground">{copy.versionLabel}</span>
+            <span class="font-semibold tabular-nums wrap-anywhere text-muted-foreground select-text"
+              >{appVersion}</span
+            >
+          </div>
+        </div>
+      </Card>
 
       <div class="mt-4 border-t border-border-subtle pt-4">
         <Button variant="danger" size="lg" block onclick={() => (logoutDialogOpen = true)}>

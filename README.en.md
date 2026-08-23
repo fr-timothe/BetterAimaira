@@ -133,6 +133,7 @@ strictly read-only: administrative, billing and remote write actions are out of 
 - `Signed In-Place Install` on desktop (minisign-verified, NSIS passive)
 - `PackageInstaller Handover` on Android
 - `AltStore Source Check` on iOS
+- `Installed Version Readout` in the Profile tab of the More view
 </details>
 
 <details>

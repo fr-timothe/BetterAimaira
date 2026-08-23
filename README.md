@@ -132,6 +132,7 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 - `Installation en place signée` sur bureau (vérification minisign, NSIS passif)
 - `Passage de relais à PackageInstaller` sur Android
 - `Vérification de source AltStore` sur iOS
+- `Version installée visible` dans l'onglet Profil de la vue Plus
 </details>
 
 <details>
