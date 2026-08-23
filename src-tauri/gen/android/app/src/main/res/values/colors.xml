@@ -7,4 +7,7 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- The stylesheet's own background token, so the window behind the webview
+         matches the shell while the page is still loading. -->
+    <color name="app_background">#FFF1F5F8</color>
 </resources>
