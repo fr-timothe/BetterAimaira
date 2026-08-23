@@ -474,6 +474,15 @@
      whose base is not a token — hence the srgb mix. */
   --color-subject-veil: color-mix(in srgb, var(--subject-color, var(--muted)) 45%, var(--card));
 
+  /* The ink hero is the one dark surface in the app, so the tones inside it are
+     mixed from its own foreground rather than from the light palette. */
+  --color-ink-chip: color-mix(in oklch, var(--secondary-foreground) 16%, transparent);
+  --color-ink-note: color-mix(in oklch, var(--secondary-foreground) 14%, transparent);
+  --color-ink-badge: color-mix(in oklch, var(--secondary-foreground) 18%, transparent);
+  --color-ink-track: color-mix(in oklch, var(--secondary-foreground) 24%, transparent);
+  --color-ink-meta: color-mix(in oklch, var(--secondary-foreground) 84%, var(--secondary));
+  --color-ink-meta-dim: color-mix(in oklch, var(--secondary-foreground) 80%, var(--secondary));
+
   /* Window chrome. The bar is translucent over the desktop, so its surfaces are
      the palette thinned rather than a colour of their own, and the two ink
      washes are the neutral hover/press states the OS controls use. */
