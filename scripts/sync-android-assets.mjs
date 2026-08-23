@@ -13,13 +13,11 @@ if (!existsSync(targetDirectory)) {
 }
 
 for (const directory of [
-	"mipmap-anydpi-v26",
 	"mipmap-hdpi",
 	"mipmap-mdpi",
 	"mipmap-xhdpi",
 	"mipmap-xxhdpi",
-	"mipmap-xxxhdpi",
-	"values"
+	"mipmap-xxxhdpi"
 ]) {
 	cpSync(resolve(sourceDirectory, directory), resolve(targetDirectory, directory), {
 		recursive: true,
