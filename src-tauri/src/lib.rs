@@ -4,6 +4,7 @@ mod credentials;
 mod error;
 mod grade_sync;
 mod state;
+mod updater;
 
 use state::SessionState;
 use tauri::Manager;
@@ -12,6 +13,11 @@ use tauri::Manager;
 pub fn run() {
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
 
     // Development-only automation bridge: exposes the webview to the local MCP driver so the
     // running app can be compared against the live Aimaira portal. Gated on both the opt-in
@@ -46,6 +52,9 @@ pub fn run() {
             commands::download_portal_document,
             commands::get_questionnaire_detail,
             commands::normalize_portal_url,
+            updater::check_for_update,
+            updater::install_update,
+            updater::update_feed_base,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

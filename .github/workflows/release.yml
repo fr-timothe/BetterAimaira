@@ -1,0 +1,222 @@
+name: release
+
+# Publishes the artifacts the in-app updater reads. Pushing a `v*` tag builds
+# the Windows installer, the Android APK and an unsigned iOS IPA, writes
+# `latest.json` and `altstore.json`, and attaches everything to the GitHub
+# release the app polls.
+#
+# Required repository secrets:
+#   TAURI_SIGNING_PRIVATE_KEY           minisign key from `bun run updater:keygen`
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password (empty string if none)
+#   ANDROID_KEYSTORE_BASE64             base64 of the release keystore
+#   ANDROID_KEYSTORE_PASSWORD           keystore password
+#   ANDROID_KEY_ALIAS                   key alias inside the keystore
+#   ANDROID_KEY_PASSWORD                key password
+#
+# The IPA is built without code signing: AltStore and SideStore re-sign with the
+# installing user's own Apple ID, so no Apple Developer material is needed here.
+# That job is best-effort — `publish` does not wait on it, and a release without
+# an IPA simply carries an empty AltStore version list.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: bun install --frozen-lockfile
+
+      # The signed `.sig` next to the installer is what the desktop updater
+      # verifies; without the signing key the bundle is useless as an update.
+      - name: Build installer
+        run: bun tauri build --bundles nsis
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/nsis/*-setup.exe.sig
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r27c
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: bun install --frozen-lockfile
+
+      # The keystore never lives in the repository: the release build reads it
+      # from `keystore.properties`, which is git-ignored and written here.
+      - name: Write signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          keystore_path="$GITHUB_WORKSPACE/src-tauri/gen/android/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$keystore_path"
+          cat > src-tauri/gen/android/keystore.properties <<PROPERTIES
+          storeFile=$keystore_path
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          PROPERTIES
+
+      - name: Build APK
+        run: bun tauri android build --apk
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-latest
+    # An IPA is a bonus, not a release blocker: a failure here must not stop the
+    # Windows and Android assets from shipping.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - run: bun install --frozen-lockfile
+
+      # `gen/apple` is not committed, so the Xcode project is generated on every
+      # run. `--ci` keeps `init` from asking for a development team.
+      - name: Generate the Xcode project
+        run: bun tauri ios init --ci
+
+      # xcodebuild does not run `beforeBuildCommand`, so the web assets have to
+      # exist before the build step.
+      - name: Build the frontend
+        run: bun run build
+
+      - name: Build the unsigned app bundle
+        run: |
+          project=$(ls -d src-tauri/gen/apple/*.xcodeproj | head -n 1)
+          scheme=$(xcodebuild -project "$project" -list | tr -d ' ' | grep '_iOS$' | head -n 1)
+          echo "Building $scheme from $project"
+          xcodebuild \
+            -project "$project" \
+            -scheme "$scheme" \
+            -configuration release \
+            -sdk iphoneos \
+            -derivedDataPath build-ios \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY= \
+            build
+
+      # An IPA is a zip holding the `.app` inside a top-level `Payload/`
+      # directory. AltStore re-signs it on install, so no identity is needed.
+      - name: Wrap the bundle into an IPA
+        run: |
+          app=$(find build-ios/Build/Products -maxdepth 2 -name '*.app' | head -n 1)
+          test -n "$app" || { echo "No .app produced"; exit 1; }
+          mkdir -p Payload
+          cp -R "$app" Payload/
+          zip -qry BetterAimaira.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: BetterAimaira.ipa
+          if-no-files-found: error
+
+  publish:
+    # `ios` is deliberately absent: the release ships with whatever built.
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Write update manifests
+        run: |
+          installer=$(find artifacts/windows -name '*-setup.exe' | head -n 1)
+          apk=$(find artifacts/android -name '*.apk' | head -n 1)
+          ipa=$(find artifacts -name '*.ipa' | head -n 1)
+          arguments=(
+            --version "${GITHUB_REF_NAME#v}"
+            --windows-installer "$installer"
+            --windows-signature "$installer.sig"
+            --apk "$apk"
+          )
+          # Without an IPA the AltStore source lists no version and the iOS
+          # check reports "up to date" instead of failing.
+          if [ -n "$ipa" ]; then arguments+=(--ipa "$ipa"); fi
+          bun run release:manifest -- "${arguments[@]}"
+
+      # The manifests point at `releases/download/<tag>/<asset>`, so the assets
+      # have to keep the file names the manifests were written from.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(dist-release/latest.json dist-release/altstore.json)
+          for directory in windows android ios; do
+            if [ -d "artifacts/$directory" ]; then assets+=("artifacts/$directory"/*); fi
+          done
+          gh release create "$GITHUB_REF_NAME" \
+            --title "BetterAimaira ${GITHUB_REF_NAME#v}" \
+            --generate-notes \
+            "${assets[@]}"

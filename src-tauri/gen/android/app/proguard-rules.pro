@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Reached from Rust through JNI only, so nothing in the Kotlin sources points at
+# it and R8 would strip it from a release build.
+-keep class com.betteraimaira.app.ApkInstaller { *; }
+-keepclasseswithmembernames class * { native <methods>; }
