@@ -1,3 +1,5 @@
+[← Documentation index](README.md)
+
 # Design system and guidelines
 
 BetterAimaira prioritizes direct information access, clear data visualizations, and platform-adapted layouts.

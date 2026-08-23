@@ -1,10 +1,16 @@
+[← Documentation index](README.md)
+
 # Integrations specification
 
 BetterAimaira connects intranet data with external applications and operating system features.
 
+Only section 4 ships today. Sections 1 to 3 are specifications for work that has
+not started: no `.ics` endpoint, webhook sender, widget or tray surface exists in
+the codebase yet.
+
 ---
 
-## 1. Dynamic iCal calendar sync
+## 1. Dynamic iCal calendar sync — planned
 
 - Synchronize Aimaira timetables with external calendar applications (Google Calendar, Apple Calendar, Microsoft Outlook, Thunderbird).
 - Local HTTP Server / Webcal: Tauri exposes a `.ics` endpoint (for example, `webcal://localhost:14201/calendar.ics?token=...`).
@@ -13,7 +19,7 @@ BetterAimaira connects intranet data with external applications and operating sy
 
 ---
 
-## 2. Discord and Telegram webhooks
+## 2. Discord and Telegram webhooks — planned
 
 Automated alerts can be configured for Discord or Telegram channels:
 
@@ -22,7 +28,7 @@ Automated alerts can be configured for Discord or Telegram channels:
 
 ---
 
-## 3. Desktop and mobile widgets
+## 3. Desktop and mobile widgets — planned
 
 | Platform | Widget Type | Features |
 |---|---|---|
@@ -32,7 +38,7 @@ Automated alerts can be configured for Discord or Telegram channels:
 
 ---
 
-## 4. In-app grade alerts
+## 4. In-app grade alerts — implemented
 
 - Triggered on authenticated application launch when `/Note` is fetched and compared with SQLite grade fingerprints.
 - The initial sync stores existing grades without alert popups.

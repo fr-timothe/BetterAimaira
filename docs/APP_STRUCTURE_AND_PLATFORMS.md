@@ -1,7 +1,9 @@
+[← Documentation index](README.md)
+
 # Application structure and platform strategy
 
 > Local architecture notes for BetterAimaira. No web version is planned.
-> Updated: 2026-08-21.
+> Sections marked **planned** describe work that has not shipped yet.
 
 ## 1. Decisions
 
@@ -22,7 +24,7 @@ Three practical product rules drive every screen:
 - **Respect host platform expectations.** Navigation, safe areas, keyboard behavior, touch feedback, motion, dialogs, and native services must feel familiar on each platform.
 - **Stay honest.** Estimated averages need an explicit label, stale data needs a last-sync timestamp, and offline mode or failed integrations must be visible near affected items.
 
-Svelte patterns use shadcn-svelte/Bits UI primitives, Tailwind CSS v4, Lucide Svelte, and semantic theme tokens.
+Svelte patterns use the project's own primitives in `src/lib/components/ui/`, Tailwind CSS v4, Lucide Svelte, and semantic theme tokens. `components.json` keeps the shadcn-svelte CLI aliases usable, but no shadcn or Bits UI package is installed: every primitive is hand-written against the tokens.
 
 Shared layout primitives:
 
@@ -56,7 +58,7 @@ Target structure:
 src/
 ├── lib/
 │   ├── components/
-│   │   ├── ui/                 # shadcn-svelte primitives; minimal local edits
+│   │   ├── ui/                 # own primitives, written against the tokens
 │   │   ├── shell/              # AppShell, navigation, title bar, safe areas
 │   │   └── patterns/           # PageLayout, SectionList, DataItem, status UI
 │   ├── features/
@@ -291,6 +293,14 @@ CI stages:
 3. **Desktop package matrix:** Windows x64, macOS Apple Silicon and Intel, Linux x64.
 4. **Mobile package matrix:** Android APK/AAB; iOS simulator build and signed release archive.
 5. **Release:** signing, notarization, checksum generation, and staged rollouts.
+
+Update delivery, implemented in `.github/workflows/release.yml`:
+
+- Desktop reads a minisign-signed `latest.json` and installs in place.
+- Android reads the same manifest and hands the APK to `PackageInstaller`.
+- iOS reads an AltStore source; AltStore or SideStore performs the install.
+
+Details, keys, and secrets: [UPDATES.md](UPDATES.md).
 
 ## 11. Development workflows and flavor configurations
 
