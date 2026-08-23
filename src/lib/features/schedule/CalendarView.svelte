@@ -525,8 +525,8 @@
   const container =
     'flex w-full flex-col gap-3 px-3 pt-3 pb-6' +
     ' md:gap-5 md:px-8 md:pt-6 md:pb-8' +
-    ' lte-600:pr-[max(var(--space-2),env(safe-area-inset-right))]' +
-    ' lte-600:pl-[max(var(--space-2),env(safe-area-inset-left))]';
+    ' lte-600:pr-[max(var(--space-2),var(--safe-right))]' +
+    ' lte-600:pl-[max(var(--space-2),var(--safe-left))]';
 
   const scopePill =
     'relative flex min-h-[2.35rem] items-center justify-center gap-1 rounded-md border' +

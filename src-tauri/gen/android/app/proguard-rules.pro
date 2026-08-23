@@ -24,3 +24,9 @@
 # it and R8 would strip it from a release build.
 -keep class com.betteraimaira.app.ApkInstaller { *; }
 -keepclasseswithmembernames class * { native <methods>; }
+
+# Reached from the page through `addJavascriptInterface`, so the method names
+# have to survive R8 or the window insets bridge answers nothing in release.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}

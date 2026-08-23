@@ -72,7 +72,7 @@ for the two compact steps that pre-date the hinge.
 ### Shared rules
 - Media queries for the app shell, expressed as Tailwind variants at the element rather than as a block at the end of a file.
 - Independent detection of `hover`, `pointer`, keyboard focus, and reduced motion.
-- Respect `env(safe-area-inset-*)` values across mobile and desktop windows.
+- Respect the safe-area insets across mobile and desktop windows, through the `--safe-*` tokens rather than `env(safe-area-inset-*)` directly (see `src/lib/native-insets.ts`).
 - Present identical core features across all window widths through reflow rather than removal.
 
 ### Authentication surface

@@ -1,9 +1,15 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import "../app.css";
   import { getLocale } from "$lib/paraglide/runtime.js";
+  import { initNativeInsets } from "$lib/native-insets";
   import TitleBar from "$lib/components/TitleBar.svelte";
 
   let { children } = $props();
+
+  // The safe-area insets have to be in place before the shell paints, and the
+  // platform bridge only exists once the document does.
+  onMount(initNativeInsets);
 
   $effect(() => {
     document.documentElement.lang = getLocale();

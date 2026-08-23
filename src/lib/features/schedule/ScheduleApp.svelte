@@ -542,7 +542,7 @@
          before the content it navigates rather than last in the tab order. -->
     <nav
       class="bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-nav justify-center
-             px-3 pt-1 pb-[max(var(--space-2),env(safe-area-inset-bottom))]"
+             px-3 pt-1 pb-[max(var(--space-2),var(--safe-bottom))]"
       aria-label={copy.navLabel}
     >
       <!-- A dock that genuinely floats above the content, on frosted glass. -->
@@ -794,9 +794,19 @@
      specificity, so they win on specificity alone. Expressed as utilities both
      sides would tie at (0,1,0) and the outcome would hang on source order.
 
-     Consequence: never put a `display` or `padding-bottom` utility on these
-     three elements. It would lose here, silently.
+     Consequence: never put a `display`, `padding-top` or `padding-bottom`
+     utility on these four elements. It would lose here, silently.
      ========================================================================= */
+
+  /* Android hands the app an edge-to-edge window whose top sits under the
+     status bar, and a webview measures no inset for it. The shell pays that
+     inset above the scroller rather than inside it, so the cleared strip stays
+     put instead of sliding under the clock as the page moves. Every platform
+     without system-bar insets resolves `--safe-top` to 0. */
+  .app-shell {
+    padding-top: var(--safe-top);
+  }
+
   .desktop-app-sidebar {
     display: none;
   }
@@ -806,10 +816,14 @@
   }
 
   .main-viewport {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(4.5rem + var(--safe-bottom));
   }
 
   @media (min-width: 48rem) {
+    .app-shell {
+      padding-top: 0;
+    }
+
     .desktop-app-sidebar {
       display: flex;
     }
@@ -823,6 +837,10 @@
     }
   }
 
+  :global(html.mobile-app) .app-shell {
+    padding-top: var(--safe-top);
+  }
+
   :global(html.mobile-app) .desktop-app-sidebar {
     display: none;
   }
@@ -832,7 +850,11 @@
   }
 
   :global(html.mobile-app) .main-viewport {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(4.5rem + var(--safe-bottom));
+  }
+
+  :global(html.desktop-app) .app-shell {
+    padding-top: 0;
   }
 
   :global(html.desktop-app) .desktop-app-sidebar {

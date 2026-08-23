@@ -258,12 +258,35 @@
   --shadow-2xl: -50px -50px 0px -50px hsl(0 0% 0% / 0.00);
   --tracking-normal: 0em;
 
+  /* Safe-area insets. Every layout reads these four, never `env()` directly:
+     an Android webview only reports `env(safe-area-inset-*)` for display
+     cutouts, so on an edge-to-edge window the status bar and the gesture pill
+     measure zero and the page draws underneath them. `html.native-insets`
+     below swaps in the real values the activity hands over. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* One light palette, stated so the platform stops offering a dark one and
+     Android draws the system bar glyphs dark over the shell. */
+  color-scheme: light;
+
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   color: var(--foreground);
   background: var(--background);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Set by `initNativeInsets` once the platform bridge answers, so the fallback
+   above stays in force on every platform that has no bridge. */
+html.native-insets {
+  --safe-top: var(--native-inset-top, 0px);
+  --safe-right: var(--native-inset-right, 0px);
+  --safe-bottom: var(--native-inset-bottom, 0px);
+  --safe-left: var(--native-inset-left, 0px);
 }
 
 /* Expose the same tokens to Tailwind so utilities and hand-written CSS cannot

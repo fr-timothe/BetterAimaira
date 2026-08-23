@@ -188,7 +188,7 @@ Below `600px` height: use compact headers and scrollable dialogs, avoid vertical
 - Use CSS Grid and Flexbox reflow. Avoid JavaScript layout calculations when CSS handles the layout.
 - Maintain logical DOM order for screen readers when visual grid order changes.
 - Use `clamp()` for spacing and panel width, not for viewport-scaled font sizes.
-- Respect `env(safe-area-inset-*)` on all four edges with `viewport-fit=cover`.
+- Respect the safe-area insets on all four edges with `viewport-fit=cover`, and read them through the `--safe-top` / `--safe-right` / `--safe-bottom` / `--safe-left` tokens rather than `env(safe-area-inset-*)` directly: an Android webview reports `env()` for display cutouts only, so the status bar and the gesture pill measure zero there. `MainActivity` publishes the real window insets and `initNativeInsets` swaps them in.
 - Account for on-screen keyboards through visual viewport insets so focused fields and submit actions stay visible.
 - Support portrait, landscape, split-screen, and window resizing without locking orientation.
 

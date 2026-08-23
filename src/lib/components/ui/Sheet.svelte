@@ -32,8 +32,8 @@
 
   const panels = {
     center:
-      'w-[min(100%,34rem)] mt-0 mx-3 mb-[max(var(--space-3),env(safe-area-inset-bottom))] md:m-6 animate-slide-up-in',
-    end: 'w-[min(100%,24rem)] mt-[max(var(--space-3),env(safe-area-inset-top))] mx-[max(var(--space-3),env(safe-area-inset-right))] mb-3 animate-slide-up-drawer'
+      'w-[min(100%,34rem)] mt-0 mx-3 mb-[max(var(--space-3),var(--safe-bottom))] md:m-6 animate-slide-up-in',
+    end: 'w-[min(100%,24rem)] mt-[max(var(--space-3),var(--safe-top))] mx-[max(var(--space-3),var(--safe-right))] mb-3 animate-slide-up-drawer'
   } as const satisfies Record<NonNullable<Props['placement']>, string>;
 
   let root: HTMLDivElement | undefined = $state();

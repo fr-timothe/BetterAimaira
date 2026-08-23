@@ -226,7 +226,7 @@
        course, room or name it does not have. -->
   <section
     class="relative flex min-h-full flex-col overflow-hidden bg-secondary text-secondary-foreground
-           px-12 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]
+           px-12 pt-[max(2rem,var(--safe-top))] pb-[max(2rem,var(--safe-bottom))]
            after:absolute after:right-[-7rem] after:bottom-20 after:size-72 after:rounded-full
            after:border after:border-brand-ring after:content-['']
            lte-820:hidden short-desktop:py-6"
@@ -273,32 +273,32 @@
 
   <section
     class="relative grid min-w-0 place-items-center bg-background
-           px-[max(2rem,7vw)] pt-[max(5rem,env(safe-area-inset-top))]
-           pb-[max(3rem,env(safe-area-inset-bottom))]
+           px-[max(2rem,7vw)] pt-[max(5rem,var(--safe-top))]
+           pb-[max(3rem,var(--safe-bottom))]
            lte-820:min-h-dvh lte-820:items-start
-           lte-820:pt-[max(6.5rem,calc(env(safe-area-inset-top)+5rem))]
-           lte-820:pr-[max(1.25rem,env(safe-area-inset-right))]
-           lte-820:pb-[max(2rem,env(safe-area-inset-bottom))]
-           lte-820:pl-[max(1.25rem,env(safe-area-inset-left))]
-           lte-600:pr-[max(1rem,env(safe-area-inset-right))]
-           lte-600:pl-[max(1rem,env(safe-area-inset-left))]
+           lte-820:pt-[max(6.5rem,calc(var(--safe-top)+5rem))]
+           lte-820:pr-[max(1.25rem,var(--safe-right))]
+           lte-820:pb-[max(2rem,var(--safe-bottom))]
+           lte-820:pl-[max(1.25rem,var(--safe-left))]
+           lte-600:pr-[max(1rem,var(--safe-right))]
+           lte-600:pl-[max(1rem,var(--safe-left))]
            short-desktop:pt-[4.5rem] short-desktop:pb-6"
   >
     <div
       class="hidden items-center gap-3 text-lg font-bold
-             lte-820:absolute lte-820:top-[max(1.25rem,env(safe-area-inset-top))]
-             lte-820:left-[max(1.25rem,env(safe-area-inset-left))] lte-820:flex"
+             lte-820:absolute lte-820:top-[max(1.25rem,var(--safe-top))]
+             lte-820:left-[max(1.25rem,var(--safe-left))] lte-820:flex"
     >
       <Logo size={28} variant="icon" />
       <span class="lte-600:hidden">{copy.appName}</span>
     </div>
 
     <div
-      class="absolute top-[max(1.5rem,env(safe-area-inset-top))]
-             right-[max(1.5rem,env(safe-area-inset-right))] flex min-h-(--tap-min) items-center
+      class="absolute top-[max(1.5rem,var(--safe-top))]
+             right-[max(1.5rem,var(--safe-right))] flex min-h-(--tap-min) items-center
              gap-[0.2rem] text-muted-foreground
-             lte-820:top-[max(1.1rem,env(safe-area-inset-top))]
-             lte-820:right-[max(1rem,env(safe-area-inset-right))]"
+             lte-820:top-[max(1.1rem,var(--safe-top))]
+             lte-820:right-[max(1rem,var(--safe-right))]"
       aria-label={copy.languageLabel}
     >
       <Globe2 size={17} class="mr-[0.3rem] lte-600:hidden" aria-hidden="true" />
