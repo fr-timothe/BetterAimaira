@@ -7,7 +7,7 @@
 <br>
 <p>
 <a href="https://github.com/fr-timothe/BetterAimaira/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/fr-timothe/BetterAimaira/release.yml?style=for-the-badge&label=Release&color=white&labelColor=black" alt="Workflow de release"></a>
-<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/github/v/release/fr-timothe/BetterAimaira?style=for-the-badge&label=Derni%C3%A8re%20version&color=white&labelColor=black" alt="Dernière version"></a>
+<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/github/v/release/fr-timothe/BetterAimaira?include_prereleases&style=for-the-badge&label=Derni%C3%A8re%20version&color=white&labelColor=black" alt="Dernière version"></a>
 <a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/github/downloads/fr-timothe/BetterAimaira/total?style=for-the-badge&label=T%C3%A9l%C3%A9chargements&color=white&labelColor=black" alt="Téléchargements"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/Licence-GPL--3.0-white?style=for-the-badge&labelColor=black" alt="Licence"></a>
 </p>
@@ -154,12 +154,14 @@ Le groupe des fonctionnalités prévues est détaillé dans [docs/INTEGRATIONS.m
 
 | Plateforme | Fichier | Installation |
 |---|---|---|
-| Windows | `*-setup.exe` | Installeur NSIS, se met à jour en place |
+| Windows | `BetterAimaira-v<version>-x86_64.exe` | Installeur NSIS, se met à jour en place |
 | macOS, Linux | `.dmg`, `.app`, `.AppImage`, `.deb` | Compilé localement pour l'instant, même système de mise à jour |
-| Android | `*.apk` | APK release universel, puis invite d'installation du système |
-| iOS | `*.ipa` | Source AltStore/SideStore, publié manuellement |
+| Android | `BetterAimaira-v<version>-universal.apk` | `arm64-v8a`, `armeabi-v7a` et `x86_64`, puis invite d'installation du système |
+| iOS | `BetterAimaira-v<version>-arm64.ipa` | Source AltStore/SideStore, publié manuellement |
 
-<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Derni%C3%A8re_Version-000000?style=for-the-badge" alt="Télécharger la dernière version"></a>
+Un seul schéma de nommage, `BetterAimaira-v<version>-<architecture>.<extension>` : la plateforme est portée par l'extension.
+
+<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Derni%C3%A8re_Version-000000?style=for-the-badge" alt="Télécharger la dernière version"></a>
 
 Chaque plateforme lit le même flux de publication, et une version installée vérifie les mises à jour trois secondes après son lancement.
 

@@ -7,7 +7,7 @@
 <br>
 <p>
 <a href="https://github.com/fr-timothe/BetterAimaira/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/fr-timothe/BetterAimaira/release.yml?style=for-the-badge&label=Release&color=white&labelColor=black" alt="Release workflow"></a>
-<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/github/v/release/fr-timothe/BetterAimaira?style=for-the-badge&label=Latest&color=white&labelColor=black" alt="Latest release"></a>
+<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/github/v/release/fr-timothe/BetterAimaira?include_prereleases&style=for-the-badge&label=Latest&color=white&labelColor=black" alt="Latest release"></a>
 <a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/github/downloads/fr-timothe/BetterAimaira/total?style=for-the-badge&label=Downloads&color=white&labelColor=black" alt="Downloads"></a>
 <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-white?style=for-the-badge&labelColor=black" alt="License"></a>
 </p>
@@ -155,12 +155,15 @@ The planned group is specified in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 | Platform | Asset | Install |
 |---|---|---|
-| Windows | `*-setup.exe` | NSIS installer, updates itself in place |
+| Windows | `BetterAimaira-v<version>-x86_64.exe` | NSIS installer, updates itself in place |
 | macOS, Linux | `.dmg`, `.app`, `.AppImage`, `.deb` | built locally for now, same updater path |
-| Android | `*.apk` | universal release APK, then the system install prompt |
-| iOS | `*.ipa` | AltStore/SideStore source, published manually |
+| Android | `BetterAimaira-v<version>-universal.apk` | `arm64-v8a`, `armeabi-v7a` and `x86_64`, then the system install prompt |
+| iOS | `BetterAimaira-v<version>-arm64.ipa` | AltStore/SideStore source, published manually |
 
-<a href="https://github.com/fr-timothe/BetterAimaira/releases/latest"><img src="https://img.shields.io/badge/Download-Latest_Release-000000?style=for-the-badge" alt="Download latest release"></a>
+One naming scheme throughout, `BetterAimaira-v<version>-<architecture>.<extension>`: the platform is
+carried by the extension.
+
+<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/badge/Download-Latest_Release-000000?style=for-the-badge" alt="Download latest release"></a>
 
 Every platform reads the same release feed, and an installed build checks it three seconds after
 launch.

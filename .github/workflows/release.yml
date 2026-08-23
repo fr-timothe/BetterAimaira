@@ -199,32 +199,53 @@ jobs:
         with:
           path: artifacts
 
-      - name: Write update manifests
+      # Each bundler names its output its own way: `BetterAimaira_0.1.1_x64-setup.exe`
+      # from the NSIS bundler, `app-universal-release.apk` from Gradle, a bare
+      # `BetterAimaira.ipa`. One scheme replaces all three,
+      # `BetterAimaira-v<version>-<arch>.<extension>`, so the platform is carried
+      # by the extension alone and the arch is readable at a glance.
+      #
+      # Renaming is safe for the desktop updater: it identifies the installer by
+      # the downloaded bytes, never by the file name.
+      - name: Stage the release assets under one naming scheme
         run: |
+          base="BetterAimaira-${GITHUB_REF_NAME}"
           installer=$(find artifacts/windows -name '*-setup.exe' | head -n 1)
           apk=$(find artifacts/android -name '*.apk' | head -n 1)
           ipa=$(find artifacts -name '*.ipa' | head -n 1)
+
+          mkdir -p release-assets
+          cp "$installer" "release-assets/$base-x86_64.exe"
+          # The updater reads the signature out of the manifest, so this asset is
+          # for humans verifying a download by hand. It tracks the installer name.
+          cp "$installer.sig" "release-assets/$base-x86_64.exe.sig"
+          cp "$apk" "release-assets/$base-universal.apk"
+          if [ -n "$ipa" ]; then cp "$ipa" "release-assets/$base-arm64.ipa"; fi
+          ls -l release-assets
+
+      # Written from the staged names, so every URL in the manifests matches an
+      # asset that is actually attached to the release.
+      - name: Write update manifests
+        run: |
+          base="BetterAimaira-${GITHUB_REF_NAME}"
           arguments=(
             --version "${GITHUB_REF_NAME#v}"
-            --windows-installer "$installer"
-            --windows-signature "$installer.sig"
-            --apk "$apk"
+            --windows-installer "release-assets/$base-x86_64.exe"
+            --windows-signature "release-assets/$base-x86_64.exe.sig"
+            --apk "release-assets/$base-universal.apk"
           )
           # Without an IPA the AltStore source lists no version and the iOS
           # check reports "up to date" instead of failing.
-          if [ -n "$ipa" ]; then arguments+=(--ipa "$ipa"); fi
+          if [ -f "release-assets/$base-arm64.ipa" ]; then
+            arguments+=(--ipa "release-assets/$base-arm64.ipa")
+          fi
           bun run release:manifest -- "${arguments[@]}"
 
-      # The manifests point at `releases/download/<tag>/<asset>`, so the assets
-      # have to keep the file names the manifests were written from.
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          assets=(dist-release/latest.json dist-release/altstore.json)
-          for directory in windows android ios; do
-            if [ -d "artifacts/$directory" ]; then assets+=("artifacts/$directory"/*); fi
-          done
+          assets=(dist-release/latest.json dist-release/altstore.json release-assets/*)
           flags=()
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then
             flags+=(--prerelease)
