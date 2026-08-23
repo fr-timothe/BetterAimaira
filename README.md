@@ -26,6 +26,7 @@
 - Same-origin PDF downloads restricted to known absence, grade, and school document routes, with a 25 MiB limit.
 - Adaptive Today, Schedule, Grades, Attendance, and More navigation backed by real Aimaira data.
 - SQLite stores grade fingerprints and unread in-app alerts on launch. No background daemon, cloud relay, or push notifications are used.
+- In-app updates from the GitHub release feed: signed in-place install on desktop, `PackageInstaller` handover on Android, AltStore source check on iOS. See [docs/UPDATES.md](docs/UPDATES.md).
 - Read-only scope: administrative, billing, and remote write actions are excluded.
 
 ### 1. Schedule and planning
@@ -63,7 +64,7 @@
 |---|---|
 | **Core and Backend** | [Rust](https://www.rust-lang.org/), [Tauri 2.0](https://v2.tauri.app/), `reqwest` (CookieJar), `scraper` (HTML DOM Parser), `rusqlite` (Cache), `keyring` (OS Vault) |
 | **Frontend UI** | [Svelte 5](https://svelte.dev/) (Runes: `$state`, `$derived`), [TypeScript](https://www.typescriptlang.org/), [Tailwind CSS v4](https://tailwindcss.com/) |
-| **Theme and Tokens** | `FL-Theme` via tweakcn (`primary: oklch(0.73 0.14 229)`, `radius: 0.75rem`), extended into the token system and shared primitives documented in [DESIGN.md](DESIGN.md) |
+| **Theme and Tokens** | [`FL-Theme` via tweakcn](https://tweakcn.com/r/themes/cmq57ht7w000204l2axo6ho9v) (`primary: oklch(0.73 0.14 229)`, `radius: 0.75rem`), republished as Tailwind utilities by the `@theme inline` block in `src/app.css`. Styling is utilities at the element; the exceptions that keep scoped CSS are listed in [DESIGN.md](DESIGN.md) |
 | **Typography** | [Inter](https://rsms.me/inter/) variable, self-hosted via `@fontsource-variable/inter` (latin + latin-ext) — a Tauri client has no CDN fallback |
 | **Icons and Charts** | [Lucide Svelte](https://lucide.dev/), Svelte 5 SVG charts |
 | **Package Manager** | [Bun](https://bun.sh/) |
@@ -74,10 +75,11 @@
 
 - [Architecture Overview](docs/ARCHITECTURE.md): Rust backend, Tauri IPC, and data pipeline.
 - [Application Structure and Platforms](docs/APP_STRUCTURE_AND_PLATFORMS.md): Adaptive layout rules, platform expression, and release matrix.
-- [Design System and Guidelines](docs/DESIGN_SYSTEM.md): Tokens, chart specifications, and responsive layouts.
+- [Design System and Guidelines](docs/DESIGN_SYSTEM.md): Tokens, breakpoints, and responsive layouts.
 - [Integrations Specification](docs/INTEGRATIONS.md): iCal feeds, webhooks, widgets, and in-app alerts.
 - [Rust Backend API](docs/BACKEND_API.md): Tauri commands, serialized contracts, document downloads, and error codes.
 - [Performance](docs/PERFORMANCE.md): Baseline commands, platform profiling tools, bundle budgets, and safeguards.
+- [Updates and release delivery](docs/UPDATES.md): Update feed, per-platform install paths, signing keys, and the release workflow.
 
 ---
 
@@ -125,6 +127,20 @@ bun run clean
 # Clean intermediate compiler cache while preserving release bundles
 bun run clean:cache
 ```
+
+### Releases and updates
+
+```bash
+# Generate the desktop updater signing keypair (once, private half git-ignored)
+bun run updater:keygen
+
+# Write latest.json and altstore.json from local build outputs
+bun run release:manifest
+```
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds the Windows
+installer and the Android APK, writes both update manifests, and publishes the
+GitHub release the app polls. Details and required secrets: [docs/UPDATES.md](docs/UPDATES.md).
 
 ### Verification
 
