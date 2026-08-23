@@ -43,6 +43,7 @@
     parseRoomAndTeacher,
   } from './course-utils';
   import type { CalendarEvent, CalendarScope } from './types';
+  import { cn } from '$lib/utils';
 
   type Props = {
     events: CalendarEvent[];
@@ -133,6 +134,138 @@
       tempo: true,
     },
   };
+
+  /**
+   * The same four levels of detail, as classes. Every element the row owns has
+   * one entry per variant, so a scope's whole look is readable in one place
+   * instead of spread over four blocks of descendant selectors.
+   */
+  type RowSkin = {
+    root: string;
+    open: string;
+    time: string;
+    strong: string;
+    span: string;
+    small: string;
+    rail: string;
+    node: string;
+    bar: string;
+    body: string;
+    tags: string;
+    title: string;
+    subtitle: string;
+    meta: string;
+    tempo: string;
+  };
+
+  const rowBase = {
+    root: 'course-row relative min-w-0',
+    open: 'w-full cursor-pointer bg-transparent p-0 text-start text-inherit',
+    time: 'flex min-w-0 flex-col tabular-nums',
+    strong: 'text-base font-extrabold text-foreground',
+    span: 'text-xs text-muted-foreground',
+    small: 'mt-1 text-2xs font-semibold text-primary-deep',
+    rail: 'relative flex flex-col items-center',
+    node: 'z-raised size-3 rounded-full border-2 border-primary-deep bg-card',
+    bar: 'w-0.5 flex-1 bg-border-subtle',
+    body: 'flex min-w-0 flex-col gap-1',
+    tags: 'flex min-w-0 max-w-full flex-wrap items-center gap-2',
+    // The leading is applied after the variant size on purpose: tailwind-merge
+    // reads `text-base` as a size-and-leading shorthand and would drop an earlier
+    // `leading-*`.
+    title: 'min-w-0 text-md font-extrabold wrap-anywhere text-foreground',
+    subtitle: 'min-w-0 text-sm wrap-anywhere text-muted-foreground',
+    meta:
+      'flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground',
+    tempo:
+      'inline-flex min-h-(--tap-min) items-center gap-1 rounded-pill border border-muted-strong' +
+      ' bg-card px-3 text-xs font-bold text-primary-deep transition-control' +
+      ' active:scale-(--press-scale) hover:bg-muted'
+  } as const satisfies RowSkin;
+
+  /** The three card variants share one surface and one press/hover behaviour. */
+  const metaItem = 'inline-flex min-w-0 max-w-full items-center gap-1 wrap-anywhere';
+
+  const cardSurface =
+    'rounded-lg border transition-control active:scale-(--press-scale)' +
+    ' hover:border-primary-deep hover:shadow-sm';
+
+  // The timeline widens its own rail column once there is room for it.
+  const timelineGrid =
+    'grid-cols-[3.6rem_1rem_minmax(0,1fr)] gap-x-2.5 gap-y-0' +
+    ' md:grid-cols-[4.25rem_1.25rem_minmax(0,1fr)] md:gap-x-3';
+
+  const rowSkin: Record<CourseRowVariant, Partial<RowSkin>> = {
+    // Its surface covers only the third column, while both the open button and
+    // the Tempo action sit inside it — so it is painted by a grid-placed
+    // pseudo-element rather than by either of them.
+    timeline: {
+      root:
+        'grid ' + timelineGrid + ' transition-transform duration-instant ease-out' +
+        ' active:scale-(--press-scale)' +
+        " before:col-start-3 before:row-start-1 before:row-end-[-1] before:content-['']" +
+        ' before:rounded-lg before:border' +
+        ' before:transition-[background-color,border-color,box-shadow] before:duration-fast' +
+        ' before:ease-out hover:before:border-primary-deep hover:before:shadow-sm',
+      open: 'grid col-span-full row-start-1 items-stretch rounded-lg ' + timelineGrid,
+      time: 'pt-2.5 md:pt-3',
+      node: 'mt-3.5 md:mt-4',
+      body: 'gap-1.5 p-3.5 md:gap-2 md:p-4',
+      tempo:
+        'col-start-3 row-start-2 mx-3.5 mt-0 mb-3.5 justify-self-start md:mx-4 md:mb-4'
+    },
+    compact: {
+      root: 'grid gap-2 p-3 ' + cardSurface,
+      open: 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-sm',
+      // `contents` lets the body's children join the row's own grid, so the time
+      // and the tags share a line without a second wrapper.
+      body: 'contents',
+      time: '[grid-area:1/1]',
+      strong: 'text-xs font-bold text-primary-deep',
+      tags: '[grid-area:1/2] justify-self-end',
+      title: '[grid-area:2/1/auto/-1] text-base',
+      meta: '[grid-area:3/1/auto/-1] flex-col items-start gap-1 text-xs',
+      tempo: 'justify-self-start'
+    },
+    week: {
+      root: 'grid gap-1 rounded-md border p-2 transition-control active:scale-(--press-scale)' +
+        ' hover:border-primary-deep hover:shadow-sm',
+      open: 'grid gap-1 rounded-sm',
+      body: 'contents',
+      time: 'row-start-1 flex-row items-baseline justify-between gap-1',
+      strong: 'text-2xs font-bold text-primary-deep',
+      small: 'mt-0 text-muted-foreground',
+      title: 'row-start-2 line-clamp-2 text-sm',
+      meta: 'row-start-3 text-2xs',
+      tags: 'row-start-4 justify-self-start'
+    },
+    detailed: {
+      root: 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 p-3 ' + cardSurface,
+      open:
+        'grid grid-cols-[3.5rem_3px_minmax(0,1fr)] items-stretch gap-2.5 rounded-sm' +
+        ' lte-600:grid-cols-[3.25rem_3px_minmax(0,1fr)] lte-600:gap-2',
+      time: 'pt-[0.15rem]',
+      node: 'hidden',
+      rail: 'h-full items-center',
+      bar: 'h-full w-[3px] rounded-pill bg-primary-deep',
+      body: 'gap-1 pl-0',
+      title: 'text-base font-bold',
+      subtitle: 'text-xs',
+      meta: 'text-xs'
+    }
+  };
+
+  /** The live and finished states paint the row, so they close over the variant. */
+  function rowInk(variant: CourseRowVariant, live: boolean) {
+    if (variant === 'timeline') {
+      return live
+        ? 'before:border-primary-deep before:bg-muted'
+        : 'before:border-border-subtle before:bg-surface-sunken';
+    }
+    return live
+      ? 'border-primary-deep bg-muted'
+      : 'border-border-subtle bg-surface-sunken';
+  }
 
   let currentScope = $state<CalendarScope>('week');
   let anchorDate = $state<Date>(startOfDay(new Date()));
@@ -421,55 +554,70 @@
   {@const secondary = shape.secondary ? eventSecondary(event) : null}
   {@const teacher = shape.teacher ? details.teacher : null}
   {@const showStatus = shape.status === 'all' || (shape.status === 'live' && status === 'live')}
+  {@const skin = rowSkin[variant]}
+  {@const live = status === 'live'}
 
-  <div
-    class="course-row row-{variant}"
-    class:is-live={status === 'live'}
-    class:is-finished={status === 'finished'}
-  >
-    <button type="button" class="row-open" onclick={() => handleCourseClick(event)}>
-      <span class="row-time">
+  <div class={cn(rowBase.root, skin.root, rowInk(variant, live))}>
+    <button
+      type="button"
+      class={cn(rowBase.open, skin.open)}
+      onclick={() => handleCourseClick(event)}
+    >
+      <span class={cn(rowBase.time, skin.time)}>
         {#if shape.time === 'inline'}
-          <strong>{eventTime(event)}</strong>
+          <strong class={cn(rowBase.strong, skin.strong)}>{eventTime(event)}</strong>
         {:else}
-          <strong>{timeFormatter.format(new Date(event.startsAt))}</strong>
+          <strong class={cn(rowBase.strong, skin.strong)}
+            >{timeFormatter.format(new Date(event.startsAt))}</strong
+          >
           {#if shape.endTime}
-            <span>{timeFormatter.format(new Date(event.endsAt))}</span>
+            <span class={cn(rowBase.span, skin.span)}
+              >{timeFormatter.format(new Date(event.endsAt))}</span
+            >
           {/if}
         {/if}
         {#if shape.duration}
-          <small>{formatDurationRange(event.startsAt, event.endsAt)}</small>
+          <small class={cn(rowBase.small, skin.small)}
+            >{formatDurationRange(event.startsAt, event.endsAt)}</small
+          >
         {/if}
       </span>
 
       {#if shape.rail}
-        <span class="row-rail">
-          <span class="rail-node"></span>
-          <span class="rail-bar"></span>
+        <span class={cn(rowBase.rail, skin.rail)}>
+          <span class={cn(rowBase.node, skin.node, live && 'bg-primary')}></span>
+          <span class={cn(rowBase.bar, skin.bar)}></span>
         </span>
       {/if}
 
-      <span class="row-body">
+      <span class={cn(rowBase.body, skin.body)}>
         {#if showStatus || event.kind}
-          <span class="row-tags">
+          <span class={cn(rowBase.tags, skin.tags)}>
             {#if showStatus}{@render statusBadge(status)}{/if}
             {#if event.kind}<KindBadge {event} />{/if}
           </span>
         {/if}
 
-        <span class="row-title">{eventTitle(event)}</span>
+        <span
+          class={cn(
+            rowBase.title,
+            skin.title,
+            'leading-[1.3]',
+            variant === 'timeline' && status === 'finished' && 'text-muted-foreground'
+          )}>{eventTitle(event)}</span
+        >
 
         {#if secondary}
-          <span class="row-subtitle">{secondary}</span>
+          <span class={cn(rowBase.subtitle, skin.subtitle)}>{secondary}</span>
         {/if}
 
         {#if details.room || teacher}
-          <span class="row-meta">
+          <span class={cn(rowBase.meta, skin.meta)}>
             {#if details.room}
-              <span class="meta-item"><MapPin size={14} aria-hidden="true" />{details.room}</span>
+              <span class={metaItem}><MapPin size={14} aria-hidden="true" />{details.room}</span>
             {/if}
             {#if teacher}
-              <span class="meta-item"><UserRound size={14} aria-hidden="true" />{teacher}</span>
+              <span class={metaItem}><UserRound size={14} aria-hidden="true" />{teacher}</span>
             {/if}
           </span>
         {/if}
@@ -479,7 +627,7 @@
     {#if shape.tempo && event.tempoUrl}
       <button
         type="button"
-        class="row-tempo"
+        class={cn(rowBase.tempo, skin.tempo)}
         aria-label={m.open_tempo()}
         title={m.open_tempo()}
         onclick={(e) => handleTempoClick(e, event)}
@@ -1149,457 +1297,6 @@
      Shared course row. One markup, one keyboard contract, one status
      rendering; each scope only re-lays it out.
      ------------------------------------------------------------------ */
-  .course-row {
-    position: relative;
-    min-width: 0;
-  }
-
-  .row-open {
-    width: 100%;
-    padding: 0;
-    color: inherit;
-    text-align: start;
-    background: transparent;
-    border: 0;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .row-time {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .row-time strong {
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-heavy);
-  }
-
-  .row-time span {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .row-time small {
-    margin-top: var(--space-1);
-    color: var(--primary-deep);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-  }
-
-  .row-rail {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .rail-node {
-    z-index: var(--z-raised);
-    width: 0.75rem;
-    height: 0.75rem;
-    background: var(--card);
-    border: 2px solid var(--primary-deep);
-    border-radius: 50%;
-  }
-
-  .is-live .rail-node {
-    background: var(--primary);
-  }
-
-  .rail-bar {
-    flex: 1;
-    width: 2px;
-    background: var(--border-subtle);
-  }
-
-  .row-body {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .row-tags {
-    display: flex;
-    min-width: 0;
-    max-width: 100%;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .row-title {
-    min-width: 0;
-    color: var(--foreground);
-    font-size: var(--text-md);
-    font-weight: var(--weight-heavy);
-    line-height: 1.3;
-    overflow-wrap: anywhere;
-  }
-
-  .row-subtitle {
-    min-width: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-    overflow-wrap: anywhere;
-  }
-
-  .row-meta {
-    display: flex;
-    min-width: 0;
-    max-width: 100%;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-1) var(--space-3);
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  .meta-item {
-    display: inline-flex;
-    min-width: 0;
-    max-width: 100%;
-    align-items: center;
-    gap: var(--space-1);
-    overflow-wrap: anywhere;
-  }
-
-  .row-tempo {
-    display: inline-flex;
-    min-height: var(--tap-min);
-    align-items: center;
-    gap: var(--space-1);
-    padding: 0 var(--space-3);
-    color: var(--primary-deep);
-    background: var(--card);
-    border: 1px solid var(--muted-strong);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .row-tempo:active {
-    transform: scale(var(--press-scale));
-  }
-
-  @media (hover: hover) {
-    .row-tempo:hover {
-      background: var(--muted);
-    }
-  }
-
-  /* Variant: day timeline. Its surface covers only the third column, while both
-     the open button and the Tempo action have to sit inside that surface — so it
-     is painted by a grid-placed pseudo-element rather than by either of them. */
-  .row-timeline {
-    display: grid;
-    grid-template-columns: 3.6rem 1rem minmax(0, 1fr);
-    gap: 0 var(--space-2-5);
-    transition: transform var(--duration-instant) var(--ease-out);
-  }
-
-  .row-timeline::before {
-    grid-column: 3;
-    grid-row: 1 / -1;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out);
-    content: '';
-  }
-
-  .row-timeline.is-live::before {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  .row-timeline.is-finished .row-title {
-    color: var(--muted-foreground);
-  }
-
-  .row-timeline .row-open {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-row: 1;
-    grid-template-columns: 3.6rem 1rem minmax(0, 1fr);
-    gap: 0 var(--space-2-5);
-    align-items: stretch;
-    border-radius: var(--radius-lg);
-  }
-
-  .row-timeline .row-time {
-    padding-top: var(--space-2-5);
-  }
-
-  .row-timeline .rail-node {
-    margin-top: var(--space-3-5);
-  }
-
-  .row-timeline .row-body {
-    padding: var(--space-3-5);
-    gap: var(--space-1-5);
-  }
-
-  .row-timeline .row-tempo {
-    grid-column: 3;
-    grid-row: 2;
-    justify-self: start;
-    margin: 0 var(--space-3-5) var(--space-3-5);
-  }
-
-  .row-timeline:active {
-    transform: scale(var(--press-scale));
-  }
-
-  @media (hover: hover) {
-    .row-timeline:hover::before {
-      border-color: var(--primary-deep);
-      box-shadow: var(--shadow-sm);
-    }
-  }
-
-  /* Variant: 3-day compact card */
-  .row-compact {
-    display: grid;
-    gap: var(--space-2);
-    padding: var(--space-3);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .row-compact .row-open {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-1) var(--space-2);
-    align-items: center;
-    border-radius: var(--radius-sm);
-  }
-
-  /* `display: contents` lets the body's children join the row's own grid, so the
-     time and the tags share a line without a second wrapper. */
-  .row-compact .row-body {
-    display: contents;
-  }
-
-  .row-compact .row-time {
-    grid-area: 1 / 1;
-  }
-
-  .row-compact .row-time strong {
-    color: var(--primary-deep);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .row-compact .row-tags {
-    grid-area: 1 / 2;
-    justify-self: end;
-  }
-
-  .row-compact .row-title {
-    grid-area: 2 / 1 / auto / -1;
-    font-size: var(--text-base);
-  }
-
-  .row-compact .row-meta {
-    grid-area: 3 / 1 / auto / -1;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-1);
-    font-size: var(--text-xs);
-  }
-
-  .row-compact .row-tempo {
-    justify-self: start;
-  }
-
-  .row-compact.is-live {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  .row-compact:active {
-    transform: scale(var(--press-scale));
-  }
-
-  /* Variant: week grid card */
-  .row-week {
-    display: grid;
-    gap: var(--space-1);
-    padding: var(--space-2);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .row-week .row-open {
-    display: grid;
-    gap: var(--space-1);
-    border-radius: var(--radius-sm);
-  }
-
-  .row-week .row-body {
-    display: contents;
-  }
-
-  .row-week .row-time {
-    grid-row: 1;
-    flex-direction: row;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-1);
-  }
-
-  .row-week .row-time strong {
-    color: var(--primary-deep);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .row-week .row-time small {
-    margin-top: 0;
-    color: var(--muted-foreground);
-  }
-
-  .row-week .row-title {
-    display: -webkit-box;
-    grid-row: 2;
-    overflow: hidden;
-    font-size: var(--text-sm);
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
-
-  .row-week .row-meta {
-    grid-row: 3;
-    font-size: var(--text-2xs);
-  }
-
-  .row-week .row-tags {
-    grid-row: 4;
-    justify-self: start;
-  }
-
-  .row-week.is-live {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  .row-week:active {
-    transform: scale(var(--press-scale));
-  }
-
-  /* Variant: month panel detailed row */
-  .row-detailed {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-2);
-    align-items: center;
-    padding: var(--space-3);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .row-detailed .row-open {
-    display: grid;
-    grid-template-columns: 3.5rem 3px minmax(0, 1fr);
-    gap: var(--space-2-5);
-    align-items: stretch;
-    border-radius: var(--radius-sm);
-  }
-
-  .row-detailed .row-time {
-    padding-top: 0.15rem;
-  }
-
-  .row-detailed .row-time strong {
-    font-size: var(--text-base);
-    font-weight: var(--weight-heavy);
-  }
-
-  .row-detailed .row-time span {
-    font-size: var(--text-xs);
-    color: var(--muted-foreground);
-  }
-
-  .row-detailed .rail-node {
-    display: none;
-  }
-
-  .row-detailed .row-rail {
-    height: 100%;
-    display: flex;
-    align-items: center;
-  }
-
-  .row-detailed .rail-bar {
-    width: 3px;
-    height: 100%;
-    background: var(--primary-deep);
-    border-radius: var(--radius-pill);
-  }
-
-  .row-detailed .row-body {
-    padding-left: 0;
-    gap: var(--space-1);
-  }
-
-  .row-detailed .row-title {
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-  }
-
-  .row-detailed .row-subtitle,
-  .row-detailed .row-meta {
-    font-size: var(--text-xs);
-  }
-
-  .row-detailed.is-live {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  .row-detailed:active {
-    transform: scale(var(--press-scale));
-  }
-
-  @media (hover: hover) {
-    .row-compact:hover,
-    .row-week:hover,
-    .row-detailed:hover {
-      border-color: var(--primary-deep);
-      box-shadow: var(--shadow-sm);
-    }
-  }
-
   /* SCOPE 1: Day View */
   .day-timeline-view {
     display: flex;
@@ -2059,33 +1756,6 @@
       font-size: var(--text-lg);
     }
 
-    .row-timeline {
-      grid-template-columns: 4.25rem 1.25rem minmax(0, 1fr);
-      gap: 0 var(--space-3);
-    }
-
-    .row-timeline .row-open {
-      grid-template-columns: 4.25rem 1.25rem minmax(0, 1fr);
-      gap: 0 var(--space-3);
-    }
-
-    .row-timeline .row-time {
-      padding-top: var(--space-3);
-    }
-
-    .row-timeline .rail-node {
-      margin-top: var(--space-4);
-    }
-
-    .row-timeline .row-body {
-      padding: var(--space-4);
-      gap: var(--space-2);
-    }
-
-    .row-timeline .row-tempo {
-      margin: 0 var(--space-4) var(--space-4);
-    }
-
   }
 
   @media (min-width: 54rem) {
@@ -2127,11 +1797,6 @@
     .nav-button-group {
       width: 100%;
       justify-content: space-between;
-    }
-
-    .row-detailed .row-open {
-      grid-template-columns: 3.25rem 3px minmax(0, 1fr);
-      gap: var(--space-2);
     }
 
     .timeline-header-card,
