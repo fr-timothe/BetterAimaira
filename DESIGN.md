@@ -8,6 +8,24 @@ BetterAimaira uses the approved FL-Theme as its semantic token base with a produ
 
 `src/app.css` is the single source of truth for every token. A view that redeclares a colour, radius, shadow, duration or font size locally has drifted, not extended the system.
 
+## How the tokens are applied
+
+Tailwind v4 is the styling layer. `@theme inline` in `src/app.css` republishes every token as a utility, so the token names below are also the class names: `--primary-deep` is `text-primary-deep` and `bg-primary-deep`, `--radius-xl` is `rounded-xl`, `--text-md` is `text-md`, `--shadow-sm` is `shadow-sm`. Spacing needs no bridge — the `--space-*` scale is Tailwind's own, step for step, so `var(--space-3)` is `p-3`.
+
+Three families have no Tailwind namespace and are read straight from the token: `min-h-(--tap-min)`, `active:scale-(--press-scale)`, and `duration-fast` / `z-nav` through the `--transition-duration-*` and `--z-index-*` aliases.
+
+**Utilities first.** Scoped `<style>` is for what a utility cannot say, and the file that keeps one says why at the top of the block. As of this pass that is: the three portal tables, whose display model switches between a card stack and real columns; the presence gradient and the SVG internals in `HeroStat`; the brand mark's own SVG paint in `Logo`; the shell's layout-mode block, where root classes must beat a width query on specificity; the separator between two adjacent days in the calendar's mobile week list; and the two states that paint a whole course row on Today.
+
+**Global CSS must be layered.** `@import "tailwindcss"` declares `@layer theme, base, components, utilities`, and unlayered CSS outranks every utility regardless of specificity. Anything global added to `app.css` goes inside `@layer base`, or it silently wins against the utility that was supposed to override it. The one deliberate exception is `.desktop-only` / `.mobile-only`, which needs to beat a co-located `display` and is commented as such.
+
+**Three ordering traps, all real, all found by measuring:**
+
+- A `leading-*` must follow the `text-*` it belongs to. tailwind-merge reads `text-lg` as the size-and-leading shorthand and drops an earlier `leading-*`.
+- `scale-*` writes the `scale` property, not `transform`. A press animation needs `transition-transform` (which covers `scale`), not `transition-[transform]`.
+- A child sized down inside a parent with a unitless `line-height` used to inherit that number and recompute it. A `text-*` utility sets its own line-height, so the child needs the leading spelled out.
+
+`rounded` on its own resolves to Tailwind's deprecated 0.25rem, not this system's radius: always name the step. `shadow`, `shadow-2xs` and `shadow-2xl` are unset on purpose so reaching for an unaudited elevation fails the build.
+
 ## Color
 
 Base palette (FL-Theme):

@@ -30,28 +30,17 @@ The approved source is [FL-Theme on tweakcn](https://tweakcn.com/themes/cmq57ht7
 
 ---
 
-## 3. Data visualization specifications
+## 3. Data visualization
 
-### A. Grade progression spline curve (GradeTrendChart.svelte)
-- SVG cubic Bézier spline with gradient area fill (`oklch(0.73 0.14 229 / 0.15)`).
-- Hover or touch scrub reveals date, grade, and evaluation name.
-- Dashed horizontal benchmark lines indicate class average and passing grade (10/20).
+The vertical slice ships no charts. Numbers are read as numbers: `HeroStat` for
+the one headline figure a view is about, `HeroMetric` for the row of secondary
+figures under it, and a plotted trend line behind the hero when — and only
+when — the caller passes a real series.
 
-### B. Triple radial ring widget (TripleRadialProgress.svelte)
-- Ring 1 (Outer, Cyan): Grade percentage (`overallAverage / 20 * 100%`).
-- Ring 2 (Middle, Emerald): Attendance rate (`(quota - absentHours) / quota * 100%`).
-- Ring 3 (Inner, Amber): ECTS credit completion (`validatedCredits / totalCredits * 100%`).
-
-### C. Class distribution bar chart (GradeDistributionBar.svelte)
-- Stacked horizontal range bar showing minimum to maximum promo scores.
-- Class average indicated by a contrasting marker.
-- Student score indicated by a primary accent marker.
-
-### D. Live class countdown and timeline card (HeroNextCourse.svelte)
-- In-progress classes show a pulsing indicator and percentage progress bar.
-- Upcoming classes show a countdown time (for example, "In 14 min").
-- Finished state shows "No more classes today".
-- Room numbers use display typography (`text-3xl font-black`) for quick recognition.
+`HeroStat` draws that line itself: a quadratic spline through the series'
+midpoints, coloured per segment by its slope so a rising run reads as rising
+before the numbers are read at all. Given no series it falls back to decorative
+geometry, which is the honest thing to draw when there is nothing to plot.
 
 ---
 
@@ -59,21 +48,27 @@ The approved source is [FL-Theme on tweakcn](https://tweakcn.com/themes/cmq57ht7
 
 Layout follows available Tauri window width. Full architecture, platform variants, native boundaries, and verification matrices are detailed in [Application structure and platform strategy](APP_STRUCTURE_AND_PLATFORMS.md).
 
-### Compact (`< 640px`)
-- Bottom navigation with safe-area padding and five destinations maximum.
-- Single-column layout with focused details and day schedule.
+### Compact (`< 48rem`)
+- Floating five-destination dock with safe-area padding.
+- Single-column layout with focused details and the day schedule.
 - Touch-first targets with visible button alternatives for swipe gestures.
 
-### Medium (`640-1023px`)
-- Navigation rail.
-- Two-pane or master-detail layout where useful.
+### Expanded (`>= 48rem`)
+- Fixed-width icon navigation rail; each destination's name is served on hover.
+- Multi-column dashboard, the portal week grid, and comparison tables that
+  assemble as real columns once six of them fit.
 
-### Expanded (`>= 1024px`)
-- Persistent sidebar, collapsible near lower boundary.
-- Multi-column dashboard, weekly schedule, and comparison tables with bounded maximum width.
+### Secondary steps
+
+`48rem` is the primary hinge and the only one a view should introduce without a
+reason. Where a layout genuinely needs more room than that, it says so at the
+element: `min-[30rem]` (two short detail cells side by side), `min-[54rem]`
+(the month grid beside its selected-day panel), `min-[56rem]` (the week grid
+stops reserving a minimum column width), and the `lte-600` / `lte-820` variants
+for the two compact steps that pre-date the hinge.
 
 ### Shared rules
-- Container queries for reusable panels and media queries for app shell.
+- Media queries for the app shell, expressed as Tailwind variants at the element rather than as a block at the end of a file.
 - Independent detection of `hover`, `pointer`, keyboard focus, and reduced motion.
 - Respect `env(safe-area-inset-*)` values across mobile and desktop windows.
 - Present identical core features across all window widths through reflow rather than removal.
@@ -81,5 +76,5 @@ Layout follows available Tauri window width. Full architecture, platform variant
 ### Authentication surface
 - Compact windows use a single login surface with brand mark and language selector.
 - Expanded windows pair the form with a schedule preview signal.
-- Form controls use visible borders, `0.6rem` corner radii, and minimum `44px` interactive targets.
+- Form controls use visible borders, the `--radius-md` corner (12px), and the `--tap-min` 44px interactive floor.
 - Error messages identify the cause and recovery step. Password visibility control includes an accessible label and tooltip.
