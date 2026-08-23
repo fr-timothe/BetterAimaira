@@ -31,9 +31,11 @@
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
   import { connectivity } from '$lib/state/connectivity.svelte';
+  import UpdateCard from '$lib/features/updates/UpdateCard.svelte';
   import AccountViewSkeleton from './AccountViewSkeleton.svelte';
   import { loadPortalResource } from './portal-cache';
   import QuestionnairesView from './QuestionnairesView.svelte';
+  import { cn } from '$lib/utils';
   import {
     documentKindLabel,
     downloadPortalDocument,
@@ -365,6 +367,20 @@
   });
 
   const schoolName = $derived(studentProfile.campus || getPortalHost(portalUrl));
+  const tabPanel = 'flex min-w-0 flex-col gap-4 animate-fade-in';
+  // Panels are `Card`; this only supplies the inner rhythm.
+  const panelBody = 'flex min-w-0 flex-col gap-4';
+  const documentsList =
+    'grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(min(100%,21rem),1fr))]';
+  const documentCard =
+    'flex min-w-0 items-center gap-3 rounded-lg bg-surface-sunken p-3' +
+    ' transition-colors duration-fast ease-out';
+
+  const documentTones = {
+    accent: 'bg-muted text-primary-deep',
+    success: 'bg-success-surface text-success-strong',
+    neutral: 'bg-card text-muted-foreground'
+  } as const;
 </script>
 
 {#snippet resourceError(code: PortalResourceErrorCode, retry: () => void)}
@@ -392,7 +408,9 @@
 {/snippet}
 
 {#snippet syncToolbar(fetchedAt: number, refreshing: boolean, failed: boolean, refresh: () => void)}
-  <header class="sync-toolbar desktop-only">
+  <!-- `desktop-only` owns the display here; adding a display utility would
+       lose to its !important rules without a word. -->
+  <header class="desktop-only flex-wrap items-center justify-end gap-3">
     <IconButton label={copy.refresh} loading={refreshing} onclick={refresh}>
       <RefreshCw size={18} aria-hidden="true" />
     </IconButton>
@@ -408,7 +426,7 @@
   />
 
   {#if activeTab === 'profile'}
-    <div class="tab-panel" role="tabpanel" aria-label={copy.profileTab}>
+    <div class={tabPanel} role="tabpanel" aria-label={copy.profileTab}>
       {#if profileState.kind === 'loading'}
         <AccountViewSkeleton ariaLabel={copy.loading} />
       {:else if profileState.kind === 'error' && !connectivity.online}
@@ -423,11 +441,19 @@
           () => void loadProfile(true)
         )}
 
-        <article class="identity-card">
-          <h2 class="identity-name">{studentProfile.fullName}</h2>
-          <p class="identity-school">
+        <article
+          class="flex flex-col gap-2 rounded-xl bg-muted px-4 py-5 md:px-5 md:py-6"
+        >
+          <h2
+            class="text-xl leading-[1.2] font-extrabold tracking-[-0.02em] wrap-anywhere
+                   text-foreground">{studentProfile.fullName}</h2
+          >
+          <p
+            class="flex min-w-0 items-center gap-2 text-base font-semibold text-primary-deep
+                   [&>svg]:flex-none"
+          >
             <School size={17} aria-hidden="true" />
-            <span>{schoolName}</span>
+            <span class="wrap-anywhere">{schoolName}</span>
           </p>
         </article>
 
@@ -442,17 +468,28 @@
           />
         {:else}
           {#if studentProfile.categorizedFields.length > 0}
-            <div class="panel-grid">
+            <div
+              class="grid grid-cols-1 gap-4
+                     md:grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))]"
+            >
               {#each studentProfile.categorizedFields as section (section.category)}
                 <Card>
-                  <div class="panel-body">
+                  <div class={panelBody}>
                     <SectionHeader icon={section.icon} title={section.category} level={3} />
 
-                    <dl class="fields-list">
+                    <dl
+                      class="flex flex-col gap-1
+                             md:grid md:grid-cols-[repeat(auto-fill,minmax(min(100%,13rem),1fr))]
+                             md:gap-2"
+                    >
                       {#each section.fields as field (`${field.label}:${field.value}`)}
-                        <div class="field-row">
-                          <dt>{field.label}</dt>
-                          <dd>{field.value}</dd>
+                        <div
+                          class="flex flex-col gap-[0.15rem] rounded-md bg-surface-sunken px-3 py-2"
+                        >
+                          <dt class="text-xs font-bold text-muted-foreground">{field.label}</dt>
+                          <dd
+                            class="text-base font-medium tabular-nums wrap-anywhere text-foreground"
+                          >{field.value}</dd>
                         </div>
                       {/each}
                     </dl>
@@ -464,15 +501,16 @@
 
           {#each studentProfile.tables as table, tableIndex (`${table.context.join(':')}:${table.caption ?? tableIndex}`)}
             <Card padding="none">
-              <div class="panel-body table-panel">
+              <div class={cn(panelBody, 'p-4 md:px-0 md:pt-5 md:pb-0')}>
                 <SectionHeader
+                  class="md:px-5"
                   icon={Table2}
                   title={table.caption || table.context.at(-1) || m.profile_table_fallback()}
                   subtitle={m.profile_table_row_count({ count: table.rows.length })}
                   level={3}
                 />
 
-                <div class="portal-table-scroll">
+                <div class="overflow-x-auto [-webkit-overflow-scrolling:touch]">
                   <table class="portal-table">
                     {#if table.headers.length > 0}
                       <thead>
@@ -491,7 +529,7 @@
                               {#if table.headers[cellIndex]}
                                 <span class="cell-label">{table.headers[cellIndex]}</span>
                               {/if}
-                              <span class="cell-value">{cell}</span>
+                              <span class="font-medium tabular-nums wrap-anywhere text-foreground">{cell}</span>
                             </td>
                           {/each}
                         </tr>
@@ -506,13 +544,21 @@
       {/if}
 
       <Card>
-        <div class="language-setting">
-          <div class="language-copy">
-            <span class="language-icon" aria-hidden="true"><Languages size={18} /></span>
-            <label for="profile-language">{copy.languageLabel}</label>
+        <div
+          class="flex min-w-0 flex-col items-center justify-between gap-4 min-[30rem]:flex-row"
+        >
+          <div class="flex w-full min-w-0 items-center gap-2 min-[30rem]:w-auto">
+            <span
+              class="grid size-8 flex-none place-items-center rounded-sm bg-muted text-primary-deep"
+              aria-hidden="true"><Languages size={18} /></span
+            >
+            <label class="text-base font-bold" for="profile-language">{copy.languageLabel}</label>
           </div>
 
           <select
+            class="min-h-(--tap-min) w-full rounded-md border border-border-subtle
+                   bg-surface-sunken pr-8 pl-3 font-semibold text-foreground
+                   disabled:opacity-62 min-[30rem]:w-auto min-[30rem]:min-w-[9.5rem]"
             id="profile-language"
             value={locale}
             disabled={changingLocale}
@@ -525,7 +571,9 @@
         </div>
       </Card>
 
-      <div class="logout-section">
+      <UpdateCard {locale} />
+
+      <div class="mt-4 border-t border-border-subtle pt-4">
         <Button variant="danger" size="lg" block onclick={() => (logoutDialogOpen = true)}>
           <LogOut size={18} aria-hidden="true" />
           <span>{copy.logout}</span>
@@ -533,19 +581,19 @@
       </div>
     </div>
   {:else if activeTab === 'documents'}
-    <div class="tab-panel" role="tabpanel" aria-label={copy.documentsTab}>
+    <div class={tabPanel} role="tabpanel" aria-label={copy.documentsTab}>
       {#if documentsState.kind === 'loading'}
-        <div class="documents-skeleton" role="status" aria-live="polite" aria-busy="true" aria-label={copy.loading}>
+        <div role="status" aria-live="polite" aria-busy="true" aria-label={copy.loading}>
           <Card>
-            <div class="panel-body">
+            <div class={panelBody}>
               <SectionHeader icon={FileText} title={copy.documentsTab} level={3} />
 
-              <div class="documents-list">
+              <div class={documentsList}>
                 {#each Array(3) as _, index (index)}
-                  <div class="document-card">
+                  <div class={documentCard}>
                     <Skeleton shape="circle" width="2.75rem" height="2.75rem" />
-                    <div class="document-skeleton-copy">
-                      <div class="document-tags-skeleton">
+                    <div class="flex min-w-0 flex-1 flex-col gap-2">
+                      <div class="flex items-center gap-2">
                         <Skeleton shape="block" width="4.5rem" height="1.45rem" />
                         <Skeleton shape="block" width="2.5rem" height="1.45rem" />
                       </div>
@@ -572,7 +620,11 @@
         )}
 
         {#if downloadError}
-          <p class="inline-alert" role="alert">
+          <p
+            class="flex items-center gap-2 rounded-md bg-danger-surface px-3 py-2 text-sm
+                   font-semibold text-danger-strong"
+            role="alert"
+          >
             <AlertCircle size={16} aria-hidden="true" />
             <span>{copy.downloadError}</span>
           </p>
@@ -587,7 +639,7 @@
           />
         {:else}
           <Card>
-            <div class="panel-body">
+            <div class={panelBody}>
               <SectionHeader
                 icon={FileText}
                 title={copy.documentsTab}
@@ -595,30 +647,34 @@
                 level={3}
               />
 
-              <div class="documents-list">
+              <div class={documentsList}>
                 {#each documentsState.page.documents as doc (doc.requestPath)}
                   {@const DocIcon = documentIcon(doc.kind)}
                   {@const tone = documentTone(doc.kind)}
                   {@const busy = downloadingPath === doc.requestPath}
-                  <article class="document-card">
+                  <article class={cn(documentCard, 'hover:bg-muted')}>
                     <span
-                      class="document-icon"
-                      class:tone-accent={tone === 'accent'}
-                      class:tone-success={tone === 'success'}
-                      class:tone-neutral={tone === 'neutral'}
+                      class={cn(
+                        'grid size-11 flex-none place-items-center rounded-md',
+                        documentTones[tone]
+                      )}
                       aria-hidden="true"
                     >
                       <DocIcon size={21} />
                     </span>
 
-                    <div class="document-meta">
-                      <div class="document-tags">
+                    <div class="flex min-w-0 flex-1 flex-col gap-1">
+                      <div class="flex flex-wrap gap-1">
                         <Badge {tone}>{documentKindLabel(doc.kind)}</Badge>
                         <Badge>PDF</Badge>
                       </div>
-                      <h4 class="document-label">{doc.label}</h4>
+                      <h4 class="text-base leading-[1.3] font-bold wrap-anywhere text-foreground"
+                        >{doc.label}</h4
+                      >
                       {#if doc.suggestedFilename}
-                        <p class="document-filename">{doc.suggestedFilename}</p>
+                        <p class="truncate text-xs text-muted-foreground"
+                          >{doc.suggestedFilename}</p
+                        >
                       {/if}
                     </div>
 
@@ -638,7 +694,7 @@
       {/if}
     </div>
   {:else if activeTab === 'questionnaires'}
-    <div class="tab-panel" role="tabpanel" aria-label={copy.questionnairesTab}>
+    <div class={tabPanel} role="tabpanel" aria-label={copy.questionnairesTab}>
       <QuestionnairesView {locale} {onLogout} bind:refresh={questionnairesRefresh} />
     </div>
   {/if}
@@ -652,13 +708,18 @@
       if (!isLoggingOut) logoutDialogOpen = false;
     }}
   >
-    <div class="logout-dialog">
-      <span class="logout-dialog-icon" aria-hidden="true"><LogOut size={22} /></span>
-      <div class="logout-dialog-copy">
-        <h2>{copy.logoutConfirmTitle}</h2>
-        <p>{copy.logoutConfirmDescription}</p>
+    <div class="grid grid-cols-[auto_1fr] gap-4 p-5">
+      <span
+        class="grid size-11 place-items-center rounded-md bg-danger-surface text-danger-strong"
+        aria-hidden="true"><LogOut size={22} /></span
+      >
+      <div>
+        <h2 class="text-xl leading-[1.25] font-extrabold">{copy.logoutConfirmTitle}</h2>
+        <p class="mt-2 text-base leading-[1.5] text-muted-foreground"
+          >{copy.logoutConfirmDescription}</p
+        >
       </div>
-      <div class="logout-dialog-actions">
+      <div class="col-span-full grid grid-cols-1 gap-2 min-[30rem]:grid-cols-2">
         <Button variant="outline" block disabled={isLoggingOut} onclick={() => (logoutDialogOpen = false)}>
           {copy.cancel}
         </Button>
@@ -672,117 +733,11 @@
 {/if}
 
 <style>
-  .tab-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    min-width: 0;
-    animation: fade-in var(--duration-normal) var(--ease-out);
-  }
-
-  .sync-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-3);
-  }
-
-  /* Panels are `Card`; this only supplies the inner rhythm. */
-  .panel-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    min-width: 0;
-  }
-
-  .panel-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-
-  .identity-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-5) var(--space-4);
-    background: var(--muted);
-    border-radius: var(--radius-xl);
-  }
-
-  .identity-name {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    overflow-wrap: anywhere;
-  }
-
-  .identity-school {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0;
-    color: var(--primary-deep);
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-    min-width: 0;
-  }
-
-  .identity-school :global(svg) {
-    flex: 0 0 auto;
-  }
-
-  .identity-school span {
-    overflow-wrap: anywhere;
-  }
-
-  /* Field lists */
-  .fields-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    margin: 0;
-  }
-
-  .field-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    padding: var(--space-2) var(--space-3);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-md);
-  }
-
-  .field-row dt {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .field-row dd {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-medium);
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
-  }
-
   /* Portal tables. The base layout is the small-screen card fallback: every cell
-     carries its own header, and the real table only assembles once there is room. */
-  .table-panel {
-    padding: var(--space-4);
-  }
-
-  .portal-table-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
+     carries its own header, and the real table only assembles once there is
+     room. Switching a table's own display model means rewriting table, thead,
+     tbody, tr, td and th together, so it stays one block of CSS rather than a
+     class on every cell — and `.cell-label` is part of the same mechanism. */
   .portal-table {
     display: block;
     width: 100%;
@@ -826,258 +781,7 @@
     font-weight: var(--weight-bold);
   }
 
-  .cell-value {
-    color: var(--foreground);
-    font-weight: var(--weight-medium);
-    font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
-  }
-
-  /* Documents */
-  .documents-list {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-
-  .document-card {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-width: 0;
-    padding: var(--space-3);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-lg);
-    transition: background-color var(--duration-fast) var(--ease-out);
-  }
-
-  .document-icon {
-    display: grid;
-    width: 2.75rem;
-    height: 2.75rem;
-    flex: 0 0 2.75rem;
-    place-items: center;
-    border-radius: var(--radius-md);
-  }
-
-  .document-icon.tone-accent {
-    color: var(--primary-deep);
-    background: var(--muted);
-  }
-
-  .document-icon.tone-success {
-    color: var(--success-strong);
-    background: var(--success-surface);
-  }
-
-  .document-icon.tone-neutral {
-    color: var(--muted-foreground);
-    background: var(--card);
-  }
-
-  .document-meta {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 0;
-    flex: 1;
-  }
-
-  .document-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-
-  .document-label {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-    overflow-wrap: anywhere;
-  }
-
-  .document-filename {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .language-setting {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    min-width: 0;
-  }
-
-  .language-copy {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-    width: 100%;
-  }
-
-  .language-icon {
-    display: grid;
-    width: 2rem;
-    height: 2rem;
-    flex: 0 0 2rem;
-    place-items: center;
-    color: var(--primary-deep);
-    background: var(--muted);
-    border-radius: var(--radius-sm);
-  }
-
-  .language-copy label {
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-  }
-
-  .language-setting select {
-    width: 100%;
-    min-height: var(--tap-min);
-    padding: 0 var(--space-8) 0 var(--space-3);
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font: inherit;
-    font-weight: var(--weight-semibold);
-  }
-
-  .language-setting select:disabled {
-    opacity: 0.62;
-  }
-
-  .logout-section {
-    margin-top: var(--space-4);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .logout-dialog {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-4);
-    padding: var(--space-5);
-  }
-
-  .logout-dialog-icon {
-    display: grid;
-    width: 2.75rem;
-    height: 2.75rem;
-    place-items: center;
-    color: var(--danger-strong);
-    background: var(--danger-surface);
-    border-radius: var(--radius-md);
-  }
-
-  .logout-dialog-copy h2 {
-    margin: 0;
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    line-height: 1.25;
-  }
-
-  .logout-dialog-copy p {
-    margin: var(--space-2) 0 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-base);
-    line-height: 1.5;
-  }
-
-  .logout-dialog-actions {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-template-columns: 1fr;
-    gap: var(--space-2);
-  }
-
-  @media (min-width: 30rem) {
-    .language-setting {
-      flex-direction: row;
-    }
-
-    .language-copy {
-      width: auto;
-    }
-
-    .language-setting select {
-      width: auto;
-      min-width: 9.5rem;
-    }
-
-    .logout-dialog-actions {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  /* Inline messages */
-  .inline-alert {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  .inline-alert {
-    color: var(--danger-strong);
-    background: var(--danger-surface);
-  }
-
-  /* Loading */
-  .document-skeleton-copy {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    flex: 1;
-    min-width: 0;
-  }
-
-  .document-tags-skeleton {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
   @media (min-width: 48rem) {
-    .identity-card {
-      padding: var(--space-6) var(--space-5);
-    }
-
-    .panel-grid {
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-    }
-
-    .fields-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr));
-      gap: var(--space-2);
-    }
-
-    .documents-list {
-      grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
-    }
-
-    .table-panel {
-      padding: var(--space-5) 0 0;
-    }
-
-    .table-panel :global(.ui-section-header) {
-      padding: 0 var(--space-5);
-    }
-
     .portal-table {
       display: table;
     }
@@ -1126,10 +830,6 @@
   }
 
   @media (hover: hover) {
-    .document-card:hover {
-      background: var(--muted);
-    }
-
     .portal-table tbody tr:hover td {
       background: var(--surface-sunken);
     }
