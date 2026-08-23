@@ -18,6 +18,8 @@
    the legacy .desktop-only / .mobile-only pair below stays as it is. */
 @custom-variant app-desktop (&:where(html.desktop-app *));
 @custom-variant app-mobile (&:where(html.mobile-app *));
+@custom-variant app-windowed (&:where(html.desktop-app:not(.window-maximized) *));
+@custom-variant app-maximized (&:where(html.desktop-app.window-maximized *));
 
 /* Inter ships with the app: a Tauri client has no CDN to fall back on, and the
    variable weight axis is what makes the 500/600/700/800 steps below real. */
@@ -441,6 +443,15 @@
   --color-warning-line: color-mix(in oklch, var(--warning) 30%, var(--border-subtle));
   --color-danger-veil: color-mix(in oklch, var(--danger-surface) 45%, var(--card));
   --color-danger-line: color-mix(in oklch, var(--danger) 30%, var(--border-subtle));
+
+  /* Window chrome. The bar is translucent over the desktop, so its surfaces are
+     the palette thinned rather than a colour of their own, and the two ink
+     washes are the neutral hover/press states the OS controls use. */
+  --color-chrome-veil: color-mix(in oklch, var(--background) 85%, transparent);
+  --color-chrome-pill: color-mix(in oklch, var(--card) 70%, transparent);
+  --color-window-edge: color-mix(in oklch, var(--border) 60%, transparent);
+  --color-ink-wash: color-mix(in oklch, var(--foreground) 8%, transparent);
+  --color-ink-wash-strong: color-mix(in oklch, var(--foreground) 14%, transparent);
 }
 
 /* Everything below is global, so it has to be layered. Unlayered CSS wins over
@@ -580,6 +591,16 @@ html.desktop-app .mobile-only {
    step, the press scale on the instant one. A utility cannot give one property
    its own duration, so this is a utility rather than a class list. Note it
    transitions `scale`, not `transform` — that is the property `scale-*` writes. */
+/* Tauri reads these to decide which parts of the window chrome move the window
+   and which stay clickable. There is no utility for a vendor-only property. */
+@utility drag-region {
+  -webkit-app-region: drag;
+}
+
+@utility no-drag-region {
+  -webkit-app-region: no-drag;
+}
+
 @utility transition-control {
   transition:
     color var(--duration-fast) var(--ease-out),

@@ -3,6 +3,7 @@
   import { isTauri } from '@tauri-apps/api/core';
   import Logo from '$lib/assets/Logo.svelte';
   import * as m from '$lib/paraglide/messages.js';
+  import { cn } from '$lib/utils';
 
   let isDesktop = $state(false);
   let isMac = $state(false);
@@ -10,6 +11,31 @@
   let isLinux = $state(false);
   let isMaximized = $state(false);
   let isTrafficHovered = $state(false);
+
+  const bar = 'relative inset-x-0 top-0 z-titlebar flex h-[36px] shrink-0 items-center select-none cursor-default';
+
+  const light =
+    'grid size-[12px] place-items-center rounded-full border-[0.5px] p-0 cursor-pointer no-drag-region' +
+    ' transition-transform duration-instant ease-out active:scale-(--press-scale)';
+
+  // `leading-none` keeps the label inside the fixed 36px band even when the
+  // user has raised the system font size. `--primary` is a fill token that
+  // only clears 2.28:1 on white, so the brand accent takes the deep step.
+  const brandTitle = 'text-2xs leading-none font-bold tracking-[-0.01em] text-foreground';
+
+  // 46 x 36px is the Fluent window control geometry, 38px the narrower
+  // GNOME/Adwaita one. Both sit under the 44px `--tap-min` floor on one axis,
+  // and that is deliberate: window chrome is pointer-only, and widening these
+  // would misalign the app from every other window on the desktop.
+  const controlBtn = $derived(
+    cn(
+      'flex h-full items-center justify-center bg-transparent text-foreground',
+      'rounded-none no-drag-region cursor-pointer',
+      'transition-[background-color,color] duration-fast ease-out',
+      'hover:bg-ink-wash active:bg-ink-wash-strong',
+      isLinux ? 'w-[38px]' : 'w-[46px]'
+    )
+  );
 
   let appWindow: any = null;
 
@@ -143,20 +169,32 @@
 {#if isDesktop}
   {#if isMac}
     <!-- ==================== macOS Titlebar ==================== -->
-    <header class="titlebar titlebar-macos">
-      <!-- macOS Traffic Lights. The glyph strokes below carry Apple's own
-           darkened traffic-light tints: they are OS convention, not product
-           palette, so they stay literal. -->
+    <!-- 36px is the window chrome band the OS reserves for us, mirrored into
+         '--titlebar-height' from script. It is device geometry, not a spacing
+         step, so it stays in px and must not scale with the root font size. -->
+    <header
+      class="{bar} justify-between border-b border-border-subtle bg-chrome-veil px-3
+             backdrop-blur-[20px]"
+    >
+      <!-- macOS Traffic Lights. 64px mirrors the right-hand spacer so the brand
+           pill lands optically centred; both track the lights' fixed 12px
+           geometry, so a rem value here would drift under font scaling. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
-        class="macos-traffic-lights"
+        class="no-drag-region flex w-[64px] items-center gap-2"
         onmouseenter={() => (isTrafficHovered = true)}
         onmouseleave={() => (isTrafficHovered = false)}
         onmousedown={(e) => e.stopPropagation()}
       >
+        <!-- 12px circles sit below the 44px '--tap-min' floor on purpose: these
+             are a recognised OS control, and enlarging them would break the
+             alignment users read the window frame by. The 0.5px rim is Apple's
+             hairline \u2014 a full pixel reads as a hard outline on a HiDPI panel.
+             The hues and the glyph strokes are Apple's own, so they stay
+             literal rather than taking the product palette. -->
         <button
           type="button"
-          class="traffic-btn traffic-close"
+          class="{light} border-[#E0443E] bg-[#FF5F56]"
           title={m.close()}
           aria-label={m.close()}
           onmousedown={(e) => e.stopPropagation()}
@@ -171,7 +209,7 @@
 
         <button
           type="button"
-          class="traffic-btn traffic-minimize"
+          class="{light} border-[#DEA123] bg-[#FFBD2E]"
           title={m.window_minimize()}
           aria-label={m.window_minimize()}
           onmousedown={(e) => e.stopPropagation()}
@@ -186,7 +224,7 @@
 
         <button
           type="button"
-          class="traffic-btn traffic-maximize"
+          class="{light} border-[#1AAB29] bg-[#27C93F]"
           title={m.window_fullscreen()}
           aria-label={m.window_fullscreen()}
           onmousedown={(e) => e.stopPropagation()}
@@ -200,43 +238,53 @@
         </button>
       </div>
 
-      <!-- Center Brand Pill -->
+      <!-- Center Brand Pill. Border only, no shadow: elevation is declared once,
+           and a translucent bar over the desktop cannot carry a credible cast
+           shadow anyway. -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
-        class="macos-center-drag"
+        class="drag-region flex h-full grow items-center justify-center"
         data-tauri-drag-region
         role="presentation"
         ondblclick={handleToggleMaximize}
       >
-        <div class="macos-brand-pill" data-tauri-drag-region>
+        <div
+          class="drag-region inline-flex items-center gap-2 rounded-pill border
+                 border-border-subtle bg-chrome-pill px-3 py-1"
+          data-tauri-drag-region
+        >
           <Logo size={14} variant="mark" />
-          <span class="macos-brand-title" data-tauri-drag-region>Better<span class="brand-accent">Aimaira</span></span>
+          <!-- 'leading-none' keeps the label inside the fixed 36px band even
+               when the user has raised the system font size. -->
+          <span class="{brandTitle} drag-region" data-tauri-drag-region
+            >Better<span class="text-primary-deep">Aimaira</span></span
+          >
         </div>
       </div>
 
-      <div class="macos-right-spacer" data-tauri-drag-region></div>
+      <div class="drag-region w-[64px]" data-tauri-drag-region></div>
     </header>
   {:else}
     <!-- ==================== Windows & Linux Titlebar ==================== -->
-    <header class="titlebar titlebar-windows" class:titlebar-linux={isLinux}>
+    <header class="{bar} justify-between border-b border-border-subtle bg-background pl-3">
       <!-- Left: Logo & Brand Lockup -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
-        class="win-brand-lockup"
+        class="drag-region flex h-full shrink-0 items-center gap-2"
         data-tauri-drag-region
         role="presentation"
         ondblclick={handleToggleMaximize}
       >
         <Logo size={16} variant="mark" />
-        <span class="win-brand-title" data-tauri-drag-region>
-          Better<span class="brand-accent">Aimaira</span>
+        <span class="{brandTitle} drag-region" data-tauri-drag-region>
+          Better<span class="text-primary-deep">Aimaira</span>
         </span>
       </div>
 
       <!-- Center: Drag Space -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
-        class="win-drag-space"
+        class="drag-region h-full grow"
         data-tauri-drag-region
         role="presentation"
         ondblclick={handleToggleMaximize}
@@ -244,12 +292,16 @@
 
       <!-- Right: Modern Window Controls (Flush, precise hit targets) -->
       <!-- The buttons fill this cluster edge to edge and each stops mousedown
-           itself, and `-webkit-app-region: no-drag` already covers the box, so
-           the group needs no listener of its own. -->
-      <div class="win-controls-cluster" role="group" aria-label={m.window_controls()}>
+           itself, and 'no-drag-region' already covers the box, so the group
+           needs no listener of its own. -->
+      <div
+        class="no-drag-region flex h-full shrink-0 items-stretch"
+        role="group"
+        aria-label={m.window_controls()}
+      >
         <button
           type="button"
-          class="win-action-btn win-min-btn"
+          class={controlBtn}
           title={m.window_minimize()}
           aria-label={m.window_minimize()}
           onmousedown={(e) => e.stopPropagation()}
@@ -262,7 +314,7 @@
 
         <button
           type="button"
-          class="win-action-btn win-max-btn"
+          class={controlBtn}
           title={isMaximized ? m.window_restore() : m.window_maximize()}
           aria-label={isMaximized ? m.window_restore() : m.window_maximize()}
           onmousedown={(e) => e.stopPropagation()}
@@ -280,9 +332,16 @@
           {/if}
         </button>
 
+        <!-- Microsoft's Fluent close-button reds, with the white glyph that
+             pairs with them. This is the one control every Windows user expects
+             to turn red, so the pair stays literal instead of taking the
+             product palette. -->
         <button
           type="button"
-          class="win-action-btn win-close-btn"
+          class={cn(
+            controlBtn,
+            'hover:bg-[#e81123] hover:text-white active:bg-[#c70f1e] active:text-white'
+          )}
           title={m.close()}
           aria-label={m.close()}
           onmousedown={(e) => e.stopPropagation()}
@@ -296,226 +355,3 @@
     </header>
   {/if}
 {/if}
-
-<style>
-  /* 36px is the window chrome band the OS reserves for us, mirrored into
-     `--titlebar-height` from script. It is device geometry, not a spacing step,
-     so it stays in px and does not scale with the root font size. */
-  .titlebar {
-    position: relative;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: var(--z-titlebar);
-    height: 36px;
-    display: flex;
-    align-items: center;
-    user-select: none;
-    -webkit-user-select: none;
-    cursor: default;
-    box-sizing: border-box;
-    flex-shrink: 0;
-  }
-
-  /* `--primary` is a fill token that only clears 2.28:1 on white; the brand
-     accent here is text, so it takes the deep step. */
-  .brand-accent {
-    color: var(--primary-deep);
-  }
-
-  /* ---------------- MacOS Modern Titlebar ---------------- */
-  .titlebar-macos {
-    padding: 0 var(--space-3);
-    background: color-mix(in oklch, var(--background) 85%, transparent);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid var(--border-subtle);
-    justify-content: space-between;
-  }
-
-  /* 64px mirrors `.macos-right-spacer` so the brand pill lands optically
-     centred. Both track the traffic lights' fixed 12px geometry, so a rem
-     value here would drift off-centre under root font scaling. */
-  .macos-traffic-lights {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    width: 64px;
-    -webkit-app-region: no-drag;
-  }
-
-  /* 12px circles below the 44px `--tap-min` floor on purpose: macOS traffic
-     lights are a recognised OS control and enlarging them would break the
-     alignment users read the window frame by. The 0.5px rim is the hairline
-     Apple draws — a full pixel reads as a hard outline on a HiDPI panel. */
-  .traffic-btn {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 0.5px solid transparent;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    cursor: pointer;
-    -webkit-app-region: no-drag;
-    transition: transform var(--duration-instant) var(--ease-out), filter var(--duration-fast) var(--ease-out);
-  }
-
-  .traffic-btn:active {
-    transform: scale(var(--press-scale));
-  }
-
-  /* Apple's traffic light hues, glyph tints included. Users identify the window
-     controls by these exact colours, so they are OS convention rather than
-     product palette and must not be tokenised. */
-  .traffic-close {
-    background: #FF5F56;
-    border-color: #E0443E;
-  }
-
-  .traffic-minimize {
-    background: #FFBD2E;
-    border-color: #DEA123;
-  }
-
-  .traffic-maximize {
-    background: #27C93F;
-    border-color: #1AAB29;
-  }
-
-  .macos-center-drag {
-    flex-grow: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    -webkit-app-region: drag;
-  }
-
-  /* Border only, no shadow: elevation is declared once, and a translucent bar
-     over the desktop cannot carry a credible cast shadow anyway. */
-  .macos-brand-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-pill);
-    background: color-mix(in oklch, var(--card) 70%, transparent);
-    border: 1px solid var(--border-subtle);
-    -webkit-app-region: drag;
-  }
-
-  /* `line-height: 1` keeps the label inside the fixed 36px band even when the
-     user has raised the system font size. */
-  .macos-brand-title {
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    line-height: 1;
-    letter-spacing: -0.01em;
-    color: var(--foreground);
-    -webkit-app-region: drag;
-  }
-
-  .macos-right-spacer {
-    width: 64px;
-    -webkit-app-region: drag;
-  }
-
-  /* ---------------- Windows Modern Titlebar (Seamless & Flush) ---------------- */
-  .titlebar-windows {
-    padding-left: var(--space-3);
-    background: var(--background);
-    border-bottom: 1px solid var(--border-subtle);
-    justify-content: space-between;
-  }
-
-  .win-brand-lockup {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-shrink: 0;
-    height: 100%;
-    -webkit-app-region: drag;
-  }
-
-  .win-brand-title {
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    line-height: 1;
-    letter-spacing: -0.01em;
-    color: var(--foreground);
-    -webkit-app-region: drag;
-  }
-
-  .win-drag-space {
-    flex-grow: 1;
-    height: 100%;
-    -webkit-app-region: drag;
-  }
-
-  .win-controls-cluster {
-    display: flex;
-    align-items: stretch;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    gap: 0;
-    flex-shrink: 0;
-    -webkit-app-region: no-drag;
-  }
-
-  /* 46 x 36px is the Fluent window control geometry. It is under the 44px
-     `--tap-min` floor on one axis, and that is deliberate: window chrome is
-     pointer-only, and widening these buttons would misalign the app from every
-     other window on the desktop. */
-  .win-action-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 46px;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    color: var(--foreground);
-    cursor: pointer;
-    -webkit-app-region: no-drag;
-    transition: background-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) {
-    .win-action-btn:hover {
-      background: color-mix(in oklch, var(--foreground) 8%, transparent);
-    }
-  }
-
-  .win-action-btn:active {
-    background: color-mix(in oklch, var(--foreground) 14%, transparent);
-  }
-
-  /* Microsoft's Fluent close-button reds, with the white glyph that pairs with
-     them. This is the one control every Windows user expects to turn red, so
-     the pair stays literal instead of taking the product palette. Declared
-     after the shared `:hover` / `:active` rules above so it wins on order
-     without `!important`. */
-  @media (hover: hover) {
-    .win-close-btn:hover {
-      background: #e81123;
-      color: #ffffff;
-    }
-  }
-
-  .win-close-btn:active {
-    background: #c70f1e;
-    color: #ffffff;
-  }
-
-  /* ---------------- Linux Window Controls ---------------- */
-  /* Narrower than Fluent: GNOME/Adwaita header bar buttons are ~38px, and the
-     same OS-alignment argument as `.win-action-btn` applies. */
-  .titlebar-linux .win-action-btn {
-    width: 38px;
-  }
-</style>
