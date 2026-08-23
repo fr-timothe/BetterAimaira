@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
+  import { cn } from '$lib/utils';
 
   type Props = {
     /** Accessible name for the panel — normally the view's own heading. */
@@ -143,10 +144,30 @@
   const lastTone = $derived(gradientStops.at(-1)?.tone ?? 'flat');
 
   const gradientId = $props.id();
+
+  const labelInk = $derived(
+    isPresenceActive ? 'text-[hsl(var(--presence-hue)_70%_28%)]' : 'text-primary-deep'
+  );
+  const unitInk = $derived(
+    isPresenceActive ? 'text-[hsl(var(--presence-hue)_70%_32%)]' : 'text-primary-deep'
+  );
+  const heroMetrics =
+    'mt-3 grid w-full max-w-[38rem] items-stretch justify-center gap-2' +
+    ' grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))]';
+
+  const markerInk = $derived(
+    lastTone === 'up' ? 'bg-success-strong' : lastTone === 'down' ? 'bg-danger-strong' : 'bg-primary-deep'
+  );
 </script>
 
+<!-- One hero for every scalar headline in the app. Elevation is the colour
+     field alone — no border and no shadow under the same surface. -->
 <section
-  class="hero-stat"
+  class={cn(
+    'hero-stat relative overflow-hidden rounded-xl bg-muted px-4 py-5',
+    'transition-[background,border-color,box-shadow] duration-normal ease-out',
+    'md:px-5 md:pt-6 md:pb-5'
+  )}
   class:has-presence={isPresenceActive}
   style={presenceStyle}
   aria-label={loading ? loadingLabel : ariaLabel}
@@ -194,9 +215,11 @@
       <!-- The plot is stretched to the panel, so the head of the curve is marked
            in layout space to stay round. -->
       <span
-        class="hero-marker"
-        class:is-up={lastTone === 'up'}
-        class:is-down={lastTone === 'down'}
+        class={cn(
+          'absolute z-raised size-[0.7rem] -translate-x-1/2 -translate-y-1/2 rounded-full',
+          'border-[3px] border-card pointer-events-none',
+          markerInk
+        )}
         style:left="{(lastPoint.x / VIEWBOX_WIDTH) * 100}%"
         style:top="{(lastPoint.y / VIEWBOX_HEIGHT) * 100}%"
         aria-hidden="true"
@@ -204,46 +227,39 @@
     {/if}
   {/if}
 
-  <div class="hero-inner">
+  <div class="relative z-raised flex flex-col items-center gap-2 text-center">
     {#if loading}
       <Skeleton shape="block" width="6rem" height="1.5rem" />
       <Skeleton shape="block" width="10rem" height="3.2rem" />
-      <div class="hero-metrics">
+      <div class={heroMetrics}>
         {#each Array(loadingMetricCount) as _, index (index)}
           <Skeleton shape="block" height="2.75rem" />
         {/each}
       </div>
     {:else}
-      <div class="hero-top">
+      <div class="flex flex-col items-center gap-2">
         {#if badge}{@render badge()}{/if}
-        <span class="hero-label">{label}</span>
+        <span class={cn('text-base font-semibold', labelInk)}>{label}</span>
       </div>
 
-      <p class="hero-value">{value}{#if unit}<small>{unit}</small>{/if}</p>
+      <p
+        class="text-[clamp(var(--text-3xl),6vw,var(--text-4xl))] leading-none font-extrabold
+               tracking-[-0.02em] tabular-nums text-foreground"
+      >{value}{#if unit}<small class={cn('ml-[0.15rem] text-lg leading-[1] font-semibold', unitInk)}
+          >{unit}</small
+        >{/if}</p>
 
       {#if metrics}
-        <div class="hero-metrics">{@render metrics()}</div>
+        <div class={heroMetrics}>{@render metrics()}</div>
       {/if}
     {/if}
   </div>
 </section>
 
 <style>
-  /* One hero for every scalar headline in the app. Elevation is the colour
-     field alone — no border and no shadow under the same surface. */
-  .hero-stat {
-    position: relative;
-    overflow: hidden;
-    padding: var(--space-5) var(--space-4);
-    background: var(--muted);
-    border-radius: var(--radius-xl);
-    transition:
-      background var(--duration-normal) var(--ease-out),
-      border-color var(--duration-normal) var(--ease-out),
-      box-shadow var(--duration-normal) var(--ease-out);
-  }
-
-  /* Adaptive Presence Card: red at 0%, amber/yellow at 50%, green at 100% */
+  /* Adaptive presence field: red at 0%, amber at 50%, green at 100%. Three
+     stacked gradients over one hue channel that `presenceColorStyle()` sets
+     inline — as an arbitrary value this would hide the --presence-hue contract. */
   .hero-stat.has-presence {
     background:
       radial-gradient(
@@ -274,67 +290,11 @@
     stroke: var(--card);
   }
 
-  .hero-stat.has-presence .hero-label {
-    color: hsl(var(--presence-hue) 70% 28%);
-  }
-
-  .hero-stat.has-presence .hero-value small {
-    color: hsl(var(--presence-hue) 70% 32%);
-  }
-
+  /* HeroMetric's own root, tinted to sit on the presence field. */
   .hero-stat.has-presence :global(.hero-metric) {
     background: color-mix(in oklch, var(--card) 82%, transparent);
     backdrop-filter: blur(8px);
     border: 1px solid hsl(var(--presence-hue) 50% 50% / 0.18);
-  }
-
-  :global([data-theme="dark"]) .hero-stat.has-presence,
-  :global(.dark) .hero-stat.has-presence {
-    background:
-      radial-gradient(
-        ellipse 90% 75% at 50% -15%,
-        hsl(var(--presence-hue) 85% 50% / 0.28) 0%,
-        transparent 70%
-      ),
-      radial-gradient(
-        ellipse 70% 50% at 100% 100%,
-        hsl(var(--presence-hue) 75% 45% / 0.18) 0%,
-        transparent 65%
-      ),
-      linear-gradient(
-        155deg,
-        hsl(var(--presence-hue) 45% 15% / 0.95) 0%,
-        hsl(var(--presence-hue) 40% 10% / 0.9) 100%
-      );
-    border: 1px solid hsl(var(--presence-hue) 60% 50% / 0.32);
-    box-shadow: 0 4px 24px -2px hsl(var(--presence-hue) 70% 30% / 0.25);
-  }
-
-  :global([data-theme="dark"]) .hero-stat.has-presence .hero-curve path,
-  :global(.dark) .hero-stat.has-presence .hero-curve path {
-    stroke: hsl(var(--presence-hue) 75% 65%);
-  }
-
-  :global([data-theme="dark"]) .hero-stat.has-presence .hero-curve circle,
-  :global(.dark) .hero-stat.has-presence .hero-curve circle {
-    fill: hsl(var(--presence-hue) 75% 65%);
-    stroke: hsl(var(--presence-hue) 40% 12%);
-  }
-
-  :global([data-theme="dark"]) .hero-stat.has-presence .hero-label,
-  :global(.dark) .hero-stat.has-presence .hero-label {
-    color: hsl(var(--presence-hue) 80% 75%);
-  }
-
-  :global([data-theme="dark"]) .hero-stat.has-presence .hero-value small,
-  :global(.dark) .hero-stat.has-presence .hero-value small {
-    color: hsl(var(--presence-hue) 80% 70%);
-  }
-
-  :global([data-theme="dark"]) .hero-stat.has-presence :global(.hero-metric),
-  :global(.dark) .hero-stat.has-presence :global(.hero-metric) {
-    background: color-mix(in oklch, var(--card) 60%, transparent);
-    border-color: hsl(var(--presence-hue) 60% 60% / 0.22);
   }
 
   /* Decorative signal line. `--primary` is a fill token and never a stroke, so
@@ -370,8 +330,15 @@
     stroke-width: 3;
   }
 
+  .hero-curve circle {
+    fill: var(--primary-deep);
+    stroke: var(--card);
+    stroke-width: 4;
+  }
+
   /* Slope colours. Green rewards a rising run, red flags a falling one; a flat
-     run stays on the neutral line colour so only real movement is coloured. */
+     run stays on the neutral line colour so only real movement is coloured.
+     `stop-color` on a generated <stop> has no utility equivalent. */
   .stop-up {
     stop-color: var(--success);
   }
@@ -382,88 +349,5 @@
 
   .stop-flat {
     stop-color: var(--primary-deep);
-  }
-
-  .hero-marker {
-    position: absolute;
-    z-index: var(--z-raised);
-    width: 0.7rem;
-    height: 0.7rem;
-    background: var(--primary-deep);
-    border: 3px solid var(--card);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-  }
-
-  .hero-marker.is-up {
-    background: var(--success-strong);
-  }
-
-  .hero-marker.is-down {
-    background: var(--danger-strong);
-  }
-
-  .hero-curve circle {
-    fill: var(--primary-deep);
-    stroke: var(--card);
-    stroke-width: 4;
-  }
-
-  .hero-inner {
-    position: relative;
-    z-index: var(--z-raised);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-    text-align: center;
-  }
-
-  .hero-top {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .hero-label {
-    color: var(--primary-deep);
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-  }
-
-  .hero-value {
-    margin: 0;
-    color: var(--foreground);
-    font-size: clamp(var(--text-3xl), 6vw, var(--text-4xl));
-    font-variant-numeric: tabular-nums;
-    font-weight: var(--weight-heavy);
-    line-height: 1;
-    letter-spacing: -0.02em;
-  }
-
-  .hero-value small {
-    margin-left: 0.15rem;
-    color: var(--primary-deep);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-  }
-
-  .hero-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 7rem), 1fr));
-    align-items: stretch;
-    justify-content: center;
-    gap: var(--space-2);
-    width: 100%;
-    max-width: 38rem;
-    margin-top: var(--space-3);
-  }
-
-  @media (min-width: 48rem) {
-    .hero-stat {
-      padding: var(--space-6) var(--space-5) var(--space-5);
-    }
   }
 </style>
