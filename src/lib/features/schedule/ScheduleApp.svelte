@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { invoke, isTauri } from "@tauri-apps/api/core";
+  import { invoke, isTauri } from "$lib/invoke";
   import {
     AlertCircle,
     BookOpenCheck,

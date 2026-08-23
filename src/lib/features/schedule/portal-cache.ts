@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '$lib/invoke';
 import type { PortalPage, PortalResource } from './types';
 
 const CACHE_TTL_MS = 5 * 60_000;
