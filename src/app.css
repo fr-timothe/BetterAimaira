@@ -465,6 +465,7 @@
   --color-warning-line: color-mix(in oklch, var(--warning) 30%, var(--border-subtle));
   --color-danger-veil: color-mix(in oklch, var(--danger-surface) 45%, var(--card));
   --color-danger-line: color-mix(in oklch, var(--danger) 30%, var(--border-subtle));
+  --color-warning-edge: color-mix(in oklch, var(--warning) 34%, transparent);
 
   /* Window chrome. The bar is translucent over the desktop, so its surfaces are
      the palette thinned rather than a colour of their own, and the two ink

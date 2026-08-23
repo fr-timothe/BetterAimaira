@@ -28,6 +28,7 @@
     parseRoomAndTeacher,
   } from './course-utils';
   import type { CalendarEvent } from './types';
+  import { cn } from '$lib/utils';
 
   type Props = {
     event: CalendarEvent | null;
@@ -96,13 +97,21 @@
     }
     await openExternalUrl(event.tempoUrl);
   }
+  // A sunken field rather than a bordered white box: the sheet panel is already
+  // `--card`, and a card inside a card only ever reads as a ghost.
+  const cell = 'flex min-w-0 items-center gap-3';
+  const detailCell = cell + ' rounded-lg bg-surface-sunken p-3';
+  const plate = 'grid shrink-0 place-items-center bg-muted text-primary-deep';
+  const cellLabel =
+    'mb-1 block text-2xs font-semibold tracking-[0.03em] uppercase text-muted-foreground';
+  const cellValue = 'text-base font-bold wrap-anywhere text-foreground';
 </script>
 
 {#if event}
   <Sheet title={m.course_details_title()} closeLabel={m.close()} {onClose} placement="center">
-    <div class="course-detail">
-      <div class="detail-header">
-        <div class="detail-tags">
+    <div class="flex flex-col gap-4 p-4 md:gap-5 md:p-6">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2 pt-2">
           {#if eventStatus === 'live'}
             <Badge tone="live" dot>{m.schedule_status_live()}</Badge>
           {:else if eventStatus === 'upcoming'}
@@ -123,62 +132,75 @@
         </IconButton>
       </div>
 
-      <div class="detail-title-block">
-        <h2>{courseTitle}</h2>
+      <div>
+        <h2
+          class="mb-1 text-xl leading-[1.25] font-extrabold tracking-[-0.01em] text-balance
+                 text-foreground md:text-2xl"
+        >{courseTitle}</h2>
         {#if courseSecondary}
-          <p>{courseSecondary}</p>
+          <p class="text-base leading-[1.45] text-muted-foreground">{courseSecondary}</p>
         {/if}
       </div>
 
-      <div class="schedule-box">
-        <div class="schedule-row">
-          <span class="icon-plate"><Calendar size={18} aria-hidden="true" /></span>
+      <div
+        class="grid grid-cols-1 gap-3 rounded-lg border border-border-subtle bg-surface-sunken p-4
+               md:grid-cols-[1fr_auto_1fr] md:items-center md:p-5"
+      >
+        <div class={cell}>
+          <span class={cn(plate, 'size-[2.35rem] rounded-md')}
+            ><Calendar size={18} aria-hidden="true" /></span
+          >
           <div>
-            <small>{m.course_time()}</small>
-            <strong>{formattedDate}</strong>
+            <small class={cellLabel}>{m.course_time()}</small>
+            <strong class={cellValue}>{formattedDate}</strong>
           </div>
         </div>
-        <div class="schedule-divider" aria-hidden="true"></div>
-        <div class="schedule-row">
-          <span class="icon-plate"><Clock3 size={18} aria-hidden="true" /></span>
+        <div class="hidden h-[2.2rem] w-px bg-border-subtle md:block" aria-hidden="true"></div>
+        <div class={cell}>
+          <span class={cn(plate, 'size-[2.35rem] rounded-md')}
+            ><Clock3 size={18} aria-hidden="true" /></span
+          >
           <div>
-            <small>{m.course_duration()}</small>
-            <strong class="numeric">
+            <!-- Clock and duration digits must not jump between ticks. -->
+            <small class={cellLabel}>{m.course_duration()}</small>
+            <strong class={cn(cellValue, 'tabular-nums')}>
               {formattedTime}
-              <span class="duration-tag">({durationLabel})</span>
+              <span class="text-sm font-semibold tabular-nums text-primary-deep"
+                >({durationLabel})</span
+              >
             </strong>
           </div>
         </div>
       </div>
 
       {#if parsedDetails.room || parsedDetails.teacher || (event.planification && event.planification !== courseTitle)}
-        <div class="details-grid">
+        <div class="grid grid-cols-1 gap-3 min-[30rem]:grid-cols-2">
           {#if parsedDetails.room}
-            <div class="detail-cell">
-              <span class="icon-plate small"><MapPin size={17} aria-hidden="true" /></span>
+            <div class={detailCell}>
+              <span class={cn(plate, 'size-[2.1rem] rounded-sm')}><MapPin size={17} aria-hidden="true" /></span>
               <div>
-                <small>{m.course_room()}</small>
-                <strong>{parsedDetails.room}</strong>
+                <small class={cellLabel}>{m.course_room()}</small>
+                <strong class={cellValue}>{parsedDetails.room}</strong>
               </div>
             </div>
           {/if}
 
           {#if parsedDetails.teacher}
-            <div class="detail-cell">
-              <span class="icon-plate small"><UserRound size={17} aria-hidden="true" /></span>
+            <div class={detailCell}>
+              <span class={cn(plate, 'size-[2.1rem] rounded-sm')}><UserRound size={17} aria-hidden="true" /></span>
               <div>
-                <small>{m.course_teacher()}</small>
-                <strong>{parsedDetails.teacher}</strong>
+                <small class={cellLabel}>{m.course_teacher()}</small>
+                <strong class={cellValue}>{parsedDetails.teacher}</strong>
               </div>
             </div>
           {/if}
 
           {#if event.planification && event.planification !== courseTitle}
-            <div class="detail-cell detail-full">
-              <span class="icon-plate small"><BookOpen size={17} aria-hidden="true" /></span>
+            <div class={cn(detailCell, 'col-span-full')}>
+              <span class={cn(plate, 'size-[2.1rem] rounded-sm')}><BookOpen size={17} aria-hidden="true" /></span>
               <div>
-                <small>{m.course_details()}</small>
-                <strong>{event.planification}</strong>
+                <small class={cellLabel}>{m.course_details()}</small>
+                <strong class={cellValue}>{event.planification}</strong>
               </div>
             </div>
           {/if}
@@ -186,16 +208,16 @@
       {/if}
 
       {#if event.externalComment}
-        <div class="comment-callout">
-          <div class="comment-header">
+        <div class="rounded-lg border border-warning-edge bg-warning-surface p-4">
+          <div class="mb-1 flex items-center gap-2 text-sm font-bold text-warning-strong">
             <AlertCircle size={17} aria-hidden="true" />
             <strong>{m.course_notes()}</strong>
           </div>
-          <p>{event.externalComment}</p>
+          <p class="text-base leading-[1.5] text-warning-strong">{event.externalComment}</p>
         </div>
       {/if}
 
-      <div class="detail-actions">
+      <div class="flex flex-col gap-2 md:flex-row-reverse">
         {#if event.tempoUrl}
           <Button variant="primary" block onclick={handleTempoClick}>
             <span>{m.open_tempo()}</span>
@@ -209,199 +231,3 @@
   </Sheet>
 {/if}
 
-<style>
-  /* Sheet owns the panel surface, elevation, focus trap and scroll lock, so this
-     file only styles the content it puts inside. */
-  .course-detail {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-4);
-  }
-
-  .detail-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .detail-tags {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    padding-top: var(--space-2);
-  }
-
-  .detail-title-block h2 {
-    margin: 0 0 var(--space-1);
-    color: var(--foreground);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    line-height: 1.25;
-    letter-spacing: -0.01em;
-    text-wrap: balance;
-  }
-
-  .detail-title-block p {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-base);
-    line-height: 1.45;
-  }
-
-  .schedule-box {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-  }
-
-  .schedule-row,
-  .detail-cell {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .icon-plate {
-    display: grid;
-    width: 2.35rem;
-    height: 2.35rem;
-    flex-shrink: 0;
-    place-items: center;
-    color: var(--primary-deep);
-    background: var(--muted);
-    border-radius: var(--radius-md);
-  }
-
-  .icon-plate.small {
-    width: 2.1rem;
-    height: 2.1rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .schedule-row small,
-  .detail-cell small {
-    display: block;
-    margin-bottom: var(--space-1);
-    color: var(--muted-foreground);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  .schedule-row strong,
-  .detail-cell strong {
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    overflow-wrap: anywhere;
-  }
-
-  /* Clock and duration digits must not jump between ticks. */
-  .numeric {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .duration-tag {
-    color: var(--primary-deep);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .schedule-divider {
-    display: none;
-    width: 1px;
-    height: 2.2rem;
-    background: var(--border-subtle);
-  }
-
-  .details-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-
-  /* A sunken field rather than a bordered white box: the sheet panel is already
-     `--card`, and a card inside a card only ever reads as a ghost. */
-  .detail-cell {
-    padding: var(--space-3);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-lg);
-  }
-
-  .detail-full {
-    grid-column: 1 / -1;
-  }
-
-  .comment-callout {
-    padding: var(--space-4);
-    background: var(--warning-surface);
-    border: 1px solid color-mix(in oklch, var(--warning) 34%, transparent);
-    border-radius: var(--radius-lg);
-  }
-
-  .comment-header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-1);
-    color: var(--warning-strong);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-  }
-
-  .comment-callout p {
-    margin: 0;
-    color: var(--warning-strong);
-    font-size: var(--text-base);
-    line-height: 1.5;
-  }
-
-  .detail-actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  /* 30rem lets the two short detail cells sit side by side; 48rem is the primary
-     hinge, where the panel is wide enough for the schedule box to go three-up. */
-  @media (min-width: 30rem) {
-    .details-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 48rem) {
-    .course-detail {
-      gap: var(--space-5);
-      padding: var(--space-6);
-    }
-
-    .detail-title-block h2 {
-      font-size: var(--text-2xl);
-    }
-
-    .schedule-box {
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      padding: var(--space-5);
-    }
-
-    .schedule-divider {
-      display: block;
-    }
-
-    .detail-actions {
-      flex-direction: row-reverse;
-    }
-  }
-</style>
