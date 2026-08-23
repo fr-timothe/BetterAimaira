@@ -25,10 +25,14 @@ use tauri::AppHandle;
 
 use crate::error::CommandError;
 
-/// GitHub Pages, `gh-pages` branch: one directory per channel, each holding the
-/// two manifests. A static host keeps the URL independent of how GitHub labels
-/// a release, which is what broke the previous `releases/latest` feed.
-const FEED_BASE: &str = "https://fr-timothe.github.io/BetterAimaira/updates";
+/// GitHub Pages, `gh-pages` branch, reached through the custom domain declared
+/// by the `CNAME` file on that branch: one directory per channel, each holding
+/// the two manifests. A static host keeps the URL independent of how GitHub
+/// labels a release, which is what broke the previous `releases/latest` feed.
+///
+/// The custom domain maps to the project site root, so there is no repository
+/// name in the path the way `fr-timothe.github.io/BetterAimaira/...` needs one.
+const FEED_BASE: &str = "https://betteraimaira.montfrond.work/updates";
 
 #[cfg(any(target_os = "android", target_os = "ios"))]
 const MANIFEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);

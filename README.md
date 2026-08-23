@@ -222,7 +222,14 @@ bun run clean:cache
 
 Pousser un tag `v*` déclenche le workflow [`.github/workflows/release.yml`](.github/workflows/release.yml), qui compile l'installeur Windows ainsi que l'APK Android, génère les manifestes de mise à jour, publie la release et commite les manifestes sur la branche `gh-pages`.
 
-L'application lit son flux de mise à jour sur GitHub Pages, un dossier par canal : `updates/stable/` et `updates/beta/`. Un build dont la version porte un suffixe de préversion suit le canal bêta par défaut ; le canal est modifiable dans Réglages. Prérequis unique côté dépôt : `Settings > Pages`, source « Deploy from a branch », branche `gh-pages`, dossier `/ (root)`.
+L'application lit son flux de mise à jour sur <https://betteraimaira.montfrond.work>, servi par GitHub Pages depuis la branche `gh-pages`, un dossier par canal :
+
+| Canal | Manifeste |
+|---|---|
+| Stable | <https://betteraimaira.montfrond.work/updates/stable/latest.json> |
+| Bêta | <https://betteraimaira.montfrond.work/updates/beta/latest.json> |
+
+Un build dont la version porte un suffixe de préversion suit le canal bêta par défaut ; le canal est modifiable dans Réglages. Le domaine personnalisé vit dans le fichier `CNAME` à la racine de `gh-pages` : le supprimer coupe le flux de mise à jour de toutes les versions installées.
 
 ### Vérification
 

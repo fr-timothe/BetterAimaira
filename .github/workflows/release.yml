@@ -9,8 +9,10 @@ name: release
 # that path only ever resolves to the newest release *not* flagged as a
 # prerelease, so a project shipping betas serves a 404 to every client.
 #
-# One manual repository setting, once: Settings > Pages > Source = "Deploy from
-# a branch", branch `gh-pages`, folder `/ (root)`.
+# Pages is configured once, in Settings > Pages: Source = "Deploy from a branch",
+# branch `gh-pages`, folder `/ (root)`, custom domain
+# `betteraimaira.montfrond.work`. The domain is carried by the `CNAME` file at
+# the root of that branch, which this workflow preserves.
 #
 # Required repository secrets:
 #   TAURI_SIGNING_PRIVATE_KEY           minisign key from `bun run updater:keygen`
@@ -285,6 +287,13 @@ jobs:
           # Pages runs Jekyll by default. It has nothing to build here and would
           # hide any path starting with an underscore.
           touch "$site/.nojekyll"
+          # GitHub serves the custom domain only while this file sits at the site
+          # root, and the clone above already carries whatever it holds. It is
+          # written only when absent, so a domain changed in Settings survives
+          # the next tag, and a branch recreated from scratch keeps its domain.
+          if [ ! -f "$site/CNAME" ]; then
+            echo -n "betteraimaira.montfrond.work" > "$site/CNAME"
+          fi
 
           git -C "$site" config user.name "github-actions[bot]"
           git -C "$site" config user.email "41898282+github-actions[bot]@users.noreply.github.com"

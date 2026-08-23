@@ -296,11 +296,14 @@ CI stages:
 
 Update delivery, implemented in `.github/workflows/release.yml`:
 
-The feed is served by GitHub Pages from the orphan `gh-pages` branch, one
-directory per channel: `updates/stable/` and `updates/beta/`. It is deliberately
-not read from `releases/latest/download`, which only resolves to the newest
-release that is *not* flagged as a prerelease and therefore 404s on a project
-shipping betas.
+The feed is served by GitHub Pages from the orphan `gh-pages` branch, under the
+custom domain `betteraimaira.montfrond.work`, one directory per channel:
+`updates/stable/` and `updates/beta/`. The domain maps to the project site root,
+so the repository name does not appear in the path, and it is declared by the
+`CNAME` file at the root of `gh-pages` — removing that file breaks the feed for
+every installed build. It is deliberately not read from
+`releases/latest/download`, which only resolves to the newest release that is
+*not* flagged as a prerelease and therefore 404s on a project shipping betas.
 
 - Desktop reads a minisign-signed `latest.json` and installs in place. The
   endpoint is set at runtime from the selected channel, not from the one baked

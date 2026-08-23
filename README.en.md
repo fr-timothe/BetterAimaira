@@ -227,10 +227,17 @@ Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/rele
 builds the Windows installer and the Android APK, writes both update manifests, publishes the
 release, and commits the manifests to the `gh-pages` branch.
 
-The app reads its update feed from GitHub Pages, one directory per channel: `updates/stable/` and
-`updates/beta/`. A build whose version carries a prerelease suffix follows the beta channel by
-default; the channel can be changed in Settings. One repository setting is required, once:
-`Settings > Pages`, source "Deploy from a branch", branch `gh-pages`, folder `/ (root)`.
+The app reads its update feed from <https://betteraimaira.montfrond.work>, served by GitHub Pages
+off the `gh-pages` branch, one directory per channel:
+
+| Channel | Manifest |
+|---|---|
+| Stable | <https://betteraimaira.montfrond.work/updates/stable/latest.json> |
+| Beta | <https://betteraimaira.montfrond.work/updates/beta/latest.json> |
+
+A build whose version carries a prerelease suffix follows the beta channel by default; the channel
+can be changed in Settings. The custom domain lives in the `CNAME` file at the root of `gh-pages`:
+deleting it cuts the update feed for every installed build.
 
 ### Verification
 
