@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "build": {
+    "devUrl": "http://localhost:1420?mobile"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "BetterAimaira (Mobile Dev)",
+        "width": 412,
+        "height": 892,
+        "minWidth": 360,
+        "minHeight": 580,
+        "decorations": false,
+        "resizable": true,
+        "transparent": false,
+        "shadow": true
+      }
+    ]
+  }
+}
