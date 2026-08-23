@@ -1,0 +1,35 @@
+{
+  "name": "BetterAimaira (sideload)",
+  "identifier": "fr.timothe.betteraimaira.source",
+  "subtitle": "Aimaira campus portal, unofficial client",
+  "description": "BetterAimaira reads your Aimaira campus portal: schedule, grades, absences and documents, in one app.",
+  "iconURL": "https://raw.githubusercontent.com/fr-timothe/BetterAimaira/master/src-tauri/icons/128x128@2x.png",
+  "website": "https://github.com/fr-timothe/BetterAimaira",
+  "apps": [
+    {
+      "name": "BetterAimaira",
+      "bundleIdentifier": "com.betteraimaira.app",
+      "developerName": "Timothé Montfrond",
+      "subtitle": "Schedule, grades and absences",
+      "localizedDescription": "BetterAimaira reads your Aimaira campus portal: schedule, grades, absences and documents, in one app.",
+      "iconURL": "https://raw.githubusercontent.com/fr-timothe/BetterAimaira/master/src-tauri/icons/128x128@2x.png",
+      "category": "education",
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {}
+      },
+      "versions": [
+        {
+          "version": "0.1.1-beta.4",
+          "buildVersion": "011-beta4",
+          "date": "2026-08-23T20:31:19.392Z",
+          "localizedDescription": "BetterAimaira 0.1.1-beta.4",
+          "downloadURL": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.4/BetterAimaira.ipa",
+          "size": 4038226,
+          "minOSVersion": "15.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}
