@@ -138,36 +138,14 @@ jobs:
       - name: Generate the Xcode project
         run: bun tauri ios init --ci
 
-      # xcodebuild does not run `beforeBuildCommand`, so the web assets have to
-      # exist before the build step.
-      - name: Build the frontend
-        run: bun run build
-
-      - name: Build the unsigned app bundle
+      # The Tauri CLI keeps its mobile build options alive for the Xcode script,
+      # builds the frontend and creates an unsigned IPA suitable for AltStore.
+      - name: Build the unsigned IPA
         run: |
-          project=$(ls -d src-tauri/gen/apple/*.xcodeproj | head -n 1)
-          scheme=$(xcodebuild -project "$project" -list | tr -d ' ' | grep '_iOS$' | head -n 1)
-          echo "Building $scheme from $project"
-          xcodebuild \
-            -project "$project" \
-            -scheme "$scheme" \
-            -configuration release \
-            -sdk iphoneos \
-            -derivedDataPath build-ios \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY= \
-            build
-
-      # An IPA is a zip holding the `.app` inside a top-level `Payload/`
-      # directory. AltStore re-signs it on install, so no identity is needed.
-      - name: Wrap the bundle into an IPA
-        run: |
-          app=$(find build-ios/Build/Products -maxdepth 2 -name '*.app' | head -n 1)
-          test -n "$app" || { echo "No .app produced"; exit 1; }
-          mkdir -p Payload
-          cp -R "$app" Payload/
-          zip -qry BetterAimaira.ipa Payload
+          bun tauri ios build --ci --no-sign
+          ipa=$(find src-tauri -type f -name '*.ipa' | head -n 1)
+          test -n "$ipa" || { echo "No IPA produced"; exit 1; }
+          cp "$ipa" BetterAimaira.ipa
 
       - uses: actions/upload-artifact@v4
         with:
