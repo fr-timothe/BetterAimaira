@@ -399,6 +399,7 @@
   --animate-slide-up-in: slide-up-in var(--duration-normal) var(--ease-out);
   --animate-slide-up-drawer: slide-up-in var(--duration-normal) var(--ease-drawer);
   --animate-message-in: messageSlideIn var(--duration-fast) var(--ease-out) forwards;
+  --animate-update-sweep: update-sweep 1.1s ease-in-out infinite;
 
   /* Course categories, applied only through KindBadge. The class names must
      stay literal in a lookup map or the scanner never emits them. */
@@ -431,6 +432,15 @@
   --color-course-idle: color-mix(in oklch, var(--primary) 24%, transparent);
   --color-course-soft: color-mix(in oklch, var(--chart-3) 52%, transparent);
   --color-course-accent: color-mix(in oklch, var(--chart-4) 82%, white);
+
+  /* Status tints for a metric tile: the surface thinned into the card so a row
+     of tiles reads as one field, with a line just strong enough to separate. */
+  --color-success-veil: color-mix(in oklch, var(--success-surface) 45%, var(--card));
+  --color-success-line: color-mix(in oklch, var(--success) 30%, var(--border-subtle));
+  --color-warning-veil: color-mix(in oklch, var(--warning-surface) 45%, var(--card));
+  --color-warning-line: color-mix(in oklch, var(--warning) 30%, var(--border-subtle));
+  --color-danger-veil: color-mix(in oklch, var(--danger-surface) 45%, var(--card));
+  --color-danger-line: color-mix(in oklch, var(--danger) 30%, var(--border-subtle));
 }
 
 /* Everything below is global, so it has to be layered. Unlayered CSS wins over
@@ -611,6 +621,16 @@ html.desktop-app .mobile-only {
 @keyframes shimmer {
   from { background-position: 200% 0; }
   to { background-position: -200% 0; }
+}
+
+/* A download without a content length still deserves a moving bar. */
+@keyframes update-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(285%);
+  }
 }
 
 @keyframes messageSlideIn {

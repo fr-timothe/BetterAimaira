@@ -19,12 +19,18 @@
   const actionLabel = $derived(downloading ? downloadingLabel : downloadLabel);
 </script>
 
-<article class="document-card">
-  <span class="document-icon" aria-hidden="true"><FileText size={22} /></span>
+<!-- Structure comes from the sunken field and its line — no shadow on top. -->
+<article
+  class="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-sunken px-4 py-3"
+>
+  <span
+    class="grid size-10 shrink-0 place-items-center rounded-md bg-card text-primary-deep"
+    aria-hidden="true"><FileText size={22} /></span
+  >
 
-  <div class="document-meta">
-    <h3>{doc.label}</h3>
-    <p>{documentKindLabel(doc.kind)}</p>
+  <div class="min-w-0 flex-1">
+    <h3 class="truncate text-base font-bold text-foreground">{doc.label}</h3>
+    <p class="mt-[0.15rem] text-xs text-muted-foreground">{documentKindLabel(doc.kind)}</p>
   </div>
 
   <Button
@@ -38,48 +44,3 @@
     <span>{actionLabel}</span>
   </Button>
 </article>
-
-<style>
-  /* Structure comes from the sunken field and its line — no shadow on top. */
-  .document-card {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-  }
-
-  .document-icon {
-    display: grid;
-    width: 2.5rem;
-    height: 2.5rem;
-    flex-shrink: 0;
-    place-items: center;
-    color: var(--primary-deep);
-    background: var(--card);
-    border-radius: var(--radius-md);
-  }
-
-  .document-meta {
-    min-width: 0;
-    flex: 1;
-  }
-
-  .document-meta h3 {
-    margin: 0;
-    overflow: hidden;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .document-meta p {
-    margin: 0.15rem 0 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-</style>

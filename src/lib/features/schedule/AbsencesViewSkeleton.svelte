@@ -8,12 +8,20 @@
   };
 
   const { ariaLabel, heroLabel }: Props = $props();
+
+  const copyStack = 'flex min-w-0 flex-col gap-2';
 </script>
 
-<div class="absences-skeleton" role="status" aria-live="polite" aria-busy="true" aria-label={ariaLabel}>
-  <div class="year-switch-skeleton">
+<div
+  class="flex flex-col gap-5"
+  role="status"
+  aria-live="polite"
+  aria-busy="true"
+  aria-label={ariaLabel}
+>
+  <div class="flex w-[min(100%,22rem)] items-center justify-between gap-3 self-center">
     <Skeleton shape="circle" width="2.75rem" height="2.75rem" />
-    <div class="year-copy-skeleton">
+    <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
       <Skeleton shape="text" width="4.5rem" />
       <Skeleton shape="title" width="8rem" />
     </div>
@@ -21,7 +29,7 @@
   </div>
 
   <HeroStat
-    ariaLabel={ariaLabel}
+    {ariaLabel}
     label={heroLabel}
     value=""
     loading
@@ -30,18 +38,21 @@
     showCurve={false}
   />
 
-  <div class="toolbar-skeleton">
+  <div class="flex min-h-(--tap-min) items-center justify-end gap-2">
     <Skeleton shape="block" width="9rem" height="2.75rem" />
     <div class="desktop-only">
       <Skeleton shape="circle" width="2.75rem" height="2.75rem" />
     </div>
   </div>
 
-  <div class="block-list-skeleton">
+  <div class="flex flex-col gap-3">
     {#each Array(3) as _, index (index)}
-      <div class="block-card-skeleton">
+      <div
+        class="grid min-h-19 grid-cols-[1.125rem_minmax(0,1fr)_auto] items-center gap-3
+               rounded-xl border border-border-subtle bg-card px-4 py-3"
+      >
         <Skeleton shape="block" width="1.125rem" height="1.125rem" />
-        <div class="block-copy-skeleton">
+        <div class={copyStack}>
           <Skeleton shape="title" width={index === 1 ? '52%' : '64%'} />
           <Skeleton shape="text" width="7rem" />
         </div>
@@ -50,62 +61,3 @@
     {/each}
   </div>
 </div>
-
-<style>
-  .absences-skeleton {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  .year-switch-skeleton {
-    display: flex;
-    align-items: center;
-    align-self: center;
-    justify-content: space-between;
-    width: min(100%, 22rem);
-    gap: var(--space-3);
-  }
-
-  .year-copy-skeleton {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .toolbar-skeleton {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    min-height: var(--tap-min);
-  }
-
-  .block-list-skeleton {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .block-card-skeleton {
-    display: grid;
-    grid-template-columns: 1.125rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-3);
-    min-height: 4.75rem;
-    padding: var(--space-3) var(--space-4);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .block-copy-skeleton {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-</style>

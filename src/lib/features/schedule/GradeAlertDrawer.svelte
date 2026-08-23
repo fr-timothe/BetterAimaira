@@ -28,6 +28,8 @@
     };
   });
 
+  const plate = 'grid place-items-center bg-muted text-primary-deep';
+
   function openGrades() {
     onOpenGrades();
     onClose();
@@ -37,12 +39,14 @@
 <!-- Sheet owns the dialog mechanics this drawer used to fake: focus on open, a
      focus trap, focus restore, Escape and scroll lock. -->
 <Sheet title={copy.title} placement="end" closeLabel={copy.close} {onClose}>
-  <div class="alert-header">
-    <span class="alert-icon-plate"><Bell size={20} aria-hidden="true" /></span>
-    <div class="alert-heading">
-      <h2>{copy.title}</h2>
+  <div class="grid grid-cols-[auto_1fr_auto] items-start gap-3 border-b border-border-subtle p-4">
+    <span class="{plate} size-10 rounded-md"><Bell size={20} aria-hidden="true" /></span>
+    <div>
+      <h2 class="text-lg font-extrabold">{copy.title}</h2>
       <!-- A count line is only true when there is something to count. -->
-      {#if alerts.length > 0}<p>{copy.summary}</p>{/if}
+      {#if alerts.length > 0}
+        <p class="mt-1 text-base text-muted-foreground">{copy.summary}</p>
+      {/if}
     </div>
     <IconButton variant="ghost" label={copy.close} onclick={onClose}>
       <X size={19} aria-hidden="true" />
@@ -50,21 +54,26 @@
   </div>
 
   {#if alerts.length > 0}
-    <div class="alert-list">
+    <div class="flex flex-col gap-2 p-3">
       {#each alerts as grade (grade.id)}
-        <article>
-          <span class="alert-icon-plate item-plate">
+        <article
+          class="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-md bg-surface-sunken p-3
+                 transition-colors duration-fast ease-out hover:bg-muted"
+        >
+          <span class="{plate} size-9 rounded-sm">
             <BookOpenCheck size={18} aria-hidden="true" />
           </span>
-          <div class="item-meta">
-            <strong>{grade.subject}</strong>
-            <p>{grade.label}</p>
+          <div>
+            <strong class="block text-base font-bold">{grade.subject}</strong>
+            <p class="mt-1 text-sm text-muted-foreground">{grade.label}</p>
             {#if grade.coefficient}
-              <small>{m.grade_alert_coefficient({ value: grade.coefficient })}</small>
+              <small class="text-xs text-muted-foreground"
+                >{m.grade_alert_coefficient({ value: grade.coefficient })}</small
+              >
             {/if}
           </div>
-          <b class="item-score">
-            {grade.score}{#if grade.scale}<small>/{grade.scale}</small>{/if}
+          <b class="text-xl font-extrabold tabular-nums text-primary-deep">
+            {grade.score}{#if grade.scale}<small class="text-xs">/{grade.scale}</small>{/if}
           </b>
         </article>
       {/each}
@@ -72,7 +81,7 @@
   {:else}
     <!-- The quick action on Today opens this drawer unconditionally, so zero
          alerts is a state the drawer has to state rather than render blank. -->
-    <div class="alert-empty">
+    <div class="p-3">
       <StateCard
         kind="empty"
         icon={Bell}
@@ -82,110 +91,7 @@
     </div>
   {/if}
 
-  <div class="alert-footer">
+  <div class="px-4 pt-3 pb-4">
     <Button variant="primary" block onclick={openGrades}>{copy.allGrades}</Button>
   </div>
 </Sheet>
-
-<style>
-  .alert-header {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: var(--space-3);
-    align-items: start;
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .alert-icon-plate {
-    display: grid;
-    width: 2.5rem;
-    height: 2.5rem;
-    place-items: center;
-    color: var(--primary-deep);
-    background: var(--muted);
-    border-radius: var(--radius-md);
-  }
-
-  .alert-heading h2,
-  .alert-heading p {
-    margin: 0;
-  }
-
-  .alert-heading h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-heavy);
-  }
-
-  .alert-heading p {
-    margin-top: var(--space-1);
-    color: var(--muted-foreground);
-    font-size: var(--text-base);
-  }
-
-  .alert-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
-  }
-
-  article {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: var(--space-3);
-    align-items: center;
-    padding: var(--space-3);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-md);
-    transition: background-color var(--duration-fast) var(--ease-out);
-  }
-
-  .item-plate {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: var(--radius-sm);
-  }
-
-  .item-meta strong {
-    display: block;
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-  }
-
-  .item-meta p {
-    margin: var(--space-1) 0 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  .item-meta small {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .item-score {
-    color: var(--primary-deep);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .item-score small {
-    font-size: var(--text-xs);
-  }
-
-  .alert-empty {
-    padding: var(--space-3);
-  }
-
-  .alert-footer {
-    padding: var(--space-3) var(--space-4) var(--space-4);
-  }
-
-  @media (hover: hover) {
-    article:hover {
-      background: var(--muted);
-    }
-  }
-</style>
