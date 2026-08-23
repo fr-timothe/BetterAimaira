@@ -397,19 +397,6 @@
     }
   });
 
-  const currentLiveMinutePercent = $derived.by(() => {
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    if (hours < 8) return 0;
-    if (hours >= 20) return 100;
-    const totalMinutesFrom8 = (hours - 8) * 60 + minutes;
-    return (totalMinutesFrom8 / (12 * 60)) * 100;
-  });
-
-  const isCurrentTimeVisibleOnDay = $derived(
-    isSameDay(anchorDate, now) && now.getHours() >= 8 && now.getHours() < 20
-  );
-
   const activeDateDurationMinutes = $derived.by(() => {
     return activeDateEvents.reduce((total, event) => total + eventDurationMinutes(event), 0);
   });
@@ -535,6 +522,34 @@
     }
     await openExternalUrl(event.tempoUrl);
   }
+  const container =
+    'flex w-full flex-col gap-3 px-3 pt-3 pb-6' +
+    ' md:gap-5 md:px-8 md:pt-6 md:pb-8' +
+    ' lte-600:pr-[max(var(--space-2),env(safe-area-inset-right))]' +
+    ' lte-600:pl-[max(var(--space-2),env(safe-area-inset-left))]';
+
+  const scopePill =
+    'relative flex min-h-[2.35rem] items-center justify-center gap-1 rounded-md border' +
+    ' border-transparent px-[0.2rem] py-1 text-xs font-semibold whitespace-nowrap' +
+    ' transition-control active:scale-(--press-scale)';
+
+  const navIconBtn =
+    'grid size-9 flex-none place-items-center rounded-full bg-surface-sunken text-foreground' +
+    ' transition-control active:scale-(--press-scale) hover:bg-muted';
+
+  const panel = 'rounded-xl border border-border-subtle bg-card';
+
+  const ribbonDayBtn =
+    'flex min-h-18 min-w-14 flex-1 basis-0 flex-col items-center justify-center rounded-lg' +
+    ' border bg-card px-1 py-2 transition-control active:scale-(--press-scale)';
+
+  const dayHeaderRow =
+    'flex items-center justify-between gap-3 lte-600:items-start';
+
+  const uppercaseTiny =
+    'text-xs font-bold tracking-[0.04em] uppercase';
+
+  const dot = 'size-[0.35rem] rounded-full bg-primary-deep';
 </script>
 
 {#snippet statusBadge(status: 'live' | 'upcoming' | 'finished')}
@@ -639,32 +654,54 @@
   </div>
 {/snippet}
 
-<div class="calendar-container">
+<div class={container}>
   <!-- 1. Scope Selector Bar (Pill buttons with always visible labels) -->
-  <div class="scope-bar-wrapper">
-    <div class="scope-segmented-bar" role="tablist" aria-label={m.calendar_scope_label()}>
+  <div class="flex w-full justify-center">
+    <div
+      class="grid w-full max-w-[30rem] grid-cols-3 gap-[2px] rounded-lg border
+             border-border-subtle bg-surface-sunken p-[3px]"
+      role="tablist"
+      aria-label={m.calendar_scope_label()}
+    >
       {#each availableScopes as s (s.id)}
         <button
           type="button"
           role="tab"
-          class="scope-pill"
-          class:active={currentScope === s.id}
+          class={cn(
+            scopePill,
+            currentScope === s.id
+              ? 'border-border-subtle bg-card font-extrabold text-primary-deep shadow-xs'
+              : 'bg-transparent text-muted-foreground hover:bg-card-hover hover:text-foreground'
+          )}
           aria-selected={currentScope === s.id}
           aria-label={s.label}
           onclick={() => setScope(s.id)}
         >
           <s.icon size={15} strokeWidth={currentScope === s.id ? 2.5 : 1.9} aria-hidden="true" />
-          <span class="scope-label-full">{s.label}</span>
-          <span class="scope-label-short">{s.shortLabel}</span>
+          <span class="hidden min-[26rem]:inline">{s.label}</span>
+          <span class="inline text-2xs tracking-[-0.01em] min-[26rem]:hidden"
+            >{s.shortLabel}</span
+          >
         </button>
       {/each}
     </div>
   </div>
 
   <!-- 2. Period Navigation Header -->
-  <header class="period-navigation-card">
-    <div class="period-title-block">
-      <span class="scope-indicator-tag">
+  <header
+    class={cn(
+      panel,
+      'flex items-center justify-between gap-2.5 px-3.5 py-3 shadow-xs',
+      'lte-600:flex-wrap lte-600:items-stretch'
+    )}
+  >
+    <div
+      class="flex min-w-0 flex-auto flex-col items-start gap-[0.15rem] lte-600:basis-full"
+    >
+      <span
+        class="inline-flex min-w-0 items-center gap-1 text-2xs font-bold tracking-[0.05em]
+               uppercase wrap-anywhere text-primary-deep"
+      >
         {#if currentScope === 'day'}
           <Clock size={12} aria-hidden="true" />
         {:else if currentScope === 'week'}
@@ -676,13 +713,18 @@
         {/if}
         <span>{availableScopes.find((s) => s.id === currentScope)?.label ?? ''}</span>
       </span>
-      <h2 class="period-label">{periodLabel}</h2>
+      <h2
+        class="period-label max-w-full text-base leading-[1.3] font-extrabold wrap-anywhere
+               text-foreground md:text-lg"
+      >{periodLabel}</h2>
     </div>
 
-    <div class="nav-button-group">
+    <div
+      class="flex flex-none items-center gap-1.5 lte-600:w-full lte-600:justify-between"
+    >
       <button
         type="button"
-        class="nav-icon-btn"
+        class={navIconBtn}
         aria-label={m.previous_period()}
         title={m.previous_period()}
         onclick={() => movePeriod(-1)}
@@ -692,7 +734,9 @@
 
       <button
         type="button"
-        class="today-pill-btn"
+        class="inline-flex min-h-9 items-center gap-1 rounded-pill bg-muted
+               px-2.5 text-xs font-bold text-primary-deep transition-control
+               active:scale-(--press-scale) hover:bg-muted-strong"
         onclick={goToToday}
       >
         <CalendarCheck size={14} aria-hidden="true" />
@@ -701,7 +745,7 @@
 
       <button
         type="button"
-        class="nav-icon-btn"
+        class={navIconBtn}
         aria-label={m.next_period()}
         title={m.next_period()}
         onclick={() => movePeriod(1)}
@@ -711,7 +755,8 @@
 
       {#if currentScope === 'week'}
         <input
-          class="native-week-picker"
+          class="min-h-9 min-w-[8.5rem] rounded-md border border-border-subtle bg-surface-sunken
+                 px-2 text-xs font-semibold tabular-nums text-foreground"
           type="week"
           value={weekInputValue}
           aria-label={m.scope_week()}
@@ -721,16 +766,18 @@
       {/if}
 
       {#if onRefresh}
-        <div class="period-actions desktop-only">
+        <!-- `desktop-only` owns the display here; a display utility would lose to
+             its !important rules without a word. -->
+        <div class="desktop-only items-center gap-2">
           <button
             type="button"
-            class="nav-icon-btn"
+            class={navIconBtn}
             aria-label={m.sync_refresh()}
             title={m.sync_refresh()}
             disabled={loading}
             onclick={() => void onRefresh?.()}
           >
-            <RefreshCw size={16} strokeWidth={2.2} class={loading ? 'icon-spinning' : ''} aria-hidden="true" />
+            <RefreshCw size={16} strokeWidth={2.2} class={loading ? 'animate-spin' : ''} aria-hidden="true" />
           </button>
         </div>
       {/if}
@@ -739,7 +786,11 @@
 
   <!-- 3. Quick Date Selector Ribbon (visible in week and day scopes) -->
   {#if currentScope === 'week' || currentScope === 'day'}
-    <div class="quick-ribbon-container" bind:this={ribbonRef}>
+    <div
+      class="flex gap-2 overflow-x-auto p-1 scrollbar-none
+             [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+      bind:this={ribbonRef}
+    >
       {#each weekDays as day (day.toISOString())}
         {@const dayEventsCount = eventsForDay(day).length}
         {@const isDayToday = isSameDay(day, now)}
@@ -747,17 +798,23 @@
 
         <button
           type="button"
-          class="ribbon-day-btn"
-          class:today={isDayToday}
-          class:active={isDaySelected}
+          class={cn(
+            ribbonDayBtn,
+            isDaySelected
+              ? 'border-primary-deep bg-muted text-primary-deep'
+              : cn(
+                  'text-muted-foreground hover:border-border hover:text-foreground',
+                  isDayToday ? 'border-primary-deep' : 'border-border-subtle'
+                )
+          )}
           aria-pressed={isDaySelected}
           onclick={() => selectDate(day)}
         >
-          <span class="ribbon-day-name">{weekdayShortFormatter.format(day)}</span>
-          <span class="ribbon-day-number">{day.getDate()}</span>
-          <span class="ribbon-dot-slot">
+          <span class={uppercaseTiny}>{weekdayShortFormatter.format(day)}</span>
+          <span class="text-xl leading-[1.2] font-extrabold tabular-nums">{day.getDate()}</span>
+          <span class="mt-[0.15rem] flex h-2 items-center justify-center">
             {#if dayEventsCount > 0}
-              <span class="ribbon-event-dot"></span>
+              <span class={dot}></span>
             {/if}
           </span>
         </button>
@@ -766,9 +823,14 @@
   {/if}
 
   <!-- 4. Interactive Scope Views -->
-  <main class="scope-content-viewport">
+  <main class="relative min-h-96">
     {#if loading && events.length > 0}
-      <div class="calendar-loading-overlay" role="status" aria-live="polite">
+      <div
+        class="absolute inset-0 z-raised flex flex-col items-center justify-center gap-3
+               rounded-xl bg-card-scrim text-base text-muted-foreground backdrop-blur-[4px]"
+        role="status"
+        aria-live="polite"
+      >
         <Spinner size={28} />
         <span>{m.planning_loading()}</span>
       </div>
@@ -778,10 +840,10 @@
       <CalendarViewSkeleton ariaLabel={m.planning_loading()} />
     <!-- SCOPE 1: 'day' (Jour - Vertical Timeline) -->
     {:else if currentScope === 'day'}
-      <section class="day-timeline-view">
-        <div class="timeline-header-card">
-          <div>
-            <p>
+      <section class="flex flex-col gap-4">
+        <div class={cn(panel, dayHeaderRow, 'px-5 py-4')}>
+          <div class="min-w-0">
+            <p class="text-sm text-muted-foreground">
               {m.day_course_count({ count: activeDateEvents.length })}
               {#if activeDateDurationMinutes > 0}
                 • {formatDuration(activeDateDurationMinutes, locale)}
@@ -794,8 +856,8 @@
         </div>
 
         {#if activeDateEvents.length > 0}
-          <div class="day-schedule-track">
-            <div class="timeline-cards-list">
+          <div class={cn(panel, 'p-5')}>
+            <div class="flex flex-col gap-3">
               {#each activeDateEvents as event (event.id)}
                 {@render courseRow(event, 'timeline')}
               {/each}
@@ -814,33 +876,48 @@
     <!-- SCOPE 2: 'week' (Semaine - Grille complète Desktop, liste groupée sur Mobile) -->
     {:else if currentScope === 'week'}
       <!-- Mobile Week View: every day is visible, grouped in chronological order. -->
-      <div class="mobile-week-view">
+      <div class="flex flex-col gap-3 md:hidden">
         {#each weekDays as day (day.toISOString())}
           {@const dayEvents = eventsForDay(day)}
           {@const isDayToday = isSameDay(day, now)}
           {@const isDayActive = isSameDay(day, activeDate)}
 
-          <section class="mobile-week-day" class:today={isDayToday} class:active={isDayActive}>
+          <section class="mobile-week-day flex flex-col gap-3">
             <button
               type="button"
-              class="mobile-week-day-header"
+              class={cn(
+                'flex min-h-(--tap-min) w-full items-center justify-between gap-2 rounded-lg',
+                'border px-3 py-2 text-start text-inherit transition-control',
+                'active:scale-(--press-scale) hover:bg-muted',
+                'focus-visible:outline-2 focus-visible:outline-offset-2',
+                'focus-visible:outline-primary-deep',
+                isDayToday ? 'border-primary-deep bg-muted' : 'border-border-subtle bg-card',
+                isDayActive && 'shadow-[inset_0_0_0_2px_var(--primary-deep)]'
+              )}
               aria-pressed={isDayActive}
               onclick={() => selectDate(day)}
             >
-              <span class="mobile-week-day-copy">
-                <strong>{capitalizeFirst(shortDayFormatter.format(day))}</strong>
-                <span>{m.day_course_count({ count: dayEvents.length })}</span>
+              <span class="flex min-w-0 flex-col gap-[0.15rem]">
+                <strong class="text-md font-extrabold wrap-anywhere text-foreground"
+                  >{capitalizeFirst(shortDayFormatter.format(day))}</strong
+                >
+                <span class="text-xs text-muted-foreground"
+                  >{m.day_course_count({ count: dayEvents.length })}</span
+                >
               </span>
               {#if isDayToday}
-                <Badge tone="accent">{m.preview_today()}</Badge>
+                <Badge tone="accent" class="flex-none">{m.preview_today()}</Badge>
               {/if}
             </button>
 
-            <div class="mobile-week-events">
+            <div class="flex flex-col gap-2 px-1">
               {#each dayEvents as event (event.id)}
                 {@render courseRow(event, 'compact')}
               {:else}
-                <p class="mobile-week-empty">{m.no_courses_day()}</p>
+                <p
+                  class="rounded-md border border-dashed border-border-subtle bg-surface-sunken
+                         p-3 text-sm text-muted-foreground"
+                >{m.no_courses_day()}</p>
               {/each}
             </div>
           </section>
@@ -848,30 +925,56 @@
       </div>
 
       <!-- Desktop Week View (Multi-column grid 6 or 7 days) -->
-      <section class="week-grid-view desktop-week-grid" style:--week-cols={visibleWeekDaysCount}>
+      <!-- The column count is written per render, so the template reads it. -->
+      <section
+        class="hidden gap-2 overflow-x-auto md:grid
+               grid-cols-[repeat(var(--week-cols,6),minmax(9rem,1fr))]
+               min-[56rem]:grid-cols-[repeat(var(--week-cols,6),minmax(0,1fr))]"
+        style:--week-cols={visibleWeekDaysCount}
+      >
         {#each weekDays as day (day.toISOString())}
           {@const dayEvents = eventsForDay(day)}
           {@const isDayToday = isSameDay(day, now)}
           {@const isDayActive = isSameDay(day, activeDate)}
 
           <div
-            class="week-column-cell"
-            class:column-today={isDayToday}
-            class:column-active={isDayActive}
+            class={cn(
+              panel,
+              'flex min-h-72 flex-col p-3',
+              isDayToday && 'border-primary-deep'
+            )}
           >
-            <button type="button" class="week-col-header" onclick={() => selectDate(day)}>
-              <span class="week-col-date">
-                <strong>{weekdayShortFormatter.format(day)}</strong>
-                <span class="day-number-circle">{day.getDate()}</span>
+            <button
+              type="button"
+              class="mb-2 flex min-h-(--tap-min) w-full cursor-pointer items-center
+                     justify-between border-b border-border-subtle bg-transparent px-0 pt-0
+                     pb-2 text-inherit"
+              onclick={() => selectDate(day)}
+            >
+              <span class="flex items-center gap-1">
+                <strong class="text-sm font-extrabold uppercase text-foreground"
+                  >{weekdayShortFormatter.format(day)}</strong
+                >
+                <span
+                  class={cn(
+                    'grid size-6 place-items-center rounded-full text-xs font-bold tabular-nums',
+                    isDayToday
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-surface-sunken text-foreground'
+                  )}>{day.getDate()}</span
+                >
               </span>
-              <span class="week-count-badge">{dayEvents.length}</span>
+              <span
+                class="rounded-pill bg-surface-sunken px-2 py-[0.2rem] text-2xs font-bold
+                       tabular-nums text-muted-foreground">{dayEvents.length}</span
+              >
             </button>
 
-            <div class="week-col-body">
+            <div class="flex flex-1 flex-col gap-2">
               {#each dayEvents as event (event.id)}
                 {@render courseRow(event, 'week')}
               {:else}
-                <div class="week-empty-slot">
+                <div class="flex h-16 items-center justify-center text-muted-foreground">
                   <span>-</span>
                 </div>
               {/each}
@@ -882,17 +985,25 @@
 
     <!-- SCOPE 3: 'month' (Mois - Grille calendrier interactif + détail du jour) -->
     {:else if currentScope === 'month'}
-      <section class="month-scope-view">
-        <div class="month-calendar-card">
+      <section
+        class="grid grid-cols-1 gap-4 min-[54rem]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+      >
+        <div class={cn(panel, 'p-5')}>
           <!-- Weekday column titles -->
-          <div class="month-grid-header">
+          <div
+            class={cn(
+              'mb-3 grid grid-cols-7 text-center text-muted-foreground',
+              uppercaseTiny,
+              'tracking-normal'
+            )}
+          >
             {#each monthHeaderDays as day (day.getTime())}
               <span>{weekdayShortFormatter.format(day)}</span>
             {/each}
           </div>
 
           <!-- 42-day Month Grid -->
-          <div class="month-days-grid">
+          <div class="grid grid-cols-7 gap-1">
             {#each monthGridDays as day (day.toISOString())}
               {@const dayEvents = eventsForDay(day)}
               {@const isDayInMonth = isSameMonth(day, anchorDate)}
@@ -901,24 +1012,36 @@
 
               <button
                 type="button"
-                class="month-cell-btn"
-                class:out-of-month={!isDayInMonth}
-                class:today={isDayToday}
-                class:selected={isDaySelected}
+                class={cn(
+                  'month-cell-btn flex min-h-(--tap-min) cursor-pointer flex-col items-center',
+                  'justify-between gap-1 rounded-md border px-1 py-2 transition-control',
+                  'active:scale-(--press-scale) hover:border-primary-deep hover:bg-muted',
+                  !isDayInMonth && 'opacity-55',
+                  isDaySelected
+                    ? 'border-primary-deep bg-muted'
+                    : cn('bg-surface-sunken', isDayToday ? 'border-primary-deep' : 'border-border-subtle')
+                )}
                 aria-pressed={isDaySelected}
                 onclick={() => selectDate(day)}
               >
-                <span class="cell-day-num">{day.getDate()}</span>
+                <span
+                  class={cn(
+                    'text-sm tabular-nums',
+                    isDayToday || isDaySelected
+                      ? 'font-extrabold text-primary-deep'
+                      : 'font-bold text-foreground'
+                  )}>{day.getDate()}</span
+                >
 
-                <span class="cell-indicators">
+                <span class="flex min-h-2 items-center justify-center gap-[0.2rem]">
                   {#if dayEvents.length > 0}
                     {#if dayEvents.length <= 3}
                       {#each dayEvents.slice(0, 3) as dayEvent (dayEvent.id)}
-                        <span class="event-dot"></span>
+                        <span class={dot}></span>
                       {/each}
                     {:else}
-                      <span class="event-dot"></span>
-                      <span class="event-count-mini">+{dayEvents.length}</span>
+                      <span class={dot}></span>
+                      <span class="text-2xs leading-none font-extrabold text-primary-deep">+{dayEvents.length}</span>
                     {/if}
                   {/if}
                 </span>
@@ -928,11 +1051,13 @@
         </div>
 
         <!-- Selected Day Detailed Courses List -->
-        <div class="month-selected-day-panel">
-          <header class="selected-day-header">
-            <div>
-              <h3>{capitalizeFirst(dayFormatter.format(activeDate))}</h3>
-              <p>
+        <div class={cn(panel, 'flex flex-col gap-3 p-4 min-[54rem]:p-5')}>
+          <header class={cn(dayHeaderRow, 'border-b border-border-subtle pb-3')}>
+            <div class="min-w-0">
+              <h3 class="mb-[0.15rem] text-lg font-extrabold wrap-anywhere"
+                >{capitalizeFirst(dayFormatter.format(activeDate))}</h3
+              >
+              <p class="text-xs text-muted-foreground">
                 {m.day_course_count({ count: activeDateEvents.length })}
                 {#if activeDateDurationMinutes > 0}
                   • {formatDuration(activeDateDurationMinutes, locale)}
@@ -944,13 +1069,18 @@
             {/if}
           </header>
 
-          <div class="selected-day-events-list">
+          <div
+            class="flex flex-col gap-2.5 min-[54rem]:max-h-[28rem] min-[54rem]:overflow-y-auto"
+          >
             {#if activeDateEvents.length > 0}
               {#each activeDateEvents as event (event.id)}
                 {@render courseRow(event, 'detailed')}
               {/each}
             {:else}
-              <p class="panel-empty">{m.no_courses_day_description()}</p>
+              <p
+                class="rounded-lg bg-surface-sunken px-4 py-6 text-center text-base
+                       text-muted-foreground">{m.no_courses_day_description()}</p
+              >
             {/if}
           </div>
         </div>
@@ -970,694 +1100,8 @@
 </div>
 
 <style>
-  .calendar-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    width: 100%;
-    margin: 0;
-    padding: var(--space-3) var(--space-3) var(--space-6);
-    box-sizing: border-box;
-  }
-
-  /* 1. Scope Segmented Bar */
-  .scope-bar-wrapper {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-  }
-
-  .scope-segmented-bar {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    max-width: 30rem;
-    gap: 2px;
-    padding: 3px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    box-sizing: border-box;
-  }
-
-  .scope-pill {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    min-height: 2.35rem;
-    padding: 0.25rem 0.2rem;
-    color: var(--muted-foreground);
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    white-space: nowrap;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .scope-pill:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .scope-pill.active {
-    color: var(--primary-deep);
-    background: var(--card);
-    border-color: var(--border-subtle);
-    font-weight: var(--weight-heavy);
-    box-shadow: var(--shadow-xs);
-  }
-
-  .scope-label-full {
-    display: none;
-  }
-
-  .scope-label-short {
-    display: inline;
-    font-size: var(--text-2xs);
-    letter-spacing: -0.01em;
-  }
-
-  @media (min-width: 26rem) {
-    .scope-label-full {
-      display: inline;
-    }
-
-    .scope-label-short {
-      display: none;
-    }
-  }
-
-  @media (hover: hover) {
-    .scope-pill:hover:not(.active) {
-      color: var(--foreground);
-      background: color-mix(in oklch, var(--card) 60%, transparent);
-    }
-  }
-
-  /* 2. Period Navigation Header */
-  .period-navigation-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2-5);
-    padding: var(--space-3) var(--space-3-5);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xs);
-  }
-
-  .period-title-block {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15rem;
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-
-  .scope-indicator-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    min-width: 0;
-    color: var(--primary-deep);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    overflow-wrap: anywhere;
-  }
-
-  .period-label {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-heavy);
-    line-height: 1.3;
-    overflow-wrap: anywhere;
-    max-width: 100%;
-  }
-
-  .nav-button-group {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1-5);
-    flex-shrink: 0;
-  }
-
-  .nav-icon-btn {
-    display: grid;
-    width: 2.25rem;
-    height: 2.25rem;
-    flex: 0 0 2.25rem;
-    place-items: center;
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border: 0;
-    border-radius: 50%;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .nav-icon-btn:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .today-pill-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: 2.25rem;
-    padding: 0 var(--space-2-5);
-    color: var(--primary-deep);
-    background: var(--muted);
-    border: 0;
-    border-radius: var(--radius-pill);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .today-pill-btn:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .native-week-picker {
-    min-width: 8.5rem;
-    min-height: 2.25rem;
-    padding: 0 var(--space-2);
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font: inherit;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  @media (hover: hover) {
-    .nav-icon-btn:hover {
-      background: var(--muted);
-    }
-
-    .today-pill-btn:hover {
-      background: var(--muted-strong);
-    }
-  }
-
-  .period-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  :global(.icon-spinning) {
-    animation: spin var(--duration-spin) linear infinite;
-  }
-
-  /* 3. Quick Date Selector Ribbon */
-  .quick-ribbon-container {
-    display: flex;
-    gap: var(--space-2);
-    overflow-x: auto;
-    padding: var(--space-1);
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .quick-ribbon-container::-webkit-scrollbar {
-    display: none;
-  }
-
-  .ribbon-day-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1 1 0;
-    min-width: 3.5rem;
-    min-height: 4.5rem;
-    padding: var(--space-2) var(--space-1);
-    color: var(--muted-foreground);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .ribbon-day-btn:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .ribbon-day-btn.today {
-    border-color: var(--primary-deep);
-  }
-
-  .ribbon-day-btn.active {
-    color: var(--primary-deep);
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  @media (hover: hover) {
-    .ribbon-day-btn:hover {
-      color: var(--foreground);
-      border-color: var(--border);
-    }
-  }
-
-  .ribbon-day-name {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .ribbon-day-number {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-    line-height: 1.2;
-  }
-
-  .ribbon-dot-slot {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 0.5rem;
-    margin-top: 0.15rem;
-  }
-
-  .ribbon-event-dot {
-    width: 0.35rem;
-    height: 0.35rem;
-    background: var(--primary-deep);
-    border-radius: 50%;
-  }
-
-  /* 4. Scope Viewport */
-  .scope-content-viewport {
-    position: relative;
-    min-height: 24rem;
-  }
-
-  .calendar-loading-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: var(--z-raised);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
-    color: var(--muted-foreground);
-    font-size: var(--text-base);
-    background: color-mix(in oklch, var(--card) 78%, transparent);
-    backdrop-filter: blur(4px);
-    border-radius: var(--radius-xl);
-  }
-
-  /* ------------------------------------------------------------------
-     Shared course row. One markup, one keyboard contract, one status
-     rendering; each scope only re-lays it out.
-     ------------------------------------------------------------------ */
-  /* SCOPE 1: Day View */
-  .day-timeline-view {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .timeline-header-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-4) var(--space-5);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .timeline-header-card > div,
-  .selected-day-header > div {
-    min-width: 0;
-  }
-
-  .timeline-header-card p {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  .day-schedule-track {
-    padding: var(--space-5);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .time-grid-container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .live-time-indicator {
-    position: absolute;
-    right: 0;
-    left: 0;
-    z-index: var(--z-raised);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    pointer-events: none;
-    transform: translateY(-50%);
-  }
-
-  .live-pill {
-    padding: 0.2rem var(--space-2);
-    color: var(--card);
-    background: var(--primary-deep);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-heavy);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .live-line {
-    flex: 1;
-    height: 2px;
-    background: var(--primary-deep);
-  }
-
-  .timeline-cards-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  /* SCOPE 2: Week View */
-  .week-grid-view {
-    display: grid;
-    grid-template-columns: repeat(var(--week-cols, 6), minmax(9rem, 1fr));
-    gap: var(--space-2);
-    overflow-x: auto;
-  }
-
-  .week-column-cell {
-    display: flex;
-    flex-direction: column;
-    min-height: 18rem;
-    padding: var(--space-3);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .week-column-cell.column-today {
-    border-color: var(--primary-deep);
-  }
-
-  .week-col-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    min-height: var(--tap-min);
-    padding: 0 0 var(--space-2);
-    margin-bottom: var(--space-2);
-    color: inherit;
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid var(--border-subtle);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .week-col-date {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .week-col-date strong {
-    color: var(--foreground);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-heavy);
-    text-transform: uppercase;
-  }
-
-  .day-number-circle {
-    display: grid;
-    width: 1.5rem;
-    height: 1.5rem;
-    place-items: center;
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border-radius: 50%;
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .column-today .day-number-circle {
-    color: var(--primary-foreground);
-    background: var(--primary);
-  }
-
-  .week-count-badge {
-    padding: 0.2rem var(--space-2);
-    color: var(--muted-foreground);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-pill);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .week-col-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    flex: 1;
-  }
-
-  .week-empty-slot {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 4rem;
-    color: var(--muted-foreground);
-  }
-
-  /* SCOPE 3: Month View */
-  .month-scope-view {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-
-  .month-calendar-card {
-    padding: var(--space-5);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .month-grid-header {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    text-align: center;
-    margin-bottom: var(--space-3);
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    text-transform: uppercase;
-  }
-
-  .month-days-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: var(--space-1);
-  }
-
-  .month-cell-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-1);
-    min-height: var(--tap-min);
-    padding: var(--space-2) var(--space-1);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .month-cell-btn:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .month-cell-btn.out-of-month {
-    opacity: 0.55;
-  }
-
-  .month-cell-btn.today {
-    border-color: var(--primary-deep);
-  }
-
-  .month-cell-btn.today .cell-day-num,
-  .month-cell-btn.selected .cell-day-num {
-    color: var(--primary-deep);
-    font-weight: var(--weight-heavy);
-  }
-
-  .month-cell-btn.selected {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  @media (hover: hover) {
-    .month-cell-btn:hover {
-      background: var(--muted);
-      border-color: var(--primary-deep);
-    }
-  }
-
-  .cell-day-num {
-    color: var(--foreground);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .cell-indicators {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.2rem;
-    min-height: 0.5rem;
-  }
-
-  .event-dot {
-    width: 0.35rem;
-    height: 0.35rem;
-    background: var(--primary-deep);
-    border-radius: 50%;
-  }
-
-  .event-count-mini {
-    color: var(--primary-deep);
-    font-size: var(--text-2xs);
-    font-weight: var(--weight-heavy);
-    line-height: 1;
-  }
-
-  /* Mobile Week View */
-  .mobile-week-view {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .mobile-week-day {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .mobile-week-day-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    width: 100%;
-    min-height: var(--tap-min);
-    padding: var(--space-2) var(--space-3);
-    color: inherit;
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    box-sizing: border-box;
-    font: inherit;
-    text-align: start;
-    transition:
-      background-color var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out),
-      transform var(--duration-instant) var(--ease-out);
-  }
-
-  .mobile-week-day-header:active {
-    transform: scale(var(--press-scale));
-  }
-
-  .mobile-week-day.today .mobile-week-day-header {
-    background: var(--muted);
-    border-color: var(--primary-deep);
-  }
-
-  .mobile-week-day.active .mobile-week-day-header {
-    box-shadow: inset 0 0 0 2px var(--primary-deep);
-  }
-
-  .mobile-week-day-copy {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .mobile-week-day-copy strong {
-    color: var(--foreground);
-    font-size: var(--text-md);
-    font-weight: var(--weight-heavy);
-    overflow-wrap: anywhere;
-  }
-
-  .mobile-week-day-copy span {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .mobile-week-events {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding: 0 var(--space-1);
-  }
-
-  .mobile-week-empty {
-    margin: 0;
-    padding: var(--space-3);
-    color: var(--muted-foreground);
-    background: var(--surface-sunken);
-    border: 1px dashed var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
+  /* The separator between two adjacent days. There is no sibling-combinator
+     variant, and the line belongs to the pair rather than to either day. */
   .mobile-week-day + .mobile-week-day {
     padding-top: var(--space-1);
   }
@@ -1667,142 +1111,5 @@
     margin-bottom: var(--space-2);
     background: var(--border-subtle);
     content: '';
-  }
-
-  .mobile-week-day-header:focus-visible {
-    outline: 2px solid var(--primary-deep);
-    outline-offset: 2px;
-  }
-
-  .mobile-week-day-header :global(.ui-badge) {
-    flex: 0 0 auto;
-  }
-
-  @media (hover: hover) {
-    .mobile-week-day-header:hover {
-      background: var(--muted);
-    }
-  }
-
-  .desktop-week-grid {
-    display: none;
-  }
-
-  .month-selected-day-panel {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: var(--card);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-xl);
-  }
-
-  .selected-day-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .selected-day-header h3 {
-    margin: 0 0 0.15rem;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-heavy);
-    overflow-wrap: anywhere;
-  }
-
-  .selected-day-header p {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .selected-day-events-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2-5);
-  }
-
-  .panel-empty {
-    margin: 0;
-    padding: var(--space-6) var(--space-4);
-    color: var(--muted-foreground);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-lg);
-    font-size: var(--text-base);
-    text-align: center;
-  }
-
-  /* Responsive: 48rem is the primary hinge; the two secondary steps below exist
-     because the week grid and the month split need more room than that. */
-  @media (min-width: 48rem) {
-    .calendar-container {
-      gap: var(--space-5);
-      padding: var(--space-6) var(--space-8) var(--space-8);
-    }
-
-    .mobile-week-view {
-      display: none;
-    }
-
-    .desktop-week-grid {
-      display: grid;
-    }
-
-    .period-label {
-      font-size: var(--text-lg);
-    }
-
-  }
-
-  @media (min-width: 54rem) {
-    .month-scope-view {
-      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-    }
-
-    .month-selected-day-panel {
-      padding: var(--space-5);
-    }
-
-    .selected-day-events-list {
-      overflow-y: auto;
-      max-height: 28rem;
-    }
-  }
-
-  @media (min-width: 56rem) {
-    .week-grid-view {
-      grid-template-columns: repeat(var(--week-cols, 6), minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 30rem) {
-    .calendar-container {
-      padding-right: max(var(--space-2), env(safe-area-inset-right));
-      padding-left: max(var(--space-2), env(safe-area-inset-left));
-    }
-
-    .period-navigation-card {
-      align-items: stretch;
-      flex-wrap: wrap;
-    }
-
-    .period-title-block {
-      flex-basis: 100%;
-    }
-
-    .nav-button-group {
-      width: 100%;
-      justify-content: space-between;
-    }
-
-    .timeline-header-card,
-    .selected-day-header {
-      align-items: flex-start;
-    }
-
   }
 </style>
