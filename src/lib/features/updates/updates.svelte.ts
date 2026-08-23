@@ -108,9 +108,17 @@ class Updates {
   /** Switching channel invalidates the previous answer and its throttle. */
   async setChannel(channel: UpdateChannel): Promise<void> {
     if (this.channel === channel) return;
+    // Set first, so the control moves under the finger instead of waiting on a
+    // request.
     this.channel = channel;
     this.#channelReady = Promise.resolve(channel);
     writeStoredChannel(channel);
+
+    // `check` hands back the in-flight promise rather than starting a second
+    // request, so a switch during the startup check would be answered by the
+    // call already running and the card would never move. Drain it before
+    // clearing, or its late write lands on top of the cleared state.
+    await this.#inFlight?.catch(() => {});
 
     this.info = null;
     this.progress = null;
