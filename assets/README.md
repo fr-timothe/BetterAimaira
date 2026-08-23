@@ -1,45 +1,53 @@
-# BetterAimaira: Assets et charte graphique
+# Brand assets
 
-Ce dossier regroupe les fichiers sources vectoriels de l'identité visuelle de **BetterAimaira**, basés sur le concept **"Le Signal de Créneau" (The Slot Matrix)**.
+Vector sources for the BetterAimaira identity, built on the **"Slot Matrix"** concept
+(*Le Signal de Créneau*).
 
-## Fichiers disponibles
+## Files
 
-| Fichier | Format | Description | Utilisation |
+| File | Format | Description | Use |
 | :--- | :--- | :--- | :--- |
-| [`logo.svg`](./logo.svg) | SVG (100x100) | Icône complète sur fond squircle bleu encre (`#13253F`) | Icône d'application, splash screen, avatar |
-| [`mark.svg`](./mark.svg) | SVG (100x100) | Marque vectorielle transparente pour fond clair | En-têtes in-app, barres de navigation, badges |
-| [`mark-dark.svg`](./mark-dark.svg) | SVG (100x100) | Marque vectorielle transparente pour fond sombre | Mode sombre, pieds de page sombres |
-| [`logo-lockup.svg`](./logo-lockup.svg) | SVG (280x80) | Lockup horizontal complet (Symbole + Typographie "BetterAimaira") | En-tête de connexion desktop, documentation |
+| [`logo.svg`](./logo.svg) | SVG (100x100) | Full icon on an ink-blue squircle (`#13253F`) | App icon, splash screen, avatar |
+| [`mark.svg`](./mark.svg) | SVG (100x100) | Transparent mark for light backgrounds | In-app headers, navigation bars, badges |
+| [`mark-dark.svg`](./mark-dark.svg) | SVG (100x100) | Transparent mark for dark backgrounds | Dark mode, dark footers |
+| [`logo-lockup.svg`](./logo-lockup.svg) | SVG (280x80) | Horizontal lockup (symbol + "BetterAimaira" wordmark) | Desktop login header, documentation |
 
-## Symbolisme et géométrie
+[`showcase/`](./showcase/) holds the final promotional video (`betteraimaira-presentation.mp4`), the animated 1080p WebP loop (`betteraimaira-demo.webp`), and screenshots.
+[`screenshots/`](./screenshots/) holds the static images embedded in documentation.
 
-- **Colonnes de planning:** Piliers verticaux arrondis évoquant les créneaux d'un emploi du temps étudiant.
-- **Colonne active cyan (`#00B9E8`):** Représente le cours immédiat ou prochain ("Today"), la salle et l'instantanéité de l'information.
-- **Point focal (Beacon):** Représente la synchronisation en temps réel et la ponctualité.
-- **Monogramme:** L'agencement des trois colonnes et du point bas dessine la silhouette d'un A majuscule.
+## Symbolism and geometry
 
-## Palette de couleurs (FL-Theme)
+- **Schedule columns.** Rounded vertical pillars standing for the slots of a student timetable.
+- **Active cyan column (`#00B9E8`).** The current or next course — the room, and the immediacy of
+  the information.
+- **Beacon dot.** Live synchronization and punctuality.
+- **Monogram.** Three columns plus the low dot draw the silhouette of a capital A.
 
-- **Bleu encre:** `#13253F` / `oklch(0.3098 0.0748 248.9089)`
-- **Cyan primaire:** `#00B9E8` / `oklch(0.7347 0.1447 228.9136)`
-- **Bleu secondaire:** `#223D63` / `#3A5378`
-- **Blanc:** `#FFFFFF`
+## Palette (FL-Theme)
 
-## Composant Svelte 5
+- **Ink blue:** `#13253F` / `oklch(0.3098 0.0748 248.9089)`
+- **Primary cyan:** `#00B9E8` / `oklch(0.7347 0.1447 228.9136)`
+- **Secondary blue:** `#223D63` / `#3A5378`
+- **White:** `#FFFFFF`
 
-Dans le code source, utiliser le composant dédié [`src/lib/assets/Logo.svelte`](../src/lib/assets/Logo.svelte) :
+The full token set and the rules for applying it live in [DESIGN.md](../DESIGN.md).
+
+## Svelte component
+
+In application code, use the dedicated component
+[`src/lib/assets/Logo.svelte`](../src/lib/assets/Logo.svelte) rather than importing an SVG:
 
 ```svelte
 <script>
   import Logo from '$lib/assets/Logo.svelte';
 </script>
 
-<!-- Marque transparente pour en-tête -->
+<!-- Transparent mark for a header -->
 <Logo size={24} variant="mark" />
 
-<!-- Icône avec fond squircle -->
+<!-- Icon with the squircle background -->
 <Logo size={40} variant="icon" />
 
-<!-- Lockup avec texte -->
+<!-- Lockup with the wordmark -->
 <Logo size={32} variant="lockup" />
 ```
