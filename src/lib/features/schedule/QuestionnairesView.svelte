@@ -27,6 +27,7 @@
   import { connectivity } from '$lib/state/connectivity.svelte';
   import { loadPortalResource } from './portal-cache';
   import { parseResourceError, resourceErrorMessage } from './portal-utils';
+  import { cn } from '$lib/utils';
   import type {
     PortalResourceErrorCode,
     PortalResourceState,
@@ -176,6 +177,25 @@
   function isSelectedOption(question: QuestionnaireQuestion, value: string, label: string): boolean {
     return question.answers.includes(value) || question.answers.includes(label);
   }
+  // The dock overlaps the last row on compact windows, so every scrolling column
+  // ends with room for it.
+  const column = 'flex min-w-0 flex-col gap-4 pb-[calc(var(--space-6)+4.5rem)] md:pb-6';
+  const heading =
+    'flex flex-col gap-3 border-b border-border-subtle p-4' +
+    ' md:flex-row md:items-center md:justify-between md:p-5';
+  const metaItem = 'inline-flex items-center gap-1 font-medium';
+  const deadline =
+    'inline-flex items-center gap-1 text-xs font-semibold tabular-nums text-muted-foreground';
+  const listBody = 'flex flex-col pb-[calc(var(--space-6)+4.5rem)] md:pb-6';
+  const row =
+    'flex w-full items-center justify-between gap-3 border-b border-border-subtle' +
+    ' bg-transparent p-4 text-left select-none last:border-b-0 md:px-5 md:py-4';
+  const cardContent = 'flex min-w-0 flex-1 flex-col gap-2';
+  const topline = 'flex flex-wrap items-center gap-2';
+  const pageClass = 'border-t border-border-subtle p-4 first-of-type:border-t-0 md:p-5';
+  const copyStack = 'flex min-w-0 flex-col gap-2';
+  // The description and the answer both clear the number's own column.
+  const indent = 'ml-[calc(1.5rem+var(--space-2))]';
 </script>
 
 {#snippet errorState(code: PortalResourceErrorCode, retry: () => void)}
@@ -203,8 +223,8 @@
 {#if selected}
   {@const questionnaire = selected}
   {@const info = parseQuestionnaireInfo(questionnaire.title, questionnaire.context)}
-  <div class="questionnaire-detail">
-    <div class="detail-toolbar">
+  <div class={column}>
+    <div class="flex items-center">
       <Button variant="ghost" onclick={closeDetail}>
         <ArrowLeft size={17} aria-hidden="true" />
         <span>{copy.back}</span>
@@ -212,11 +232,11 @@
     </div>
 
     {#if detailState.kind === 'loading'}
-      <div class="detail-skeleton" role="status" aria-live="polite" aria-label={copy.loading}>
+      <div class={column} role="status" aria-live="polite" aria-label={copy.loading}>
         <Card padding="none">
-          <header class="detail-heading detail-heading-skeleton">
-            <div class="detail-title-group">
-              <div class="detail-tags">
+          <header class={cn(heading, 'min-h-32')}>
+            <div class="flex min-w-0 flex-col items-start gap-2">
+              <div class={topline}>
                 <Skeleton shape="block" width="5rem" height="1.5rem" />
                 <Skeleton shape="text" width="7rem" />
               </div>
@@ -226,10 +246,10 @@
           </header>
 
           {#each Array(3) as _, index (index)}
-            <section class="question-page question-skeleton-row">
-              <div class="question-title-skeleton">
+            <section class={cn(pageClass, 'flex min-h-40 flex-col gap-4')}>
+              <div class="grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3">
                 <Skeleton shape="circle" width="2rem" height="2rem" />
-                <div class="question-copy-skeleton">
+                <div class={copyStack}>
                   <Skeleton shape="title" width={index === 1 ? '62%' : '76%'} />
                   <Skeleton shape="text" width="45%" />
                 </div>
@@ -246,9 +266,9 @@
       {@render errorState(detailState.code, () => void loadDetail(questionnaire))}
     {:else if detailState.kind === 'ready'}
       <Card padding="none">
-        <header class="detail-heading">
-          <div class="detail-title-group">
-            <div class="detail-tags">
+        <header class={heading}>
+          <div class="flex min-w-0 flex-col items-start gap-2">
+            <div class={topline}>
               <Badge tone={detailState.detail.completed ? 'success' : 'warning'}>
                 {#if detailState.detail.completed}
                   <CheckCircle2 size={13} aria-hidden="true" />
@@ -258,25 +278,32 @@
                 {detailState.detail.completed ? copy.completed : copy.pending}
               </Badge>
               {#if questionnaire.deadline}
-                <span class="deadline">
+                <span class={deadline}>
                   <CalendarClock size={14} aria-hidden="true" />
                   {m.questionnaire_deadline({ date: questionnaire.deadline })}
                 </span>
               {/if}
             </div>
 
-            <h2>{info.title}</h2>
+            <h2 class="text-xl leading-[1.25] font-extrabold wrap-anywhere text-foreground"
+              >{info.title}</h2
+            >
 
             {#if info.teacher || info.campaign}
-              <div class="detail-meta">
+              <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 {#if info.teacher}
-                  <span class="meta-item">
+                  <span class={metaItem}>
                     <GraduationCap size={15} aria-hidden="true" />
                     <span>{info.teacher}</span>
                   </span>
                 {/if}
                 {#if info.campaign}
-                  <span class="meta-item campaign-tag">
+                  <span
+                    class={cn(
+                      metaItem,
+                      'rounded-sm bg-surface-sunken px-2 py-[0.15rem] text-xs text-muted-foreground'
+                    )}
+                  >
                     <span>{info.campaign}</span>
                   </span>
                 {/if}
@@ -286,35 +313,67 @@
         </header>
 
         {#each detailState.detail.pages as page, pageIndex (page.id)}
-          <section class="question-page" aria-labelledby={`questionnaire-page-${page.id}`}>
+          <section class={pageClass} aria-labelledby={`questionnaire-page-${page.id}`}>
             {#if page.title && page.title !== info.title && page.title !== info.campaign}
-              <h3 id={`questionnaire-page-${page.id}`}>{page.title}</h3>
+              <h3
+                class="mb-3 text-lg leading-[1.3] font-bold text-foreground"
+                id={`questionnaire-page-${page.id}`}
+              >{page.title}</h3>
             {/if}
 
-            <ol class="questions" start={pageIndex === 0 ? 1 : undefined}>
+            <ol class="flex list-none flex-col gap-0" start={pageIndex === 0 ? 1 : undefined}>
               {#each page.questions as question, qIndex (question.id)}
-                <li class="question-row">
-                  <div class="question-copy">
-                    <div class="question-title-line">
-                      <span class="question-num" aria-hidden="true">{qIndex + 1}</span>
-                      <h4>{question.title}</h4>
+                <li
+                  class="grid grid-cols-[minmax(0,1fr)] gap-3 border-t border-border-subtle py-4
+                         first:border-t-0 md:grid-cols-[minmax(0,1.35fr)_minmax(15rem,0.65fr)]
+                         md:gap-5"
+                >
+                  <div class={copyStack}>
+                    <div class="flex items-start gap-2">
+                      <span
+                        class="inline-grid size-6 shrink-0 place-items-center rounded-full
+                               bg-surface-sunken text-xs font-bold text-muted-foreground"
+                        aria-hidden="true">{qIndex + 1}</span
+                      >
+                      <h4 class="flex-1 text-base leading-[1.4] font-bold wrap-anywhere text-foreground"
+                        >{question.title}</h4
+                      >
                       <Badge tone={question.required ? 'accent' : 'neutral'}>
                         {question.required ? copy.required : copy.optional}
                       </Badge>
                     </div>
                     {#if question.description}
-                      <div class="question-description-box">
-                        <p>{question.description}</p>
+                      <div
+                        class={cn(
+                          indent,
+                          'rounded-md border-l-3 border-border bg-surface-sunken px-3 py-2'
+                        )}
+                      >
+                        <p class="text-sm leading-[1.5] whitespace-pre-line text-muted-foreground"
+                          >{question.description}</p
+                        >
                       </div>
                     {/if}
                   </div>
 
-                  <div class="answer" aria-label={copy.response}>
+                  <div class={cn(indent, 'min-w-0 md:ml-0')} aria-label={copy.response}>
                     {#if question.kind === 'rating' && question.options.length > 0}
-                      <div class="rating-answer" role="group" aria-label={question.title}>
+                      <div
+                        class="grid max-w-96 grid-cols-5 gap-2"
+                        role="group"
+                        aria-label={question.title}
+                      >
                         {#each question.options as option (`${question.id}:${option.value}`)}
                           {@const isSelected = isSelectedOption(question, option.value, option.label)}
-                          <span class="rating-pill" class:selected={isSelected}>
+                          <span
+                            class={cn(
+                              'flex min-h-(--tap-min) items-center justify-center gap-1 rounded-md',
+                              'border text-sm font-bold tabular-nums',
+                              isSelected
+                                ? 'border-primary-deep bg-primary-deep text-secondary-foreground shadow-sm'
+                                : 'border-border-subtle bg-surface-sunken text-muted-foreground'
+                            )}
+                          >
                             {#if isSelected}
                               <Check size={14} aria-hidden="true" />
                             {/if}
@@ -323,16 +382,22 @@
                         {/each}
                       </div>
                     {:else if question.answers.length > 0}
-                      <div class="text-answer">
-                        <span class="answer-label">{copy.response}</span>
-                        <ul>
+                      <div class="flex flex-col gap-1">
+                        <span class="text-xs font-bold text-muted-foreground">{copy.response}</span>
+                        <ul
+                          class="list-none rounded-md bg-surface-sunken p-3 text-sm leading-[1.5]
+                                 text-foreground"
+                        >
                           {#each question.answers as answer, answerIndex (`${question.id}:${answerIndex}`)}
                             <li>{answer}</li>
                           {/each}
                         </ul>
                       </div>
                     {:else}
-                      <span class="no-answer">{copy.noAnswer}</span>
+                      <span
+                        class="inline-flex min-h-(--tap-min) items-center text-sm italic
+                               text-muted-foreground">{copy.noAnswer}</span
+                      >
                     {/if}
                   </div>
                 </li>
@@ -344,16 +409,16 @@
     {/if}
   </div>
 {:else if listState.kind === 'loading'}
-  <div class="list-skeleton" role="status" aria-live="polite" aria-label={copy.loading}>
+  <div class={column} role="status" aria-live="polite" aria-label={copy.loading}>
     <Card padding="none">
-      <header class="list-heading">
-        <SectionHeader icon={ClipboardList} title={copy.heading} level={3} />
+      <header class={heading}>
+        <SectionHeader class="w-full" icon={ClipboardList} title={copy.heading} level={3} />
       </header>
-      <div class="questionnaire-list">
+      <div class={listBody}>
         {#each Array(3) as _, index (index)}
-          <div class="questionnaire-card questionnaire-card-skeleton">
-            <div class="card-content">
-              <div class="card-topline">
+          <div class={cn(row, 'cursor-default')}>
+            <div class={cardContent}>
+              <div class={topline}>
                 <Skeleton shape="block" width="5rem" height="1.5rem" />
                 <Skeleton shape="text" width="7rem" />
               </div>
@@ -372,8 +437,9 @@
   {@render errorState(listState.code, () => void loadList(true))}
 {:else}
   <Card padding="none">
-    <header class="list-heading">
+    <header class={heading}>
       <SectionHeader
+        class="w-full"
         icon={ClipboardList}
         title={copy.heading}
         subtitle={m.questionnaires_count({ count: listState.page.questionnaires.length })}
@@ -390,7 +456,7 @@
     </header>
 
     {#if listState.page.questionnaires.length === 0}
-      <div class="empty-wrap">
+      <div class="p-4">
         <StateCard
           kind="empty"
           icon={ClipboardList}
@@ -399,16 +465,20 @@
         />
       </div>
     {:else}
-      <div class="questionnaire-list">
+      <div class={listBody}>
         {#each listState.page.questionnaires as questionnaire (questionnaire.id)}
           {@const info = parseQuestionnaireInfo(questionnaire.title, questionnaire.context)}
           <button
             type="button"
-            class="questionnaire-card"
+            class={cn(
+              row,
+              'group cursor-pointer transition-[background] duration-fast ease-out',
+              'hover:bg-surface-sunken'
+            )}
             onclick={() => void loadDetail(questionnaire)}
           >
-            <div class="card-content">
-              <div class="card-topline">
+            <div class={cardContent}>
+              <div class={topline}>
                 <Badge tone={questionnaire.completed ? 'success' : 'warning'}>
                   {#if questionnaire.completed}
                     <CheckCircle2 size={12} aria-hidden="true" />
@@ -418,29 +488,31 @@
                   {statusLabel(questionnaire)}
                 </Badge>
                 {#if questionnaire.deadline}
-                  <span class="deadline">
+                  <span class={deadline}>
                     <CalendarClock size={13} aria-hidden="true" />
                     {m.questionnaire_deadline({ date: questionnaire.deadline })}
                   </span>
                 {/if}
               </div>
 
-              <h3 class="course-title">{info.title}</h3>
+              <h3 class="text-base leading-[1.35] font-bold wrap-anywhere text-foreground"
+                >{info.title}</h3
+              >
 
-              <div class="course-meta">
+              <div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                 {#if info.teacher}
-                  <span class="meta-item">
+                  <span class={metaItem}>
                     <UserRound size={13} aria-hidden="true" />
                     <span>{info.teacher}</span>
                   </span>
                 {/if}
                 {#if info.campaign}
-                  <span class="meta-campaign">{info.campaign}</span>
+                  <span class="text-xs text-muted-foreground">{info.campaign}</span>
                 {/if}
               </div>
             </div>
 
-            <span class="card-arrow" aria-hidden="true">
+            <span class="flex shrink-0 items-center justify-center text-muted-foreground transition-[translate,color] duration-fast ease-out group-hover:translate-x-[3px] group-hover:text-primary-deep" aria-hidden="true">
               <ChevronRight size={18} />
             </span>
           </button>
@@ -450,398 +522,3 @@
   </Card>
 {/if}
 
-<style>
-  .questionnaire-detail,
-  .list-skeleton,
-  .detail-skeleton {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    min-width: 0;
-    padding-bottom: calc(var(--space-6) + 4.5rem);
-  }
-
-  .detail-toolbar {
-    display: flex;
-    align-items: center;
-  }
-
-  .list-heading,
-  .detail-heading {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .list-heading :global(.ui-section-header) {
-    width: 100%;
-  }
-
-  .detail-title-group {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-
-  .detail-tags {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .detail-heading h2 {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-xl);
-    font-weight: var(--weight-heavy);
-    line-height: 1.25;
-    overflow-wrap: anywhere;
-  }
-
-  .detail-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin-top: var(--space-1);
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-  }
-
-  .meta-item {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-weight: var(--weight-medium);
-  }
-
-  .campaign-tag {
-    color: var(--muted-foreground);
-    background: var(--surface-sunken);
-    padding: 0.15rem 0.5rem;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
-  }
-
-  .deadline {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Questionnaire List */
-  .questionnaire-list {
-    display: flex;
-    flex-direction: column;
-    padding-bottom: calc(var(--space-6) + 4.5rem);
-  }
-
-  .questionnaire-card {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    width: 100%;
-    padding: var(--space-4);
-    background: transparent;
-    border: 0;
-    border-bottom: 1px solid var(--border-subtle);
-    cursor: pointer;
-    text-align: left;
-    transition: background var(--duration-fast) var(--ease-out);
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .questionnaire-card:last-child {
-    border-bottom: 0;
-  }
-
-  .card-content {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    min-width: 0;
-    flex: 1;
-  }
-
-  .card-topline {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .course-title {
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-  }
-
-  .course-meta {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-xs);
-    color: var(--muted-foreground);
-  }
-
-  .meta-campaign {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-  }
-
-  .card-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted-foreground);
-    transition: transform var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
-    flex-shrink: 0;
-  }
-
-  /* Questions Page */
-  .question-page {
-    padding: var(--space-4);
-  }
-
-  .question-page + .question-page {
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .question-page > h3 {
-    margin: 0 0 var(--space-3);
-    color: var(--foreground);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-    line-height: 1.3;
-  }
-
-  .questions {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .question-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-    padding: var(--space-4) 0;
-  }
-
-  .question-row + .question-row {
-    border-top: 1px solid var(--border-subtle);
-  }
-
-  .question-copy {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-
-  .question-title-line {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-  }
-
-  .question-num {
-    display: inline-grid;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    flex-shrink: 0;
-    border-radius: var(--radius-full);
-    background: var(--surface-sunken);
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .question-title-line h4 {
-    flex: 1;
-    margin: 0;
-    color: var(--foreground);
-    font-size: var(--text-base);
-    font-weight: var(--weight-bold);
-    line-height: 1.4;
-    overflow-wrap: anywhere;
-  }
-
-  .question-description-box {
-    margin-left: calc(1.5rem + var(--space-2));
-    padding: var(--space-2) var(--space-3);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-md);
-    border-left: 3px solid var(--border);
-  }
-
-  .question-description-box p {
-    margin: 0;
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    white-space: pre-line;
-  }
-
-  .answer {
-    min-width: 0;
-    margin-left: calc(1.5rem + var(--space-2));
-  }
-
-  .rating-answer {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--space-2);
-    max-width: 24rem;
-  }
-
-  .rating-pill {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    min-height: var(--tap-min);
-    color: var(--muted-foreground);
-    background: var(--surface-sunken);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .rating-pill.selected {
-    color: var(--secondary-foreground);
-    background: var(--primary-deep);
-    border-color: var(--primary-deep);
-    box-shadow: var(--shadow-sm);
-  }
-
-  .text-answer {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .answer-label {
-    color: var(--muted-foreground);
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-  }
-
-  .text-answer ul {
-    margin: 0;
-    padding: var(--space-3);
-    color: var(--foreground);
-    background: var(--surface-sunken);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    line-height: 1.5;
-    list-style: none;
-  }
-
-  .no-answer {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--tap-min);
-    color: var(--muted-foreground);
-    font-size: var(--text-sm);
-    font-style: italic;
-  }
-
-  .questionnaire-card-skeleton {
-    cursor: default;
-  }
-
-  .detail-heading-skeleton {
-    min-height: 8rem;
-  }
-
-  .question-skeleton-row {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    min-height: 10rem;
-  }
-
-  .question-title-skeleton {
-    display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .question-copy-skeleton {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .empty-wrap {
-    padding: var(--space-4);
-  }
-
-  @media (min-width: 48rem) {
-    .questionnaire-detail,
-    .questionnaire-list {
-      padding-bottom: var(--space-6);
-    }
-
-    .list-heading,
-    .detail-heading,
-    .question-page {
-      padding: var(--space-5);
-    }
-
-    .list-heading,
-    .detail-heading {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .questionnaire-card {
-      padding: var(--space-4) var(--space-5);
-    }
-
-    .question-row {
-      grid-template-columns: minmax(0, 1.35fr) minmax(15rem, 0.65fr);
-      gap: var(--space-5);
-    }
-
-    .answer {
-      margin-left: 0;
-    }
-  }
-
-  @media (hover: hover) {
-    .questionnaire-card:hover {
-      background: var(--surface-sunken);
-    }
-
-    .questionnaire-card:hover .card-arrow {
-      transform: translateX(3px);
-      color: var(--primary-deep);
-    }
-  }
-</style>
