@@ -1,6 +1,6 @@
 [package]
 name = "betteraimaira"
-version = "0.1.0"
+version = "0.1.1-beta"
 description = "Alternative Tauri client for Aimaira student intranets."
 authors = ["Timothe Montfrond"]
 license = "GPL-3.0-only"

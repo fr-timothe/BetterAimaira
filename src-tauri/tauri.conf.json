@@ -1,54 +1,46 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "betteraimaira",
-  "version": "0.1.0",
-  "identifier": "com.betteraimaira.app",
-  "build": {
-    "beforeDevCommand": "bun run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../build"
-  },
-  "app": {
-    "withGlobalTauri": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "betteraimaira",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 680,
-        "minHeight": 580,
-        "decorations": false,
-        "transparent": false,
-        "shadow": true
-      }
-    ],
-    "security": {
-      "csp": null
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ],
-    "createUpdaterArtifacts": true
-  },
-  "plugins": {
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3MTgxRDFFQzlFMkU5QQpSV1NhTHA3czBZRnhCVS9BTVlxZWx1QUdTdkxLMXVWb3Vma0ZjMmVxWXNwWWZjejRRdVhTZm5jRwo=",
-      "endpoints": [
-        "https://github.com/fr-timothe/BetterAimaira/releases/latest/download/latest.json"
-      ],
-      "windows": {
-        "installMode": "passive"
-      }
-    }
-  }
+	"$schema": "https://schema.tauri.app/config/2",
+	"productName": "betteraimaira",
+	"version": "0.1.1-beta",
+	"identifier": "com.betteraimaira.app",
+	"build": {
+		"beforeDevCommand": "bun run dev",
+		"devUrl": "http://localhost:1420",
+		"beforeBuildCommand": "bun run build",
+		"frontendDist": "../build"
+	},
+	"app": {
+		"withGlobalTauri": true,
+		"windows": [
+			{
+				"label": "main",
+				"title": "betteraimaira",
+				"width": 1280,
+				"height": 800,
+				"minWidth": 680,
+				"minHeight": 580,
+				"decorations": false,
+				"transparent": false,
+				"shadow": true
+			}
+		],
+		"security": {
+			"csp": null
+		}
+	},
+	"bundle": {
+		"active": true,
+		"targets": "all",
+		"icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+		"createUpdaterArtifacts": true
+	},
+	"plugins": {
+		"updater": {
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3MTgxRDFFQzlFMkU5QQpSV1NhTHA3czBZRnhCVS9BTVlxZWx1QUdTdkxLMXVWb3Vma0ZjMmVxWXNwWWZjejRRdVhTZm5jRwo=",
+			"endpoints": ["https://github.com/fr-timothe/BetterAimaira/releases/latest/download/latest.json"],
+			"windows": {
+				"installMode": "passive"
+			}
+		}
+	}
 }
