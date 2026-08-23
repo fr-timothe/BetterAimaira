@@ -1,6 +1,6 @@
 {
 	"name": "betteraimaira",
-	"version": "0.1.1-beta.1",
+	"version": "0.1.1-beta.2",
 	"description": "Alternative Tauri client for Aimaira student intranets.",
 	"type": "module",
 	"scripts": {
@@ -14,7 +14,8 @@
 		"mobile:dev": "tauri dev -c src-tauri/tauri.mobile-dev.conf.json --features dev-automation",
 		"dev:desktop": "tauri dev --features dev-automation",
 		"dev:mobile": "tauri dev -c src-tauri/tauri.mobile-dev.conf.json --features dev-automation",
-		"android:dev": "tauri android dev",
+		"android:sync": "bun ./scripts/sync-android-assets.mjs",
+		"android:dev": "bun run android:sync && tauri android dev",
 		"ios:dev": "tauri ios dev",
 		"desktop:build": "tauri build",
 		"desktop:build:export": "tauri build && bun ./scripts/clean-build.mjs --export",

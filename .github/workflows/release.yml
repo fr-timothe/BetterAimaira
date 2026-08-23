@@ -103,7 +103,9 @@ jobs:
           PROPERTIES
 
       - name: Build APK
-        run: bun tauri android build --apk
+        run: |
+          bun run android:sync
+          bun tauri android build --apk
         env:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
 

@@ -3,7 +3,7 @@
   "app": {
     "windows": [
       {
-        "title": "betteraimaira",
+		"title": "BetterAimaira",
         "width": 1280,
         "height": 800,
         "minWidth": 680,
