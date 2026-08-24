@@ -48,8 +48,17 @@ const dryRun = process.argv.includes("--dry-run");
 const version = JSON.parse(readFileSync(resolve(ROOT_DIR, "package.json"), "utf8")).version;
 const tag = `v${version}`;
 
-if (git("status", "--porcelain")) {
-  fail("Working tree is not clean. Commit or stash before tagging.");
+// Only tracked changes block: the tag points at HEAD, so a stray untracked
+// directory changes nothing about what ships. It is still worth naming, since
+// a forgotten new source file looks exactly like one.
+if (git("status", "--porcelain", "--untracked-files=no")) {
+  fail("Tracked files are modified. Commit or stash before tagging.");
+}
+
+const untracked = git("ls-files", "--others", "--exclude-standard");
+if (untracked) {
+  console.warn(`Untracked, and therefore not in this release:
+${untracked}`);
 }
 
 if (tryGit("rev-parse", "--verify", `refs/tags/${tag}`)) {
