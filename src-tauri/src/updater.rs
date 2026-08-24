@@ -534,42 +534,33 @@ mod platform {
             .to_str()
             .ok_or_else(|| CommandError::new("update_install_failed"))?;
 
-        let context = ndk_context::android_context();
-        let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) }
-            .map_err(|_| CommandError::new("update_install_failed"))?;
-        let mut env = vm
-            .attach_current_thread()
-            .map_err(|_| CommandError::new("update_install_failed"))?;
+        crate::android_bridge::with_installer("update_install_failed", |env, class, activity| {
+            let apk_path = env
+                .new_string(path)
+                .map_err(|_| CommandError::new("update_install_failed"))?;
 
-        // `ndk_context` owns a global ref to the Android context. A `JObject`
-        // does not release the reference it wraps, so borrowing it here is safe
-        // and the global ref stays alive for the next call.
-        let activity = unsafe { jni::objects::JObject::from_raw(context.context().cast()) };
-        let apk_path = env
-            .new_string(path)
-            .map_err(|_| CommandError::new("update_install_failed"))?;
+            let result = env.call_static_method(
+                class,
+                "install",
+                "(Landroid/content/Context;Ljava/lang/String;)Ljava/lang/String;",
+                &[activity.into(), (&apk_path).into()],
+            );
 
-        let result = env.call_static_method(
-            "com/betteraimaira/app/ApkInstaller",
-            "install",
-            "(Landroid/content/Context;Ljava/lang/String;)Ljava/lang/String;",
-            &[(&activity).into(), (&apk_path).into()],
-        );
+            let Ok(value) = result else {
+                crate::android_bridge::clear_pending_exception(env);
+                return Err(CommandError::new("update_install_failed"));
+            };
 
-        let Ok(value) = result else {
-            let _ = env.exception_clear();
-            return Err(CommandError::new("update_install_failed"));
-        };
+            let status = value
+                .l()
+                .map_err(|_| CommandError::new("update_install_failed"))?;
+            let status = jni::objects::JString::from(status);
+            let status = env
+                .get_string(&status)
+                .map_err(|_| CommandError::new("update_install_failed"))?;
 
-        let status = value
-            .l()
-            .map_err(|_| CommandError::new("update_install_failed"))?;
-        let status = jni::objects::JString::from(status);
-        let status = env
-            .get_string(&status)
-            .map_err(|_| CommandError::new("update_install_failed"))?;
-
-        Ok(status.into())
+            Ok(status.into())
+        })
     }
 }
 

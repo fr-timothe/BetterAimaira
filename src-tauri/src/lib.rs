@@ -1,4 +1,6 @@
 mod aimaira;
+#[cfg(target_os = "android")]
+mod android_bridge;
 mod commands;
 mod credentials;
 mod error;
