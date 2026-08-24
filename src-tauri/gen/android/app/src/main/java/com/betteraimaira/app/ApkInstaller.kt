@@ -69,6 +69,14 @@ object ApkInstaller {
         }
     }
 
+    /**
+     * Whether the "install unknown apps" right is held. The onboarding screen
+     * reads it to say what is still missing, so it is called from Rust as well
+     * as from [install].
+     */
+    @JvmStatic
+    fun canInstall(context: Context): Boolean = canInstallPackages(context.applicationContext)
+
     private fun canInstallPackages(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
         return context.packageManager.canRequestPackageInstalls()
@@ -77,20 +85,27 @@ object ApkInstaller {
     /**
      * Android refuses to show the installer until this app holds the "install
      * unknown apps" right, and the grant lives in Settings, not in a dialog.
+     *
+     * Returns whether that screen actually opened: some vendor builds hide it,
+     * and a caller that assumed otherwise would leave the reader waiting for a
+     * page that never appears.
      */
-    private fun requestInstallPermission(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    @JvmStatic
+    fun requestInstallPermission(context: Context): Boolean {
+        val applicationContext = context.applicationContext
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         val intent =
             Intent(
                     Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:${context.packageName}"),
+                    Uri.parse("package:${applicationContext.packageName}"),
                 )
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        try {
-            context.startActivity(intent)
+        return try {
+            applicationContext.startActivity(intent)
+            true
         } catch (error: Exception) {
-            // Some vendor builds hide the screen; the user can still install the
-            // APK by hand from the cache directory.
+            // The user can still install the APK by hand from the cache directory.
+            false
         }
     }
 

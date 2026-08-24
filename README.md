@@ -83,6 +83,7 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 - `Authentification par formulaire en Rust` (jeton anti-falsification, gestionnaire privé de cookies)
 - `Persistance optionnelle du mot de passe` (Windows Credential Manager, Trousseau macOS, Keystore Android, Secret Service Linux)
 - `Restauration automatique de session` au lancement
+- `Écran d'introduction au premier lancement` (présentation en une page, puis la liste des autorisations que la plateforme réclame)
 - `Codes d'erreur stables` (traduits dans l'interface, jamais de diagnostics bruts)
 - `Interface en français et en anglais`, complète dès la première version
 </details>

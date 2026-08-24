@@ -5,6 +5,7 @@ mod commands;
 mod credentials;
 mod error;
 mod grade_sync;
+mod permissions;
 mod state;
 mod updater;
 
@@ -63,6 +64,8 @@ pub fn run() {
             updater::check_for_update,
             updater::install_update,
             updater::default_update_channel,
+            permissions::permission_states,
+            permissions::request_permission,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -17,6 +17,8 @@
   import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
   import { clearPortalResourceCache } from '$lib/features/schedule/portal-cache';
   import SessionRestoreScreen from '$lib/features/auth/SessionRestoreScreen.svelte';
+  import OnboardingScreen from '$lib/features/onboarding/OnboardingScreen.svelte';
+  import { onboardingSeen } from '$lib/features/onboarding/onboarding.svelte';
   import type { SavedIdentity } from '$lib/features/auth/session';
   import { connectivity } from '$lib/state/connectivity.svelte';
   import { cn } from '$lib/utils';
@@ -97,6 +99,9 @@
   let ScheduleApp = $state<ScheduleAppComponent | null>(null);
   let locale = $state<Locale>(getLocale());
   let now = $state(new Date());
+  // Read once: the introduction is dismissed inside this session, and re-reading
+  // storage on every render would put it back for the frame after the write.
+  let introductionPending = $state(!onboardingSeen());
 
   let slowTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -368,6 +373,9 @@
     onLocaleChange={changeLocale}
     onLogout={logout}
   />
+{:else if introductionPending && phase === 'manual' && !savedIdentity}
+  <!-- First start only: a device with a saved account has been through this. -->
+  <OnboardingScreen {locale} onDone={() => (introductionPending = false)} />
 {:else if phase === 'checking' || phase === 'restoring' || phase === 'failed'}
   <SessionRestoreScreen
     stage={phase}

@@ -84,6 +84,7 @@ strictly read-only: administrative, billing and remote write actions are out of 
 - `Form Authentication In Rust` (anti-forgery token, private cookie jar)
 - `Optional Password Persistence` (Windows Credential Manager, Keychain, Keystore, Secret Service)
 - `Automatic Session Restore` on launch
+- `First-run introduction` (a one-page tour, then the rights the platform wants granted)
 - `Stable Error Codes` (translated in the interface, never raw diagnostics)
 - `French And English` interface, complete from the first milestone
 </details>

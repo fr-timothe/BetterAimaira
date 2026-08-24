@@ -55,10 +55,20 @@ src-tauri/src/
 ├── state.rs                # In-memory authenticated session
 ├── error.rs                # Stable serialized command errors
 ├── credentials.rs          # Native credential-store adapter
+├── grade_sync.rs           # Local grade history and new-grade alerts
+├── updater.rs              # Update feed, per-platform install delivery
+├── permissions.rs          # Rights the reader grants by hand (Android only)
+├── android_bridge.rs       # JNI entry into the app's own Kotlin classes
 ├── aimaira.rs              # Authentication and calendar adapter
 └── aimaira/
     └── portal.rs           # Semantic HTML resources and safe PDF downloads
 ```
+
+`android_bridge.rs` exists because a JNI call by class name resolves against the
+class loader of the Java frame below it. Tauri commands run on threads the
+runtime attached from native code, which have no such frame and fall back to the
+system class loader — the app's own classes are invisible from there. Every
+native call into Kotlin therefore goes through the context's own class loader.
 
 ---
 
