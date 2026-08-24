@@ -22,6 +22,8 @@
 		"updater:keygen": "bun ./scripts/updater-keygen.mjs",
 		"android:version-code": "bun ./scripts/android-version-code.mjs",
 		"release:manifest": "bun ./scripts/release-manifest.mjs",
+		"release:notes": "bun ./scripts/release-notes.mjs",
+		"release:tag": "bun ./scripts/release-tag.mjs",
 		"perf:report": "bun ./scripts/performance-report.mjs",
 		"clean": "bun ./scripts/clean-build.mjs --all",
 		"clean:cache": "bun ./scripts/clean-build.mjs --intermediate",

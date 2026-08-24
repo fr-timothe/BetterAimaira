@@ -31,6 +31,8 @@ name: release
 # That job is best-effort — `publish` does not wait on it, and a release without
 # an IPA simply carries an empty AltStore version list.
 
+# The tag is the only trigger: bumping the version and pushing the commit
+# publishes nothing. `bun run release:tag` is the other half of a bump.
 on:
   push:
     tags:
@@ -201,7 +203,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      # The release notes are built from the commits between the previous tag and
+      # this one, so the shallow default checkout is not enough: it carries no
+      # tags and no history to walk.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
 
@@ -251,6 +258,12 @@ jobs:
           fi
           bun run release:manifest -- "${arguments[@]}"
 
+      # `--generate-notes` lists pull requests, and this project ships straight
+      # from `master`: it produced a release page holding nothing but a compare
+      # link. The notes are written from the commit range instead.
+      - name: Write the release notes
+        run: bun run release:notes -- --tag "${GITHUB_REF_NAME}" --output dist-release/NOTES.md
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -262,7 +275,7 @@ jobs:
           fi
           gh release create "$GITHUB_REF_NAME" \
             --title "BetterAimaira ${GITHUB_REF_NAME#v}" \
-            --generate-notes \
+            --notes-file dist-release/NOTES.md \
             "${flags[@]}" \
             "${assets[@]}"
 

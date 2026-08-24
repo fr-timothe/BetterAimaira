@@ -223,6 +223,23 @@ bun run clean:cache
 
 Pousser un tag `v*` déclenche le workflow [`.github/workflows/release.yml`](.github/workflows/release.yml), qui compile l'installeur Windows ainsi que l'APK Android, génère les manifestes de mise à jour, publie la release et commite les manifestes sur la branche `gh-pages`.
 
+Seul le tag déclenche ce workflow : bumper la version et pousser le commit ne publie rien. Le tag se pose avec le script dédié, qui refuse un arbre sale, un `HEAD` non poussé ou une version déjà taguée :
+
+```bash
+# Vérifie sans rien pousser
+bun run release:tag -- --dry-run
+
+# Tague le commit courant en v<version de package.json> et pousse le tag
+bun run release:tag
+```
+
+La description de la release est construite à partir des commits ajoutés depuis le tag précédent, groupés par type de commit conventionnel. Le rendu se relit en local avant de taguer :
+
+```bash
+bun run release:notes
+bun run release:notes -- --tag v0.2.0 --previous v0.1.9
+```
+
 Android ne compare pas les noms de version mais les `versionCode` : un APK dont le code n'est pas supérieur à celui installé n'est pas une mise à jour pour le système. Le code est dérivé de la version du paquet, jamais choisi à la main :
 
 ```bash
