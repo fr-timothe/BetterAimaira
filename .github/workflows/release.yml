@@ -131,6 +131,14 @@ jobs:
           keyPassword=$KEY_PASSWORD
           PROPERTIES
 
+      # Android reads the version code, not the version name: an APK whose code
+      # is not higher than the installed one is not an update, whatever the tag
+      # says. The code is derived from the package version here rather than
+      # trusted from the checkout, so a version bump that forgot it still ships
+      # a real update.
+      - name: Derive the Android version code
+        run: bun run android:version-code
+
       - name: Build APK
         run: |
           bun run android:sync

@@ -20,6 +20,7 @@
 		"desktop:build": "tauri build",
 		"desktop:build:export": "tauri build && bun ./scripts/clean-build.mjs --export",
 		"updater:keygen": "bun ./scripts/updater-keygen.mjs",
+		"android:version-code": "bun ./scripts/android-version-code.mjs",
 		"release:manifest": "bun ./scripts/release-manifest.mjs",
 		"perf:report": "bun ./scripts/performance-report.mjs",
 		"clean": "bun ./scripts/clean-build.mjs --all",

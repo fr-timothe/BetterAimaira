@@ -227,6 +227,23 @@ Pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/rele
 builds the Windows installer and the Android APK, writes both update manifests, publishes the
 release, and commits the manifests to the `gh-pages` branch.
 
+Android compares version codes, not version names: an APK whose code is not higher than the
+installed one is not an update as far as the system is concerned. The code is derived from the
+package version, never picked by hand:
+
+```bash
+# Writes bundle.android.versionCode into src-tauri/tauri.conf.json
+bun run android:version-code
+
+# Fails if the file is out of step, writes nothing
+bun run android:version-code -- --check
+```
+
+The derivation is `major * 1_000_000 + minor * 10_000 + patch * 100 + prerelease`, where the
+prerelease is its trailing number (`beta.5` → 5) and `99` for a final release: `0.1.1-beta.5`
+gives `10105`, `0.1.1` gives `10199`. The release workflow re-derives it before building, so a
+version bump that forgot it still ships a real update.
+
 The app reads its update feed from <https://betteraimaira.montfrond.work>, served by GitHub Pages
 off the `gh-pages` branch, one directory per channel:
 

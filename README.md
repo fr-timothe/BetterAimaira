@@ -222,6 +222,18 @@ bun run clean:cache
 
 Pousser un tag `v*` déclenche le workflow [`.github/workflows/release.yml`](.github/workflows/release.yml), qui compile l'installeur Windows ainsi que l'APK Android, génère les manifestes de mise à jour, publie la release et commite les manifestes sur la branche `gh-pages`.
 
+Android ne compare pas les noms de version mais les `versionCode` : un APK dont le code n'est pas supérieur à celui installé n'est pas une mise à jour pour le système. Le code est dérivé de la version du paquet, jamais choisi à la main :
+
+```bash
+# Écrit bundle.android.versionCode dans src-tauri/tauri.conf.json
+bun run android:version-code
+
+# Échoue si le fichier n'est pas à jour, sans rien écrire
+bun run android:version-code -- --check
+```
+
+La formule est `major * 1 000 000 + minor * 10 000 + patch * 100 + préversion`, la préversion valant son numéro de suffixe (`beta.5` → 5) et `99` pour une version finale : `0.1.1-beta.5` donne `10105`, `0.1.1` donne `10199`. Le workflow de release relance la dérivation avant de compiler, donc un bump de version qui l'aurait oubliée publie quand même une vraie mise à jour.
+
 L'application lit son flux de mise à jour sur <https://betteraimaira.montfrond.work>, servi par GitHub Pages depuis la branche `gh-pages`, un dossier par canal :
 
 | Canal | Manifeste |
