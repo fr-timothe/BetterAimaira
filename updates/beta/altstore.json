@@ -20,12 +20,12 @@
       },
       "versions": [
         {
-          "version": "0.1.1-beta.5",
-          "buildVersion": "011-beta5",
-          "date": "2026-08-23T23:38:12.858Z",
-          "localizedDescription": "BetterAimaira 0.1.1-beta.5",
-          "downloadURL": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.5/BetterAimaira-v0.1.1-beta.5-arm64.ipa",
-          "size": 4040255,
+          "version": "0.1.1-beta.6",
+          "buildVersion": "011-beta6",
+          "date": "2026-08-24T15:07:14.765Z",
+          "localizedDescription": "BetterAimaira 0.1.1-beta.6",
+          "downloadURL": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.6/BetterAimaira-v0.1.1-beta.6-arm64.ipa",
+          "size": 4047204,
           "minOSVersion": "15.0"
         }
       ]
