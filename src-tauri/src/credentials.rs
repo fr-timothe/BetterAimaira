@@ -51,6 +51,12 @@ pub fn load_credentials() -> Result<Option<SavedCredentials>, String> {
     }))
 }
 
+/// The identity alone, without touching the password entry: the startup screen
+/// needs to know whether a session will be restored before the slow parts run.
+pub fn load_identity() -> Result<Option<(Url, String)>, String> {
+    Ok(read_saved_identity()?.map(|(identity, portal_url)| (portal_url, identity.username)))
+}
+
 pub fn clear_saved_credentials() -> Result<(), String> {
     if let Some((identity, portal_url)) = read_saved_identity()? {
         delete_entry_if_exists(&password_entry(&portal_url, &identity.username)?)?;

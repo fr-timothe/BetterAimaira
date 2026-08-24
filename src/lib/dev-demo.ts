@@ -334,12 +334,23 @@ export function getDemoResponse(cmd: string, args?: Record<string, unknown>): un
   if (cmd === 'normalize_portal_url') {
     return { portalUrl: 'https://ecole-ingenieurs.myintranet.online' };
   }
-  if (cmd === 'login' || cmd === 'restore_session') {
+  const demoSession = {
+    portalUrl: 'https://ecole-ingenieurs.myintranet.online',
+    username: 'alexandre.martin@ecole-ingenieurs.fr',
+    credentialsSaved: true,
+    sundaysVisible: false
+  };
+  if (cmd === 'saved_identity') {
+    return { portalUrl: demoSession.portalUrl, username: demoSession.username };
+  }
+  if (cmd === 'login') {
+    return demoSession;
+  }
+  if (cmd === 'restore_session') {
     return {
-      portalUrl: 'https://ecole-ingenieurs.myintranet.online',
-      username: 'alexandre.martin@ecole-ingenieurs.fr',
-      credentialsSaved: true,
-      sundaysVisible: false
+      status: 'restored',
+      session: demoSession,
+      identity: { portalUrl: demoSession.portalUrl, username: demoSession.username }
     };
   }
   if (cmd === 'get_planning_settings') {

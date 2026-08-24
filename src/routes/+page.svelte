@@ -16,6 +16,9 @@
   import * as m from '$lib/paraglide/messages.js';
   import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
   import { clearPortalResourceCache } from '$lib/features/schedule/portal-cache';
+  import SessionRestoreScreen from '$lib/features/auth/SessionRestoreScreen.svelte';
+  import type { SavedIdentity } from '$lib/features/auth/session';
+  import { connectivity } from '$lib/state/connectivity.svelte';
   import { cn } from '$lib/utils';
 
   type ScheduleAppComponent = (typeof import('$lib/features/schedule/ScheduleApp.svelte'))['default'];
@@ -27,6 +30,11 @@
     credentialsSaved: boolean;
     sundaysVisible: boolean;
   };
+  type RestoreResult = {
+    status: 'restored' | 'no_credentials' | 'credentials_rejected';
+    session: LoginResult | null;
+    identity: SavedIdentity | null;
+  };
   type ErrorCode =
     | 'invalid_portal_url'
     | 'insecure_portal_url'
@@ -34,9 +42,23 @@
     | 'portal_not_aimaira'
     | 'invalid_credentials'
     | 'missing_credentials'
+    | 'saved_credentials_rejected'
     | 'credential_store'
     | 'internal_error'
     | 'desktop_required';
+
+  /**
+   * `checking` reads the credential store, `restoring` logs the saved account
+   * back in, `failed` holds a recoverable startup error, `manual` is the login
+   * form and `ready` the authenticated app. Startup begins on `checking` so a
+   * returning account never sees the form flash by.
+   */
+  type BootPhase = 'checking' | 'restoring' | 'failed' | 'manual' | 'ready';
+
+  /** How long a restore may run before the screen admits it is slow. */
+  const SLOW_RESTORE_DELAY = 12_000;
+  /** Retries spent by the network coming back, so a flapping link cannot loop. */
+  const MAX_AUTO_RETRIES = 3;
 
   // The field frame is shared by the bare input and the two icon wrappers, so
   // the focus ring lands on the same box in all three.
@@ -62,12 +84,23 @@
   let remember = $state(true);
   let passwordVisible = $state(false);
   let submitting = $state(false);
-  let restoring = $state(false);
+  let phase = $state<BootPhase>('checking');
   let errorCode = $state<ErrorCode | null>(null);
+  let restoreErrorCode = $state<ErrorCode | null>(null);
+  let restoreOffline = $state(false);
+  let restoreSlow = $state(false);
+  let savedIdentity = $state<SavedIdentity | null>(null);
+  // Deliberately not reactive: the counter only guards the retry effect, and a
+  // reactive read there would re-run the effect on its own write.
+  let autoRetries = 0;
   let loginResult = $state<LoginResult | null>(null);
   let ScheduleApp = $state<ScheduleAppComponent | null>(null);
   let locale = $state<Locale>(getLocale());
   let now = $state(new Date());
+
+  let slowTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const restoring = $derived(phase === 'checking' || phase === 'restoring');
 
   const signalTime = $derived(
     new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(now)
@@ -109,6 +142,7 @@
       case 'portal_not_aimaira': return m.error_portal_not_aimaira();
       case 'invalid_credentials': return m.error_invalid_credentials();
       case 'missing_credentials': return m.error_missing_credentials();
+      case 'saved_credentials_rejected': return m.error_saved_credentials_rejected();
       case 'credential_store': return m.error_credential_store();
       case 'internal_error': return m.error_internal_error();
       case 'desktop_required': return m.error_desktop_required();
@@ -116,14 +150,76 @@
     }
   });
 
+  const restoreErrorMessage = $derived.by(() => {
+    locale;
+    switch (restoreErrorCode) {
+      case 'portal_unreachable': return m.error_portal_unreachable();
+      case 'portal_not_aimaira': return m.error_portal_not_aimaira();
+      case 'insecure_portal_url': return m.error_insecure_portal_url();
+      case 'invalid_portal_url': return m.error_invalid_portal_url();
+      case 'credential_store': return m.error_credential_store();
+      default: return m.error_internal_error();
+    }
+  });
+
   onMount(() => {
     const clock = setInterval(() => (now = new Date()), 30_000);
     if (isTauri()) {
-      restoring = true;
-      void restoreSession();
+      void startSession();
+    } else {
+      phase = 'manual';
     }
-    return () => clearInterval(clock);
+    return () => {
+      clearInterval(clock);
+      stopSlowWatchdog();
+    };
   });
+
+  // The network coming back is the one event that turns an unreachable portal
+  // into a reachable one without the reader doing anything, so spend it on a
+  // retry — a bounded number of times, in case the link keeps flapping.
+  $effect(() => {
+    const online = connectivity.online;
+    if (!online || phase !== 'failed') return;
+    if (restoreErrorCode !== 'portal_unreachable' && !restoreOffline) return;
+    if (autoRetries >= MAX_AUTO_RETRIES) return;
+    autoRetries += 1;
+    void startSession();
+  });
+
+  function startSlowWatchdog() {
+    stopSlowWatchdog();
+    restoreSlow = false;
+    slowTimer = setTimeout(() => (restoreSlow = true), SLOW_RESTORE_DELAY);
+  }
+
+  function stopSlowWatchdog() {
+    if (slowTimer === null) return;
+    clearTimeout(slowTimer);
+    slowTimer = null;
+  }
+
+  function failRestore(code: ErrorCode, offline = false) {
+    stopSlowWatchdog();
+    restoreSlow = false;
+    restoreErrorCode = code;
+    restoreOffline = offline;
+    phase = 'failed';
+  }
+
+  /** Sends the reader to the login form, with the saved account already filled. */
+  function openLoginForm(code: ErrorCode | null = null) {
+    stopSlowWatchdog();
+    restoreSlow = false;
+    restoreErrorCode = null;
+    restoreOffline = false;
+    if (savedIdentity) {
+      portalUrl ||= savedIdentity.portalUrl;
+      username ||= savedIdentity.username;
+    }
+    errorCode = code;
+    phase = 'manual';
+  }
 
   function extractErrorCode(error: unknown): ErrorCode {
     if (typeof error === 'object' && error !== null && 'code' in error) {
@@ -170,23 +266,68 @@
     }
   }
 
-  async function restoreSession() {
+  /**
+   * The startup path: find out whether an account is saved, then sign it back
+   * in. Every outcome lands somewhere explicit — the app, the login form with a
+   * reason, or the restore screen with a retry.
+   */
+  async function startSession() {
+    phase = 'checking';
+    restoreErrorCode = null;
+    restoreOffline = false;
+    startSlowWatchdog();
+
+    let identity: SavedIdentity | null;
     try {
-      const result = await invoke<LoginResult | null>('restore_session');
-      if (result) {
-        await openAuthenticatedApp(result);
-        portalUrl = result.portalUrl;
-      }
+      identity = await invoke<SavedIdentity | null>('saved_identity');
     } catch (error) {
-      errorCode = extractErrorCode(error);
-    } finally {
-      restoring = false;
+      // Without a credential store there is nothing to restore, and a retry
+      // would fail the same way: the password in hand is the way out.
+      openLoginForm(extractErrorCode(error));
+      return;
+    }
+
+    savedIdentity = identity;
+    if (!identity) {
+      openLoginForm();
+      return;
+    }
+
+    if (!connectivity.online) {
+      failRestore('portal_unreachable', true);
+      return;
+    }
+
+    phase = 'restoring';
+    try {
+      const result = await invoke<RestoreResult>('restore_session');
+
+      if (result.status === 'restored' && result.session) {
+        stopSlowWatchdog();
+        await openAuthenticatedApp(result.session);
+        portalUrl = result.session.portalUrl;
+        return;
+      }
+
+      savedIdentity = result.identity ?? savedIdentity;
+      openLoginForm(
+        result.status === 'credentials_rejected' ? 'saved_credentials_rejected' : null
+      );
+    } catch (error) {
+      const code = extractErrorCode(error);
+      if (code === 'credential_store') {
+        openLoginForm(code);
+        return;
+      }
+      failRestore(code, !connectivity.online);
     }
   }
 
   async function openAuthenticatedApp(result: LoginResult) {
     ScheduleApp ??= (await import('$lib/features/schedule/ScheduleApp.svelte')).default;
     loginResult = result;
+    autoRetries = 0;
+    phase = 'ready';
   }
 
   async function changeLocale(nextLocale: Locale) {
@@ -196,11 +337,20 @@
   }
 
   async function logout() {
-    await invoke('logout');
+    try {
+      await invoke('logout');
+    } catch (error) {
+      // The session is dropped either way; a keyring that refuses to forget is
+      // worth reporting on the form the reader is about to land on.
+      errorCode = extractErrorCode(error);
+    }
     clearPortalResourceCache();
     loginResult = null;
     ScheduleApp = null;
+    savedIdentity = null;
+    autoRetries = 0;
     password = '';
+    phase = 'manual';
   }
 </script>
 
@@ -208,7 +358,7 @@
   <title>{copy.appName}</title>
 </svelte:head>
 
-{#if loginResult && ScheduleApp}
+{#if phase === 'ready' && loginResult && ScheduleApp}
   <ScheduleApp
     username={loginResult.username}
     portalUrl={loginResult.portalUrl}
@@ -217,6 +367,20 @@
     sundaysVisible={loginResult.sundaysVisible}
     onLocaleChange={changeLocale}
     onLogout={logout}
+  />
+{:else if phase === 'checking' || phase === 'restoring' || phase === 'failed'}
+  <SessionRestoreScreen
+    stage={phase}
+    identity={savedIdentity}
+    errorMessage={restoreErrorMessage}
+    offline={restoreOffline && !connectivity.online}
+    slow={restoreSlow}
+    {locale}
+    onRetry={() => {
+      autoRetries = 0;
+      void startSession();
+    }}
+    onManualLogin={() => openLoginForm()}
   />
 {:else}
 <main

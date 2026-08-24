@@ -137,7 +137,8 @@ export const appStore = new AppStore();
 
 - `normalize_portal_url` accepts user-pasted portal addresses, adds `https://` when absent, strips path, query, and fragment parts, and rejects embedded credentials or non-HTTPS schemes.
 - `login` requests `/login`, extracts `__RequestVerificationToken`, posts to `/User/LoginPost`, and detects login failures.
-- `restore_session` reads the saved username and password from the native credential store and repeats the authentication flow on startup; expired credentials are discarded.
+- `saved_identity` reports whether an account is saved without reading its password or the network, so startup shows a restore screen instead of flashing the login form.
+- `restore_session` reads the saved username and password from the native credential store and repeats the authentication flow on startup; expired credentials are discarded and reported as `credentials_rejected` so the client can explain the return to the login form.
 - Tauri manages the authenticated `reqwest::Client`; cookies never cross IPC.
 - Password persistence targets Windows Credential Manager, Apple Keychain, Android Keystore, or Linux Secret Service depending on platform. Explicit logout clears the saved entry.
 - Frontend receives stable error codes for translation, never raw network or storage diagnostic strings.

@@ -10,7 +10,8 @@ This document describes the client-facing contract exposed by the Tauri backend.
 |---|---|---|
 | `normalize_portal_url` | `{ portalUrl: string }` | `{ portalUrl: string }` |
 | `login` | `{ request: LoginRequest }` | `LoginResult` |
-| `restore_session` | none | `LoginResult \| null` |
+| `restore_session` | none | `RestoreResult` |
+| `saved_identity` | none | `SavedIdentity \| null` |
 | `logout` | none | `null` |
 | `get_schedule` | `{ request: ScheduleRequest }` | `ScheduleResult` |
 | `get_planning_settings` | none | `PlanningSettingsResult` |
@@ -54,7 +55,34 @@ type PlanningSettingsResult = {
 `get_planning_settings` always re-reads the settings from the portal and refreshes
 the copy cached on the session, so there is no separate refresh command.
 
-`restore_session` reads the last saved identity and password from the operating system credential store, then performs a normal portal login to create a fresh in-memory cookie jar. It returns `null` when no saved credentials exist or when they are no longer accepted by Aimaira. Cookies remain private to Rust. `logout` drops the in-memory cookie jar and removes the saved credentials.
+```ts
+type SavedIdentity = {
+  portalUrl: string;
+  username: string;
+};
+
+type RestoreResult = {
+  status: 'restored' | 'no_credentials' | 'credentials_rejected';
+  session: LoginResult | null; // set only when status is `restored`
+  identity: SavedIdentity | null; // absent only when nothing was saved
+};
+```
+
+`saved_identity` reads the saved identity alone and never touches the password
+entry or the network, so the client can decide between a startup wait and the
+login form before the slow work begins. It answers `null` when no account is
+saved and fails with `credential_store` when the platform store is unavailable.
+
+`restore_session` reads the last saved identity and password from the operating
+system credential store, then performs a normal portal login to create a fresh
+in-memory cookie jar. `status` separates the two outcomes that are not a
+restored session: `no_credentials` when nothing is saved, and
+`credentials_rejected` when Aimaira refused the saved password — in that case
+the saved entry is discarded and `identity` still carries the account, so the
+client can offer a pre-filled login form. Every other failure is a normal
+command error, for example `portal_unreachable`, which the client retries.
+Cookies remain private to Rust. `logout` drops the in-memory cookie jar and
+removes the saved credentials.
 
 ## Schedule
 

@@ -48,6 +48,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::login,
             commands::restore_session,
+            commands::saved_identity,
             commands::logout,
             commands::get_schedule,
             commands::get_planning_settings,
