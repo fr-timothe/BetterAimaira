@@ -353,6 +353,26 @@ export function getDemoResponse(cmd: string, args?: Record<string, unknown>): un
       identity: { portalUrl: demoSession.portalUrl, username: demoSession.username }
     };
   }
+  // The update flow, so the notice and the card can be driven in a browser.
+  if (cmd === 'default_update_channel') {
+    return 'beta';
+  }
+  if (cmd === 'check_for_update') {
+    return {
+      available: true,
+      currentVersion: '0.1.1-beta.8',
+      latestVersion: '0.1.1-beta.9',
+      notes: 'Demo release notes.',
+      publishedAt: new Date().toISOString(),
+      delivery: 'inApp',
+      channel: args?.channel ?? 'beta',
+      downloadUrl: null,
+      storeUrl: null
+    };
+  }
+  if (cmd === 'install_update') {
+    return { handedOff: true, permissionRequired: false };
+  }
   if (cmd === 'get_planning_settings') {
     return { sundaysVisible: false };
   }

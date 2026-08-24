@@ -19,6 +19,7 @@
   import type { Locale } from "$lib/paraglide/runtime.js";
   import { connectivity } from "$lib/state/connectivity.svelte";
   import { updates } from "$lib/features/updates/updates.svelte";
+  import UpdateNotice from "$lib/features/updates/UpdateNotice.svelte";
   import HomeView from "./HomeView.svelte";
   import AcademicViewSkeleton from "./AcademicViewSkeleton.svelte";
   import AbsencesViewSkeleton from "./AbsencesViewSkeleton.svelte";
@@ -314,6 +315,15 @@
       case "invalid_schedule_range": return m.planning_invalid_range();
       case "internal_error": return m.planning_generic_error();
     }
+  }
+
+  /**
+   * The launch notice was tapped. More is where an update is installed, and the
+   * card scrolls itself into view once that lazily loaded view has mounted.
+   */
+  function openUpdateCard() {
+    updates.revealFromNotice();
+    setView("more");
   }
 
   function setView(view: ScheduleView) {
@@ -758,6 +768,13 @@
       </div>
     </PullToRefresh>
 
+    <!-- Where this sits is a layout-mode decision, so every offset lives in the
+         block below rather than in utilities: a phone gets a banner across the
+         top, a desktop window a card in the free bottom-right corner. -->
+    <div class="update-notice-slot pointer-events-none absolute z-overlay flex">
+      <UpdateNotice {locale} onOpen={openUpdateCard} />
+    </div>
+
     {#if gradeAlertDrawerOpen}
       <GradeAlertDrawer
         alerts={drawerAlerts}
@@ -819,6 +836,19 @@
     padding-bottom: calc(4.5rem + var(--safe-bottom));
   }
 
+  /* A banner across the top, where a phone already puts its own notifications.
+     `--safe-top` is paid here because an absolutely positioned child is laid
+     against the shell's padding box, which on Android starts under the status
+     bar. */
+  .update-notice-slot {
+    top: var(--safe-top);
+    right: 0;
+    bottom: auto;
+    left: 0;
+    justify-content: center;
+    padding: var(--space-2) 0.75rem 0;
+  }
+
   @media (min-width: 48rem) {
     .app-shell {
       padding-top: 0;
@@ -834,6 +864,19 @@
 
     .main-viewport {
       padding-bottom: 0;
+    }
+
+    /* A desktop window reads left to right from the top: a banner there lands on
+       the content. The bottom-right corner is the only one nothing else uses —
+       the rail owns the left edge, the avatar the bottom of it. */
+    .update-notice-slot {
+      top: auto;
+      right: 0;
+      bottom: 0;
+      left: auto;
+      justify-content: flex-end;
+      width: min(26rem, calc(100% - 2rem));
+      padding: 0 1rem 1rem;
     }
   }
 
@@ -853,6 +896,15 @@
     padding-bottom: calc(4.5rem + var(--safe-bottom));
   }
 
+  :global(html.mobile-app) .update-notice-slot {
+    top: var(--safe-top);
+    right: 0;
+    bottom: auto;
+    left: 0;
+    justify-content: center;
+    padding: var(--space-2) 0.75rem 0;
+  }
+
   :global(html.desktop-app) .app-shell {
     padding-top: 0;
   }
@@ -867,5 +919,15 @@
 
   :global(html.desktop-app) .main-viewport {
     padding-bottom: 0;
+  }
+
+  :global(html.desktop-app) .update-notice-slot {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    justify-content: flex-end;
+    width: min(26rem, calc(100% - 2rem));
+    padding: 0 1rem 1rem;
   }
 </style>

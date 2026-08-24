@@ -29,6 +29,10 @@ export type UpdateStatus =
 const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const LAST_CHECK_KEY = 'betteraimaira.update.lastCheck';
 const CHANNEL_KEY = 'betteraimaira.update.channel';
+/** The version the last check found waiting, if it found one. */
+const PENDING_VERSION_KEY = "betteraimaira.update.pendingVersion";
+/** The version whose notice was closed by hand; it never raises one again. */
+const NOTICE_DISMISSED_KEY = 'betteraimaira.update.noticeDismissed';
 
 function readLastCheck(): number {
   if (typeof localStorage === 'undefined') return 0;
@@ -44,6 +48,27 @@ function writeLastCheck(at: number): void {
 function clearLastCheck(): void {
   if (typeof localStorage === 'undefined') return;
   localStorage.removeItem(LAST_CHECK_KEY);
+}
+
+function readDismissedNotice(): string | null {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(NOTICE_DISMISSED_KEY);
+}
+
+function writeDismissedNotice(version: string): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(NOTICE_DISMISSED_KEY, version);
+}
+
+function readPendingVersion(): string | null {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem(PENDING_VERSION_KEY);
+}
+
+function writePendingVersion(version: string | null): void {
+  if (typeof localStorage === "undefined") return;
+  if (version) localStorage.setItem(PENDING_VERSION_KEY, version);
+  else localStorage.removeItem(PENDING_VERSION_KEY);
 }
 
 function readStoredChannel(): UpdateChannel | null {
@@ -75,7 +100,21 @@ class Updates {
   channel = $state<UpdateChannel | null>(null);
   /** The system installer's own wording, when it failed and gave one. */
   installMessage = $state<string | null>(null);
+  /**
+   * The in-app notice raised when a check finds a new version. It is what the
+   * user sees at launch: the badge on More is a mark, not an announcement.
+   */
+  noticeVisible = $state(false);
+  /**
+   * Set when the notice is tapped. The update card watches it and scrolls
+   * itself into view, so the shell does not have to wait for a lazily loaded
+   * view to mount before it can find the card.
+   */
+  revealRequested = $state(false);
 
+  #dismissedNoticeVersion: string | null = readDismissedNotice();
+  /** Announced once per version per run: a re-check is not a second event. */
+  #announcedVersion: string | null = null;
   #inFlight: Promise<void> | null = null;
   #channelReady: Promise<UpdateChannel> | null = null;
   #listening = false;
@@ -123,6 +162,8 @@ class Updates {
     this.info = null;
     this.progress = null;
     this.installMessage = null;
+    this.noticeVisible = false;
+    this.#announcedVersion = null;
     this.errorCode = null;
     this.status = 'idle';
     this.lastCheckedAt = null;
@@ -136,7 +177,12 @@ class Updates {
     if (!updatesSupported()) return;
     await this.resolveChannel();
     const previous = readLastCheck();
-    if (previous && Date.now() - previous < AUTO_CHECK_INTERVAL_MS) {
+    // An update already known to be waiting is re-checked on every launch: the
+    // throttle exists to spare pointless requests, and this one is not
+    // pointless. Skipping it would leave the notice unraised and the card empty
+    // for six hours after the update landed.
+    const pending = readPendingVersion();
+    if (previous && Date.now() - previous < AUTO_CHECK_INTERVAL_MS && !pending) {
       this.lastCheckedAt = previous;
       return;
     }
@@ -168,6 +214,7 @@ class Updates {
       const info = await checkForUpdate(await this.resolveChannel());
       this.info = info;
       this.status = info.available ? 'available' : 'upToDate';
+      this.#refreshNotice(info);
       const now = Date.now();
       this.lastCheckedAt = now;
       writeLastCheck(now);
@@ -185,6 +232,54 @@ class Updates {
   }
 
   /**
+   * A version already turned down stays turned down; anything newer speaks up
+   * again. An update with no version name still raises the notice: not knowing
+   * which version it is says nothing about whether it matters.
+   */
+  #refreshNotice(info: UpdateInfo): void {
+    const version = info.available ? (info.latestVersion ?? "unknown") : null;
+    writePendingVersion(version);
+    if (!version) {
+      this.noticeVisible = false;
+      return;
+    }
+    if (version === this.#dismissedNoticeVersion) return;
+    // Opening the update card runs a check of its own, and without this the
+    // notice the user just tapped would raise itself again behind the card.
+    if (version === this.#announcedVersion) return;
+    this.#announcedVersion = version;
+    this.noticeVisible = true;
+  }
+
+  /** Tapped: hand the user to the card that installs it. */
+  revealFromNotice(): void {
+    this.noticeVisible = false;
+    this.revealRequested = true;
+  }
+
+  /** Consumed by the card once it has scrolled itself into view. */
+  clearReveal(): void {
+    this.revealRequested = false;
+  }
+
+  /** Closed by hand: this version never announces itself again. */
+  dismissNotice(): void {
+    this.noticeVisible = false;
+    const version = this.info?.latestVersion;
+    if (!version) return;
+    this.#dismissedNoticeVersion = version;
+    writeDismissedNotice(version);
+  }
+
+  /**
+   * Hidden without a verdict, when the notice times out on its own. The next
+   * launch raises it again: an announcement nobody saw was not turned down.
+   */
+  hideNotice(): void {
+    this.noticeVisible = false;
+  }
+
+  /**
    * Starts the install. Desktop never returns from this: the process restarts
    * into the new version. Android returns once the system installer has the
    * APK, iOS once AltStore is open.
@@ -193,6 +288,7 @@ class Updates {
     if (!updatesSupported() || !this.available) return;
 
     this.status = 'installing';
+    this.noticeVisible = false;
     this.errorCode = null;
     this.progress = null;
     this.installMessage = null;

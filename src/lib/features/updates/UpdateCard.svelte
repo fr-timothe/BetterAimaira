@@ -20,6 +20,23 @@
 
   const supported = updatesSupported();
 
+  let cardElement = $state<HTMLDivElement | null>(null);
+  /** Drops after the scroll, so the ring reads as an arrival, not a state. */
+  let highlighted = $state(false);
+
+  // Set by the launch notice when it is tapped. The card pulls itself into view
+  // rather than the shell pushing it there: More is loaded lazily, so at the
+  // moment of the tap this element does not exist yet.
+  $effect(() => {
+    if (!updates.revealRequested || !cardElement) return;
+    updates.clearReveal();
+    cardElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    cardElement.focus({ preventScroll: true });
+    highlighted = true;
+    const timer = window.setTimeout(() => (highlighted = false), 2_000);
+    return () => window.clearTimeout(timer);
+  });
+
   onMount(() => {
     if (!supported) return;
     // A card that is on screen is worth one fresh look; the store throttles the
@@ -94,126 +111,135 @@
 </script>
 
 {#if supported}
-  <Card>
-    <div class="flex min-w-0 flex-col gap-3">
-      <SectionHeader
-        icon={ArrowDownToLine}
-        title={m.update_section_title()}
-        level={3}
-      />
+  <div
+    class={cn(
+      "min-w-0 rounded-lg transition-shadow duration-normal ease-out focus-visible:outline-none",
+      highlighted && "shadow-[0_0_0_3px_var(--primary)]"
+    )}
+    bind:this={cardElement}
+    tabindex="-1"
+  >
+    <Card>
+      <div class="flex min-w-0 flex-col gap-3">
+        <SectionHeader
+          icon={ArrowDownToLine}
+          title={m.update_section_title()}
+          level={3}
+        />
 
-      <div class="flex flex-wrap items-center gap-2">
-        {#if status === 'available' && info}
-          <Badge tone="accent" dot>
-            {m.update_available({ version: info.latestVersion ?? '' })}
-          </Badge>
-        {:else if status === 'upToDate'}
-          <Badge tone="success">{m.update_up_to_date()}</Badge>
-        {:else if status === 'checking'}
-          <Badge tone="neutral">{m.update_checking()}</Badge>
-        {:else if status === 'handedOff'}
-          <Badge tone="success">{handedOffMessage}</Badge>
-        {:else if status === 'permissionRequired'}
-          <Badge tone="warning">{m.update_permission_required()}</Badge>
-        {:else if status === 'error'}
-          <Badge tone="danger">{errorMessage}</Badge>
-        {:else if !connectivity.online}
-          <Badge tone="warning">{m.update_offline()}</Badge>
-        {/if}
-
-        {#if lastChecked}
-          <span class="text-sm text-muted-foreground">{m.update_last_checked({ time: lastChecked })}</span>
-        {/if}
-      </div>
-
-      <!-- The system installer's own wording. It is the only thing that says
-           why an install was refused, so it is shown verbatim. -->
-      {#if status === 'error' && updates.installMessage}
-        <p class="text-sm leading-[1.45] text-muted-foreground">{updates.installMessage}</p>
-      {/if}
-
-      {#if status === 'installing'}
-        <div
-          class="flex flex-col gap-2 text-sm tabular-nums text-muted-foreground"
-          role="status"
-          aria-live="polite"
-        >
-          <span>
-            {percent === null
-              ? m.update_downloading()
-              : m.update_downloading_percent({ percent: String(percent) })}
-          </span>
-          <div class="h-1.5 overflow-hidden rounded-pill bg-surface-sunken" aria-hidden="true">
-            <div
-              class={cn(
-                'h-full w-0 rounded-[inherit] bg-primary-deep',
-                'transition-[inline-size] duration-fast ease-linear',
-                percent === null && 'w-[35%] animate-update-sweep'
-              )}
-              style={percent === null ? undefined : `inline-size: ${percent}%`}
-            ></div>
-          </div>
-        </div>
-      {/if}
-
-      {#if status === 'available' && info?.notes}
-        <details class="text-sm">
-          <summary>{m.update_notes_label()}</summary>
-          <p>{info.notes}</p>
-        </details>
-      {/if}
-
-      {#if info?.delivery === 'altStore'}
-        <p class="text-sm leading-[1.45] text-muted-foreground">{m.update_altstore_hint()}</p>
-      {/if}
-
-      <!-- Resolved asynchronously on the first check: rendering the control with
-           no active segment would read as a broken toggle. -->
-      {#if updates.channel}
-        <div class="flex min-w-0 flex-col gap-1.5">
-          <span class="text-sm font-medium">{m.update_channel_label()}</span>
-          <SegmentedControl
-            options={channelOptions}
-            value={updates.channel}
-            label={m.update_channel_label()}
-            size="sm"
-            onChange={handleChannelChange}
-          />
-          <span class="text-sm leading-[1.45] text-muted-foreground">{m.update_channel_hint()}</span>
-        </div>
-      {/if}
-
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- A failed install, or a refused install permission, still leaves an
-             update to install: the action stays until it succeeded. -->
-        {#if updates.available && status !== 'handedOff'}
-          <Button variant="primary" loading={busy} onclick={() => void updates.install()}>
-            {#if info?.delivery === 'altStore'}
-              <Store size={18} aria-hidden="true" />
-            {:else}
-              <ArrowDownToLine size={18} aria-hidden="true" />
-            {/if}
-            <span>{installLabel}</span>
-          </Button>
-        {/if}
-
-        <Button
-          variant="outline"
-          loading={status === 'checking'}
-          disabled={busy || !connectivity.online}
-          onclick={() => void updates.check()}
-        >
-          {#if status === 'upToDate'}
-            <CheckCircle2 size={18} aria-hidden="true" />
+        <div class="flex flex-wrap items-center gap-2">
+          {#if status === 'available' && info}
+            <Badge tone="accent" dot>
+              {m.update_available({ version: info.latestVersion ?? '' })}
+            </Badge>
+          {:else if status === 'upToDate'}
+            <Badge tone="success">{m.update_up_to_date()}</Badge>
+          {:else if status === 'checking'}
+            <Badge tone="neutral">{m.update_checking()}</Badge>
+          {:else if status === 'handedOff'}
+            <Badge tone="success">{handedOffMessage}</Badge>
+          {:else if status === 'permissionRequired'}
+            <Badge tone="warning">{m.update_permission_required()}</Badge>
           {:else if status === 'error'}
-            <AlertCircle size={18} aria-hidden="true" />
-          {:else}
-            <RefreshCw size={18} aria-hidden="true" />
+            <Badge tone="danger">{errorMessage}</Badge>
+          {:else if !connectivity.online}
+            <Badge tone="warning">{m.update_offline()}</Badge>
           {/if}
-          <span>{m.update_check_action()}</span>
-        </Button>
+
+          {#if lastChecked}
+            <span class="text-sm text-muted-foreground">{m.update_last_checked({ time: lastChecked })}</span>
+          {/if}
+        </div>
+
+        <!-- The system installer's own wording. It is the only thing that says
+             why an install was refused, so it is shown verbatim. -->
+        {#if status === 'error' && updates.installMessage}
+          <p class="text-sm leading-[1.45] text-muted-foreground">{updates.installMessage}</p>
+        {/if}
+
+        {#if status === 'installing'}
+          <div
+            class="flex flex-col gap-2 text-sm tabular-nums text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <span>
+              {percent === null
+                ? m.update_downloading()
+                : m.update_downloading_percent({ percent: String(percent) })}
+            </span>
+            <div class="h-1.5 overflow-hidden rounded-pill bg-surface-sunken" aria-hidden="true">
+              <div
+                class={cn(
+                  'h-full w-0 rounded-[inherit] bg-primary-deep',
+                  'transition-[inline-size] duration-fast ease-linear',
+                  percent === null && 'w-[35%] animate-update-sweep'
+                )}
+                style={percent === null ? undefined : `inline-size: ${percent}%`}
+              ></div>
+            </div>
+          </div>
+        {/if}
+
+        {#if status === 'available' && info?.notes}
+          <details class="text-sm">
+            <summary>{m.update_notes_label()}</summary>
+            <p>{info.notes}</p>
+          </details>
+        {/if}
+
+        {#if info?.delivery === 'altStore'}
+          <p class="text-sm leading-[1.45] text-muted-foreground">{m.update_altstore_hint()}</p>
+        {/if}
+
+        <!-- Resolved asynchronously on the first check: rendering the control with
+             no active segment would read as a broken toggle. -->
+        {#if updates.channel}
+          <div class="flex min-w-0 flex-col gap-1.5">
+            <span class="text-sm font-medium">{m.update_channel_label()}</span>
+            <SegmentedControl
+              options={channelOptions}
+              value={updates.channel}
+              label={m.update_channel_label()}
+              size="sm"
+              onChange={handleChannelChange}
+            />
+            <span class="text-sm leading-[1.45] text-muted-foreground">{m.update_channel_hint()}</span>
+          </div>
+        {/if}
+
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- A failed install, or a refused install permission, still leaves an
+               update to install: the action stays until it succeeded. -->
+          {#if updates.available && status !== 'handedOff'}
+            <Button variant="primary" loading={busy} onclick={() => void updates.install()}>
+              {#if info?.delivery === 'altStore'}
+                <Store size={18} aria-hidden="true" />
+              {:else}
+                <ArrowDownToLine size={18} aria-hidden="true" />
+              {/if}
+              <span>{installLabel}</span>
+            </Button>
+          {/if}
+
+          <Button
+            variant="outline"
+            loading={status === 'checking'}
+            disabled={busy || !connectivity.online}
+            onclick={() => void updates.check()}
+          >
+            {#if status === 'upToDate'}
+              <CheckCircle2 size={18} aria-hidden="true" />
+            {:else if status === 'error'}
+              <AlertCircle size={18} aria-hidden="true" />
+            {:else}
+              <RefreshCw size={18} aria-hidden="true" />
+            {/if}
+            <span>{m.update_check_action()}</span>
+          </Button>
+        </div>
       </div>
-    </div>
-  </Card>
+    </Card>
+  </div>
 {/if}
 

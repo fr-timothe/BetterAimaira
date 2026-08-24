@@ -133,6 +133,7 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 - `Installation en place signée` sur bureau (vérification minisign, NSIS passif)
 - `Passage de relais à PackageInstaller` sur Android
 - `Vérification de source AltStore` sur iOS
+- `Notification de mise à jour au lancement` (annoncée une fois par version, mène à la carte qui l'installe)
 - `Version installée visible` dans l'onglet Profil de la vue Plus
 </details>
 
@@ -259,7 +260,7 @@ L'application lit son flux de mise à jour sur <https://betteraimaira.montfrond.
 | Stable | <https://betteraimaira.montfrond.work/updates/stable/latest.json> |
 | Bêta | <https://betteraimaira.montfrond.work/updates/beta/latest.json> |
 
-Un build dont la version porte un suffixe de préversion suit le canal bêta par défaut ; le canal est modifiable dans Réglages. Le domaine personnalisé vit dans le fichier `CNAME` à la racine de `gh-pages` : le supprimer coupe le flux de mise à jour de toutes les versions installées.
+Un build dont la version porte un suffixe de préversion suit le canal bêta par défaut ; le canal est modifiable dans Réglages. Au lancement, une vérification silencieuse (une par tranche de 6 h, relancée à chaque démarrage tant qu'une mise à jour attend) fait apparaître une notification — bandeau en haut de l'écran sur téléphone, carte en bas à droite sur bureau : la toucher ouvre la carte Mises à jour de la vue Plus, la fermer met cette version en sourdine, la laisser expirer la représente au lancement suivant. Le domaine personnalisé vit dans le fichier `CNAME` à la racine de `gh-pages` : le supprimer coupe le flux de mise à jour de toutes les versions installées.
 
 ### Vérification
 

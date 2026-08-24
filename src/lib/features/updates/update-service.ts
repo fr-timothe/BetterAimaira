@@ -1,3 +1,4 @@
+import { isDemoMode } from '$lib/dev-demo';
 import { invoke, isTauri } from '$lib/invoke';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
@@ -78,7 +79,18 @@ export function parseUpdateError(error: unknown): UpdateErrorCode {
 
 /** The browser preview has no Rust side; it must not pretend to check anything. */
 export function updatesSupported(): boolean {
-  return isTauri();
+  // Demo mode answers the update commands itself, so the whole update UI can be
+  // driven in a plain browser with no Rust side behind it.
+  return isTauri() || isDemoMode();
+}
+
+/** The install events come from Rust; in demo mode nobody ever emits them. */
+function listenIfNative<T>(
+  event: string,
+  handler: (payload: T) => void,
+): Promise<UnlistenFn> {
+  if (!isTauri()) return Promise.resolve(() => {});
+  return listen<T>(event, (received) => handler(received.payload));
 }
 
 export function checkForUpdate(channel: UpdateChannel): Promise<UpdateInfo> {
@@ -97,13 +109,13 @@ export function defaultUpdateChannel(): Promise<UpdateChannel> {
 export function onDownloadProgress(
   handler: (progress: DownloadProgress) => void,
 ): Promise<UnlistenFn> {
-  return listen<DownloadProgress>('update://download-progress', (event) => handler(event.payload));
+  return listenIfNative<DownloadProgress>('update://download-progress', handler);
 }
 
 export function onDownloadFinished(handler: () => void): Promise<UnlistenFn> {
-  return listen('update://downloaded', () => handler());
+  return listenIfNative('update://downloaded', () => handler());
 }
 
 export function onInstallStatus(handler: (status: InstallStatus) => void): Promise<UnlistenFn> {
-  return listen<InstallStatus>('update://install-status', (event) => handler(event.payload));
+  return listenIfNative<InstallStatus>('update://install-status', handler);
 }
