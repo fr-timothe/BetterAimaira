@@ -36,6 +36,16 @@
 
   const REFRESH_REST_HEIGHT = 52;
 
+  // A sheet is a DOM descendant of the scroll container it covers, so its touch
+  // events still reach our listener. Pulling inside a dialog must never refresh
+  // the page underneath it.
+  const OVERLAY_SELECTOR = '.ui-sheet-root, [role="dialog"], [aria-modal="true"]';
+
+  function isOverlayOpen(): boolean {
+    if (typeof document === 'undefined') return false;
+    return document.querySelector(OVERLAY_SELECTOR) !== null;
+  }
+
   function getEffectiveScrollElement(): HTMLElement | null {
     if (scrollElement) return scrollElement;
     if (!containerRef) return null;
@@ -59,6 +69,11 @@
   function handleTouchStart(e: TouchEvent) {
     if (disabled || isRefreshing || e.touches.length !== 1) return;
 
+    if (isOverlayOpen()) {
+      isAtTopAtStart = false;
+      return;
+    }
+
     const targetElem = getEffectiveScrollElement();
     const currentScrollTop = getScrollTop(targetElem);
 
@@ -77,6 +92,17 @@
 
   function handleTouchMove(e: TouchEvent) {
     if (disabled || isRefreshing || !isAtTopAtStart || e.touches.length !== 1) return;
+
+    // A dialog can also open mid-gesture, so the pull has to be abandoned here
+    // too and not only at the start of the touch.
+    if (isOverlayOpen()) {
+      isAtTopAtStart = false;
+      isPulling = false;
+      pullDistance = 0;
+      isThresholdReached = false;
+      hasVibrated = false;
+      return;
+    }
 
     const touch = e.touches[0];
     const diffY = touch.clientY - touchStartY;

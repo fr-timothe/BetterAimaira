@@ -39,6 +39,100 @@
   let root: HTMLDivElement | undefined = $state();
   let panel: HTMLDivElement | undefined = $state();
 
+  // Drag to dismiss. A bottom sheet is expected to follow the finger down and
+  // close, which is also what stops the gesture from reading as a pull to
+  // refresh on the page it covers.
+  const DISMISS_DISTANCE = 96;
+  const DRAG_MAX = 320;
+
+  let dragOffset = $state(0);
+  let isDragging = $state(false);
+  let dragStartY = 0;
+  let dragStartX = 0;
+  let dragAxis: 'undecided' | 'vertical' | 'horizontal' = 'undecided';
+
+  const isDismissable = $derived(placement === 'center');
+
+  function handlePanelTouchStart(event: TouchEvent) {
+    if (!isDismissable || event.touches.length !== 1) return;
+    if ((panel?.scrollTop ?? 0) > 0) return;
+
+    dragStartY = event.touches[0].clientY;
+    dragStartX = event.touches[0].clientX;
+    dragAxis = 'undecided';
+    isDragging = false;
+    dragOffset = 0;
+  }
+
+  function handlePanelTouchMove(event: TouchEvent) {
+    if (!isDismissable || event.touches.length !== 1) return;
+
+    const diffY = event.touches[0].clientY - dragStartY;
+    const diffX = event.touches[0].clientX - dragStartX;
+
+    if (dragAxis === 'undecided') {
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 8) {
+        dragAxis = 'horizontal';
+        return;
+      }
+      if (diffY > 8) {
+        dragAxis = 'vertical';
+        isDragging = true;
+      } else if (diffY < -8) {
+        dragAxis = 'vertical';
+        return;
+      }
+    }
+
+    if (dragAxis !== 'vertical' || !isDragging) return;
+
+    // Scrolling the panel back up mid-drag hands the gesture back to the list.
+    if ((panel?.scrollTop ?? 0) > 0 || diffY <= 0) {
+      dragOffset = 0;
+      isDragging = false;
+      return;
+    }
+
+    dragOffset = Math.min(DRAG_MAX, Math.pow(diffY, 0.9));
+    if (event.cancelable) event.preventDefault();
+  }
+
+  function handlePanelTouchEnd() {
+    if (!isDragging) return;
+
+    const shouldClose = dragOffset >= DISMISS_DISTANCE;
+    isDragging = false;
+    dragOffset = 0;
+    dragAxis = 'undecided';
+
+    if (shouldClose) onClose();
+  }
+
+  function handlePanelTouchCancel() {
+    isDragging = false;
+    dragOffset = 0;
+    dragAxis = 'undecided';
+  }
+
+  // Bound by hand rather than with `ontouchmove`: the drag has to call
+  // `preventDefault`, which a passive listener cannot do.
+  $effect(() => {
+    const node = panel;
+    if (!node || !isDismissable) return;
+
+    node.addEventListener('touchstart', handlePanelTouchStart, { passive: true });
+    node.addEventListener('touchmove', handlePanelTouchMove, { passive: false });
+    node.addEventListener('touchend', handlePanelTouchEnd, { passive: true });
+    node.addEventListener('touchcancel', handlePanelTouchCancel, { passive: true });
+
+    return () => {
+      node.removeEventListener('touchstart', handlePanelTouchStart);
+      node.removeEventListener('touchmove', handlePanelTouchMove);
+      node.removeEventListener('touchend', handlePanelTouchEnd);
+      node.removeEventListener('touchcancel', handlePanelTouchCancel);
+    };
+  });
+
   const FOCUSABLE =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -133,6 +227,8 @@
     aria-modal="true"
     aria-label={title}
     tabindex="-1"
+    style:transform={`translate3d(0, ${dragOffset}px, 0)`}
+    style:transition={isDragging ? 'none' : 'transform var(--duration-normal) var(--ease-out)'}
   >
     {@render children()}
   </div>
