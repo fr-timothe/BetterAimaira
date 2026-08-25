@@ -167,14 +167,16 @@
     startClock();
     document.addEventListener("visibilitychange", handleVisibilityChange);
     const preloadTimer = window.setTimeout(() => void preloadViewComponents(), 0);
-    // The update check is the least urgent request of the session: it waits for
-    // the schedule to be on screen, and the store throttles repeat runs.
-    const updateTimer = window.setTimeout(() => void updates.checkOnStart(), 3_000);
+    // The signed-in shell is the only place the notice is allowed to speak, and
+    // it is on screen now. The check itself started at boot and is throttled, so
+    // this call costs nothing when the answer is already in.
+    updates.openNoticeSurface();
+    void updates.checkOnStart();
     void loadInitialSchedule();
     void syncGrades();
     return () => {
       window.clearTimeout(preloadTimer);
-      window.clearTimeout(updateTimer);
+      updates.closeNoticeSurface();
       stopClock();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
