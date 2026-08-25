@@ -164,10 +164,13 @@ The planned group is specified in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 One naming scheme throughout, `BetterAimaira-v<version>-<architecture>.<extension>`: the platform is
 carried by the extension.
 
-<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/badge/Download-Latest_Release-000000?style=for-the-badge" alt="Download latest release"></a>
+<a href="https://betteraimaira.montfrond.work/en/download"><img src="https://img.shields.io/badge/Download-Latest_Release-000000?style=for-the-badge" alt="Download latest release"></a>
 
 Every platform reads the same release feed, and an installed build checks it three seconds after
 launch.
+
+[betteraimaira.montfrond.work/en/download](https://betteraimaira.montfrond.work/en/download) detects
+the device, resolves the newest published release and carries the install steps platform by platform.
 
 ## Documentation
 
@@ -182,6 +185,26 @@ launch.
 | [Performance](docs/PERFORMANCE.md) | Baseline commands, profiling tools, bundle budgets |
 | [Product](PRODUCT.md) | Users, scope, constraints, product principles |
 | [Brand assets](assets/README.md) | Logo files, geometry, palette, Svelte component |
+| [Showcase site](site/README.md) | The Astro project in `site/`, bilingual content, `gh-pages` deploy |
+
+## Showcase site
+
+The public site lives in [`site/`](site/README.md): a landing page and a download page, in French and
+English, served from the root of **[betteraimaira.montfrond.work](https://betteraimaira.montfrond.work)**.
+It is a standalone Astro project with its own dependencies.
+
+```bash
+cd site
+bun install
+bun run dev      # http://localhost:4321
+bun run build    # writes site/dist/
+bun run check    # astro check
+```
+
+[`pages.yml`](.github/workflows/pages.yml) publishes it on every push to `master` that touches `site/`
+or the showcase assets, by **committing into the `gh-pages` branch**. That branch also carries the
+update feed installed builds poll, so the workflow preserves `CNAME`, `.nojekyll` and `updates/`, and
+the Pages source must not be switched to GitHub Actions.
 
 ## Development
 

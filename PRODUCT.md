@@ -68,6 +68,10 @@ relay, and keeps useful data available offline.
   visual base.
 - The first milestone ships the light theme. Dark mode comes in a later step.
 - Core features stay reachable at every window size.
+- The public showcase site (`site/`) follows the category-standard product-landing convention,
+  calibrated on `papillon.bzh`, Raycast/Linear, Tauri/Zed and Proton/Signal. This is a standing
+  preference, chosen deliberately over a composition of its own: that surface spends its budget on
+  finish, not on invention.
 
 ## Evidence on hand
 

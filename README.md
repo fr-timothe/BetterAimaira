@@ -163,9 +163,11 @@ Le groupe des fonctionnalités prévues est détaillé dans [docs/INTEGRATIONS.m
 
 Un seul schéma de nommage, `BetterAimaira-v<version>-<architecture>.<extension>` : la plateforme est portée par l'extension.
 
-<a href="https://github.com/fr-timothe/BetterAimaira/releases"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Derni%C3%A8re_Version-000000?style=for-the-badge" alt="Télécharger la dernière version"></a>
+<a href="https://betteraimaira.montfrond.work/download"><img src="https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Derni%C3%A8re_Version-000000?style=for-the-badge" alt="Télécharger la dernière version"></a>
 
 Chaque plateforme lit le même flux de publication, et une version installée vérifie les mises à jour trois secondes après son lancement.
+
+La page [betteraimaira.montfrond.work/download](https://betteraimaira.montfrond.work/download) détecte l'appareil, résout la dernière version publiée et donne les étapes d'installation plateforme par plateforme.
 
 ## Documentation
 
@@ -180,6 +182,21 @@ Chaque plateforme lit le même flux de publication, et une version installée v�
 | [Performance](docs/PERFORMANCE.md) | Commandes de référence, outils de profilage, budgets de bundle |
 | [Produit](PRODUCT.md) | Utilisateurs, périmètre, contraintes, principes produit |
 | [Ressources de marque](assets/README.md) | Fichiers de logo, géométrie, palette, composant Svelte |
+| [Site vitrine](site/README.md) | Projet Astro de `site/`, contenu bilingue, déploiement sur `gh-pages` |
+
+## Site vitrine
+
+Le site public vit dans [`site/`](site/README.md) : une page d'accueil et une page de téléchargement, en français et en anglais, servies à la racine de **[betteraimaira.montfrond.work](https://betteraimaira.montfrond.work)**. C'est un projet Astro autonome, avec ses propres dépendances.
+
+```bash
+cd site
+bun install
+bun run dev      # http://localhost:4321
+bun run build    # génère site/dist/
+bun run check    # astro check
+```
+
+Le workflow [`pages.yml`](.github/workflows/pages.yml) le publie à chaque push sur `master` touchant `site/` ou les assets de vitrine, en **commitant dans la branche `gh-pages`**. Cette branche porte aussi le flux de mise à jour que les applications installées interrogent : le workflow préserve `CNAME`, `.nojekyll` et `updates/`, et la source Pages ne doit pas être basculée sur GitHub Actions.
 
 ## Développement
 
