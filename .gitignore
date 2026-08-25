@@ -28,3 +28,7 @@ videos/**/.cache/
 /site/dist
 /site/.astro
 /site/public/media
+
+# Local APK inspection scratch: a build of this app, unpacked to read its
+# manifest. Rebuildable, 20 MB, and nothing here belongs in the history.
+/apkchk
