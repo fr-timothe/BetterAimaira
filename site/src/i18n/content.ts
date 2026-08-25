@@ -185,16 +185,16 @@ const fr: Content = {
 		title: 'Conçu pour la journée de cours',
 		items: [
 			{
-				title: 'Le cours en cours, pas l’accueil du portail',
-				body: 'L’application ouvre sur le cours actuel ou le suivant : sa salle, son enseignant, la note laissée par le portail, et le temps qu’il reste.',
+				title: 'Ton cours actuel, dès l’ouverture',
+				body: 'L’app s’ouvre directement sur ton cours en cours ou le prochain : sa salle, son enseignant, le temps qu’il reste. Rien à chercher.',
 			},
 			{
-				title: 'La semaine que le portail renvoie',
-				body: 'La fenêtre de sept jours ancrée au lundi. En grille dès que la fenêtre est assez large, en liste jour par jour sinon, sans jamais retirer une information.',
+				title: 'Ta semaine complète, sur n’importe quel écran',
+				body: 'Le même emploi du temps sur sept jours, en grille sur un grand écran ou en liste sur ton téléphone. Aucune information n’est cachée pour gagner de la place.',
 			},
 			{
-				title: 'Le cache s’affiche avant le réseau',
-				body: 'Les données déjà connues apparaissent immédiatement, la synchronisation continue derrière, et chaque vue écrit l’heure de sa dernière mise à jour.',
+				title: 'Jamais un écran vide, même sans réseau',
+				body: 'L’app affiche d’abord ce qu’elle connaît déjà, puis vérifie s’il y a du nouveau derrière. Tu vois toujours à quelle heure ça a été mis à jour pour la dernière fois.',
 			},
 		],
 	},
@@ -457,16 +457,16 @@ const en: Content = {
 		title: 'Built for a day of classes',
 		items: [
 			{
-				title: 'The class you are in, not the portal home page',
-				body: 'The app opens on the current or next class: its room, its teacher, the note the portal left on it, and how long is left.',
+				title: 'Your current class, the moment you open it',
+				body: 'The app opens directly on your current or next class: its room, its teacher, how long is left. Nothing to look for.',
 			},
 			{
-				title: 'The week the portal returns',
-				body: 'The seven-day window anchored on Monday. A grid as soon as the window is wide enough, a day-by-day list otherwise, and never one fewer piece of information.',
+				title: 'Your whole week, on any screen',
+				body: 'The same seven-day schedule, as a grid on a wide screen or a list on your phone. No information is hidden to save space.',
 			},
 			{
-				title: 'Cache paints before the network answers',
-				body: 'What is already known appears immediately, the sync continues behind it, and every view states when it was last updated.',
+				title: 'Never a blank screen, even offline',
+				body: 'The app shows what it already knows first, then checks for anything new behind it. You always see when it was last updated.',
 			},
 		],
 	},
