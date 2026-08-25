@@ -78,6 +78,8 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 <details>
   <summary>Session et portail</summary>
 
+- `Sélecteur d'école` avant le formulaire (129 établissements clients d'Aimaira, recherche par nom, sigle ou groupe, l'adresse du portail est remplie à la sélection)
+- `Saisie manuelle de l'adresse` toujours disponible, pour un portail absent de la liste
 - `Normalisation de l'URL du portail` (tout lien profond collé est réduit à son origine HTTPS)
 - `HTTPS uniquement` (un portail en HTTP est rejeté avant tout envoi d'identifiants)
 - `Authentification par formulaire en Rust` (jeton anti-falsification, gestionnaire privé de cookies)
@@ -169,6 +171,8 @@ Chaque plateforme lit le même flux de publication, et une version installée v�
 
 La page [betteraimaira.montfrond.work/download](https://betteraimaira.montfrond.work/download) détecte l'appareil, résout la dernière version publiée et donne les étapes d'installation plateforme par plateforme.
 
+La page [betteraimaira.montfrond.work/ecoles](https://betteraimaira.montfrond.work/ecoles) liste les établissements sous Aimaira, l'adresse de leur portail et ce que l'application sait en faire. Un établissement absent de cette liste n'est probablement pas compatible.
+
 ## Documentation
 
 | Document | Sujet |
@@ -182,11 +186,14 @@ La page [betteraimaira.montfrond.work/download](https://betteraimaira.montfrond.
 | [Performance](docs/PERFORMANCE.md) | Commandes de référence, outils de profilage, budgets de bundle |
 | [Produit](PRODUCT.md) | Utilisateurs, périmètre, contraintes, principes produit |
 | [Ressources de marque](assets/README.md) | Fichiers de logo, géométrie, palette, composant Svelte |
+| [Annuaire des écoles](assets/schools/README.md) | Liste des établissements sous Aimaira, adresses de portail, logos, procédure de mise à jour |
 | [Site vitrine](site/README.md) | Projet Astro de `site/`, contenu bilingue, déploiement sur `gh-pages` |
 
 ## Site vitrine
 
-Le site public vit dans [`site/`](site/README.md) : une page d'accueil et une page de téléchargement, en français et en anglais, servies à la racine de **[betteraimaira.montfrond.work](https://betteraimaira.montfrond.work)**. C'est un projet Astro autonome, avec ses propres dépendances.
+Le site public vit dans [`site/`](site/README.md) : une page d'accueil, une page de téléchargement et une page de compatibilité, en français et en anglais, servies à la racine de **[betteraimaira.montfrond.work](https://betteraimaira.montfrond.work)**. C'est un projet Astro autonome, avec ses propres dépendances.
+
+Il sert aussi les logos que l'application affiche dans son sélecteur d'école, sous `/media/schools/`. C'est la raison pour laquelle l'application ne les embarque pas : la liste peut grandir sans qu'une nouvelle version soit publiée.
 
 ```bash
 cd site
@@ -322,7 +329,7 @@ N'activez pas ce pont dans les versions distribuées.
 
 ## Contribution
 
-Les contributions sont les bienvenues. Avant d'ouvrir une pull request :
+Les contributions sont les bienvenues. [CONTRIBUTING.md](CONTRIBUTING.md) détaille les limites non négociables du projet, ce qu'une pull request doit vérifier et les conventions de commit. En résumé :
 
 - Consultez [DESIGN.md](DESIGN.md) : utilitaires au niveau de l'élément, tokens issus de `src/app.css`, aucune déclaration locale de couleur ou de rayon d'arrondi.
 - Placez chaque texte visible par l'utilisateur dans le catalogue Paraglide (`messages/`).
@@ -330,6 +337,10 @@ Les contributions sont les bienvenues. Avant d'ouvrir une pull request :
 - Exécutez le bloc de vérification ci-dessus : `bun run check` et `cargo clippy -- -D warnings` doivent s'exécuter sans erreur ni avertissement.
 - Messages de commit rédigés en anglais, à l'impératif, avec une ligne de résumé courte.
 
+Pour signaler un bug ou poser une question plutôt que contribuer : [SUPPORT.md](SUPPORT.md).
+
 ## Licence
 
 [GPL-3.0](LICENSE). Aimaira est un produit tiers ; ce projet est un client indépendant et n'est aucunement affilié à son éditeur.
+
+Les marques citées, ainsi que les noms et logos d'écoles repris dans `assets/schools/`, appartiennent à leurs titulaires et ne sont pas couverts par la GPL-3.0 : voir [NOTICE.md](NOTICE.md).

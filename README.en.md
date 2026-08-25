@@ -79,6 +79,8 @@ strictly read-only: administrative, billing and remote write actions are out of 
 <details>
   <summary>Session and portal</summary>
 
+- `School picker` before the form (129 schools running Aimaira, searchable by name, initials or group, the portal address is filled in on selection)
+- `Manual address entry` always available, for a portal the list does not carry
 - `Portal URL Normalization` (any pasted deep link reduces to its HTTPS origin)
 - `HTTPS Only` (an HTTP portal is refused before credentials are sent)
 - `Form Authentication In Rust` (anti-forgery token, private cookie jar)
@@ -185,13 +187,18 @@ the device, resolves the newest published release and carries the install steps 
 | [Performance](docs/PERFORMANCE.md) | Baseline commands, profiling tools, bundle budgets |
 | [Product](PRODUCT.md) | Users, scope, constraints, product principles |
 | [Brand assets](assets/README.md) | Logo files, geometry, palette, Svelte component |
+| [School directory](assets/schools/README.md) | The schools running Aimaira, portal addresses, logos, how to update the list |
 | [Showcase site](site/README.md) | The Astro project in `site/`, bilingual content, `gh-pages` deploy |
 
 ## Showcase site
 
-The public site lives in [`site/`](site/README.md): a landing page and a download page, in French and
-English, served from the root of **[betteraimaira.montfrond.work](https://betteraimaira.montfrond.work)**.
-It is a standalone Astro project with its own dependencies.
+The public site lives in [`site/`](site/README.md): a landing page, a download page and a compatibility
+page, in French and English, served from the root of
+**[betteraimaira.montfrond.work](https://betteraimaira.montfrond.work)**. It is a standalone Astro
+project with its own dependencies.
+
+It also serves the logos the app draws in its school picker, under `/media/schools/`. That is why the
+app does not bundle them: the list can grow without a release going out.
 
 ```bash
 cd site
@@ -339,7 +346,14 @@ Contributions are welcome. Before opening a pull request:
 - Run the verification block above. `bun run check` and `cargo clippy -- -D warnings` must be clean.
 - Commit messages in English, imperative, one short summary line.
 
+[CONTRIBUTING.en.md](CONTRIBUTING.en.md) has the full set: the boundaries that do not move, what a
+PR has to satisfy, and the commit conventions the release notes are built from. To report a bug or
+ask a question instead: [SUPPORT.en.md](SUPPORT.en.md).
+
 ## License
 
 [GPL-3.0](LICENSE). Aimaira is a third-party product; this project is an independent client and is
 not affiliated with it.
+
+The trademarks named here, and the school names and logos carried in `assets/schools/`, belong to
+their owners and are not covered by the GPL-3.0. See [NOTICE.md](NOTICE.md).
