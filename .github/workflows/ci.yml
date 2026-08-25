@@ -1,0 +1,84 @@
+name: CI
+
+# The gate every pull request has to pass. It checks the two halves of the
+# product separately: the Svelte frontend, and the Rust core the frontend is
+# useless without.
+#
+# `cargo fmt --check` is deliberately absent: the Rust tree is not currently
+# rustfmt-clean, and a gate that is red on the day it lands teaches everyone to
+# ignore it. Reformatting the tree is its own change, and this file gets the
+# check the moment that lands.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+# A pull request that gets a second push does not need the first run finished.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      # `check` compiles the message catalogue first, so a key added to one
+      # locale and forgotten in the other fails here rather than in the app.
+      - name: Type-check
+        run: bun run check
+
+      - name: Unit tests
+        run: bun test
+
+      - name: Build
+        run: bun run build
+
+  rust:
+    name: Rust core
+    # Windows, not Ubuntu: it needs no webkit2gtk system packages, and it shares
+    # the compilation cache `warm-cache.yml` publishes from the default branch.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          shared-key: windows
+          # Read-only: the release workflow depends on the cache the default
+          # branch published, and a pull request must not overwrite it.
+          save-if: false
+
+      - run: bun install --frozen-lockfile
+
+      # `tauri-build` resolves `frontendDist` (`../build`) while compiling the
+      # build script, so the frontend has to exist before cargo runs.
+      - name: Build frontend
+        run: bun run build
+
+      - name: Clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Tests
+        working-directory: src-tauri
+        run: cargo test --locked
