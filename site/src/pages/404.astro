@@ -1,0 +1,33 @@
+---
+// GitHub Pages serves this for any unknown path on the domain. The update feed
+// lives on the same host, so a visitor who lands here from a manifest URL gets
+// a way back rather than a bare 404.
+import Base from '../layouts/Base.astro';
+import Button from '../components/Button.astro';
+import { localePath, useContent } from '../i18n/content';
+
+const lang = 'fr' as const;
+const t = useContent(lang);
+---
+
+<Base lang={lang} page="" title="Page introuvable — BetterAimaira" description={t.meta.homeDescription}>
+	<section class="mx-auto w-full max-w-[44rem] px-5 py-24 sm:px-8 sm:py-32">
+		<p class="text-6xl font-heavy tracking-[-0.02em] text-primary-deep" data-numeric>404</p>
+		<h1 class="mt-4 text-3xl font-heavy tracking-[-0.02em] text-foreground sm:text-4xl">
+			Cette page n’existe pas.
+		</h1>
+		<p class="mt-4 text-lg leading-relaxed text-muted-foreground">
+			Le lien est peut-être ancien, ou la page a changé d’adresse.
+		</p>
+		<p lang="en" class="mt-2 text-lg leading-relaxed text-muted-foreground">
+			This page does not exist. The link may be old, or the page moved.
+		</p>
+		<div class="mt-8 flex flex-wrap gap-3">
+			<Button href={localePath('fr')} variant="ink" size="lg">Accueil</Button>
+			<Button href={localePath('en')} variant="outline" size="lg">Home (English)</Button>
+			<Button href={localePath('fr', 'download')} variant="outline" size="lg" icon="download">
+				{t.nav.download}
+			</Button>
+		</div>
+	</section>
+</Base>

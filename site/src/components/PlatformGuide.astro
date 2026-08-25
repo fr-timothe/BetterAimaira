@@ -1,0 +1,140 @@
+---
+// One platform's install path. Two shapes share it: a published installer, where
+// the download anchor is server-rendered pointing at the releases page and the
+// release script upgrades it to the direct asset URL; and a source build, where
+// the commands are the install steps and there is nothing to fetch.
+import Button from './Button.astro';
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+import Rich from './Rich.astro';
+import { altStoreSource, repo, useContent, type Lang, type PlatformAvailability, type PlatformId } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+	id: PlatformId;
+	icon: IconName;
+	availability: PlatformAvailability;
+}
+
+const { lang, id, icon, availability } = Astro.props;
+const t = useContent(lang);
+const platform = t.download.platforms[id];
+const published = availability === 'release';
+---
+
+<article id={id} class="scroll-mt-24 border-t border-border-subtle pt-10">
+	<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+		<Icon name={icon} class="size-7 text-primary-deep" />
+		<h2 class="text-2xl font-heavy tracking-[-0.02em] text-foreground sm:text-3xl">{platform.name}</h2>
+		{
+			published ? (
+				<span class="inline-flex items-center gap-1.5 rounded-pill bg-success-surface px-2.5 py-1 text-xs font-semibold text-success-strong">
+					<Icon name="check" class="size-3.5" strokeWidth={2.5} />
+					{t.platforms.released}
+				</span>
+			) : (
+				<span class="inline-flex items-center gap-1.5 rounded-pill bg-muted px-2.5 py-1 text-xs font-semibold text-primary-deep">
+					<Icon name="terminal" class="size-3.5" />
+					{t.platforms.fromSource}
+				</span>
+			)
+		}
+	</div>
+
+	<p class="mt-4 max-w-[62ch] text-lg leading-relaxed text-muted-foreground">
+		<Rich text={platform.summary} />
+	</p>
+
+	{
+		published && (
+			<div class="mt-7">
+				<Button href={`${repo}/releases`} variant="ink" size="lg" icon="download" data-asset={id}>
+					<span data-asset-label={id}>{`${t.nav.download} — ${platform.name}`}</span>
+				</Button>
+				<p class="mt-3 text-sm text-muted-foreground" data-asset-meta={id}>{t.download.resolvingAsset}</p>
+			</div>
+		)
+	}
+
+	<!-- One column, not two. The requirements are a single line and the steps are
+	     a four-item list, so a side-by-side split left roughly 340px of void on
+	     the left of every platform — five times over, on the page that carries
+	     the conversion.
+
+	     `min-w-0` matters here too: a grid or flex item defaults to
+	     `min-width: auto`, so the command block's own min-content width would
+	     widen the page sideways on a phone, `overflow-x-auto` on the `pre`
+	     notwithstanding. -->
+	<div class="mt-8 min-w-0 max-w-[68ch]">
+		<div>
+			<h3 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+				{t.download.requirementLabel}
+			</h3>
+			<p class="mt-2 text-md leading-relaxed text-foreground">
+				<Rich text={platform.requirement} />
+			</p>
+		</div>
+
+		<div class="mt-8">
+			<h3 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t.download.stepsLabel}</h3>
+
+			{
+				published ? (
+					<ol class="mt-3 space-y-4">
+						{platform.steps.map((step, index) => (
+							<li class="flex gap-3.5">
+								<span
+									class="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-pill bg-primary text-xs font-bold text-primary-foreground"
+									data-numeric
+								>
+									{index + 1}
+								</span>
+								<span class="text-md leading-relaxed text-foreground">
+									<Rich text={step} />
+								</span>
+							</li>
+						))}
+					</ol>
+				) : (
+					<pre
+						class="mt-3 overflow-x-auto rounded-lg bg-secondary p-4 text-sm leading-relaxed text-secondary-foreground"><code>{platform.steps[0]}</code></pre>
+				)
+			}
+
+			<p class="mt-6 border-l border-primary-deep pl-4 text-sm leading-relaxed text-muted-foreground">
+				<Rich text={platform.note} />
+			</p>
+		</div>
+	</div>
+
+	{
+		id === 'ios' && (
+			<!-- Full width, not the prose measure: this is a control, and the source URL
+		     is 62 characters that must be readable before they are copied. -->
+		<div class="mt-8 rounded-lg bg-muted p-5">
+				<label for="altstore-source" class="block text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+					AltStore / SideStore
+				</label>
+				<div class="mt-3 flex flex-col gap-2 sm:flex-row">
+					<input
+						id="altstore-source"
+						class="min-h-(--tap-min) w-full min-w-0 rounded-md border border-border bg-card px-3.5 font-mono text-sm text-foreground"
+						type="text"
+						readonly
+						value={altStoreSource}
+						data-altstore-input
+					/>
+					<button
+						type="button"
+						class="inline-flex min-h-(--tap-min) shrink-0 items-center justify-center gap-2 rounded-md bg-primary-deep px-4 text-md font-semibold text-white transition-[background-color,scale] duration-fast ease-out hover:bg-primary-deep-hover active:scale-(--press-scale)"
+						data-copy-source
+						data-copied-label={t.download.copied}
+					>
+						<Icon name="copy" class="size-[1.125rem]" />
+						<span data-copy-label>{t.download.copySource}</span>
+					</button>
+				</div>
+			</div>
+		)
+	}
+</article>

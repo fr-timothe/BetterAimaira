@@ -1,0 +1,62 @@
+---
+// The whole download page below the header, shared by both locales.
+import DetectedPanel from './DetectedPanel.astro';
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+import PlatformGuide from './PlatformGuide.astro';
+import Rich from './Rich.astro';
+import { useContent, type Lang, type PlatformAvailability, type PlatformId } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+
+// Published installers first, source builds after: the order is the answer for
+// most visitors, not an alphabetical list.
+const guides: { id: PlatformId; icon: IconName; availability: PlatformAvailability }[] = [
+	{ id: 'windows', icon: 'monitor', availability: 'release' },
+	{ id: 'android', icon: 'smartphone', availability: 'release' },
+	{ id: 'ios', icon: 'apple', availability: 'release' },
+	{ id: 'macos', icon: 'laptop', availability: 'source' },
+	{ id: 'linux', icon: 'terminal', availability: 'source' },
+];
+---
+
+<section class="mx-auto w-full max-w-[76rem] px-5 pb-14 pt-14 sm:px-8 sm:pb-16 sm:pt-20">
+	<div class="max-w-[44rem]">
+		<h1 class="text-4xl font-heavy tracking-[-0.02em] text-foreground sm:text-5xl">{t.download.title}</h1>
+		<p class="mt-5 text-lg leading-relaxed text-muted-foreground">{t.download.lead}</p>
+	</div>
+
+	<div class="mt-10">
+		<DetectedPanel lang={lang} />
+	</div>
+
+	<div class="mt-8 grid gap-4 sm:grid-cols-2">
+		<div class="rounded-lg bg-warning-surface p-5">
+			<h2 class="flex items-center gap-2 text-md font-bold text-warning-strong">
+				<Icon name="circle-alert" class="size-[1.125rem] shrink-0" />
+				{t.download.betaTitle}
+			</h2>
+			<p class="mt-2 max-w-[56ch] text-md leading-relaxed text-foreground">{t.download.betaBody}</p>
+		</div>
+		<div class="rounded-lg bg-muted p-5">
+			<h2 class="flex items-center gap-2 text-md font-bold text-primary-deep">
+				<Icon name="shield-check" class="size-[1.125rem] shrink-0" />
+				{t.download.signatureTitle}
+			</h2>
+			<p class="mt-2 max-w-[56ch] text-md leading-relaxed text-foreground">
+				<Rich text={t.download.signatureNote} onMuted />
+			</p>
+		</div>
+	</div>
+</section>
+
+<section id="all" class="mx-auto w-full max-w-[76rem] scroll-mt-24 px-5 pb-24 sm:px-8 sm:pb-28">
+	<div class="space-y-16">
+		{guides.map((guide) => <PlatformGuide lang={lang} id={guide.id} icon={guide.icon} availability={guide.availability} />)}
+	</div>
+</section>

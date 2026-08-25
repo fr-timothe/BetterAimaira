@@ -1,0 +1,49 @@
+---
+// Native `details` elements: keyboard operable, findable by the browser's own
+// in-page search once open, and no JavaScript. The default marker is replaced by
+// a drawn chevron that rotates with the open state.
+import Icon from './Icon.astro';
+import Rich from './Rich.astro';
+import { useContent, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+---
+
+<section id="faq" class="scroll-mt-24 border-y border-border-subtle bg-card">
+	<div class="mx-auto w-full max-w-[76rem] px-5 py-20 sm:px-8 sm:py-24">
+		<h2 class="text-3xl font-heavy tracking-[-0.02em] text-foreground sm:text-4xl">{t.faq.title}</h2>
+
+		<div class="mt-10 max-w-[52rem] divide-y divide-border-subtle border-t border-border-subtle">
+			{
+				t.faq.items.map((item) => (
+					<details class="group">
+						<summary
+							class="flex min-h-(--tap-min) cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-lg font-semibold text-foreground transition-colors duration-fast hover:text-primary-deep"
+						>
+							<span>{item.question}</span>
+							<Icon
+								name="chevron-down"
+								class="size-5 shrink-0 text-primary-deep transition-transform duration-normal ease-out group-open:rotate-180"
+							/>
+						</summary>
+						<p class="max-w-[68ch] pb-6 text-md leading-relaxed text-muted-foreground">
+							<Rich text={item.answer} />
+						</p>
+					</details>
+				))
+			}
+		</div>
+	</div>
+</section>
+
+<style>
+	/* Safari still draws its own disclosure triangle without this. */
+	summary::-webkit-details-marker {
+		display: none;
+	}
+</style>

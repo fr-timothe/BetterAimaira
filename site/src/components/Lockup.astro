@@ -1,0 +1,34 @@
+---
+// The brand lockup, rebuilt as the mark plus real HTML text.
+//
+// `assets/logo-lockup.svg` sets the wordmark as a live `<text>` element. Loaded
+// as an image source, that SVG cannot reach the page's `@font-face`, so the
+// product name rendered in whatever sans the visitor's OS supplied instead of
+// Inter — and its second half was painted `--primary`, which is a fill and
+// reads at roughly 2.3:1 as text on a near-white ground. Both problems go away
+// when the name is text on the page: it inherits Inter, it takes
+// `--primary-deep` for the accent half, it scales with the type scale, and it
+// stays selectable and searchable.
+//
+// The mark itself keeps its own hardcoded paint, and is decorative because the
+// name is spelled out beside it. DESIGN.md names the brand SVG as the one place
+// that owns its colours rather than reading tokens.
+interface Props {
+	class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<span class:list={['inline-flex items-center gap-2 sm:gap-2.5', className]}>
+	<svg viewBox="0 0 64 64" class="size-8 shrink-0" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+		<rect width="64" height="64" rx="16" fill="#13253F"></rect>
+		<rect x="14" y="15" width="10" height="34" rx="5" fill="#FFFFFF" fill-opacity="0.95"></rect>
+		<rect x="40" y="24" width="10" height="25" rx="5" fill="#3A5378"></rect>
+		<rect x="27" y="15" width="10" height="21" rx="5" fill="#00B9E8"></rect>
+		<circle cx="32" cy="44" r="3.2" fill="#00B9E8"></circle>
+	</svg>
+	<span class="text-lg font-heavy tracking-[-0.03em] text-foreground sm:text-xl"
+		>Better<span class="text-primary-deep">Aimaira</span></span
+	>
+</span>

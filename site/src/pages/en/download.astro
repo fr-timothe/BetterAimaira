@@ -1,0 +1,12 @@
+---
+import Base from '../../layouts/Base.astro';
+import DownloadBody from '../../components/DownloadBody.astro';
+import { useContent } from '../../i18n/content';
+
+const lang = 'en' as const;
+const t = useContent(lang);
+---
+
+<Base lang={lang} page="download" title={t.meta.downloadTitle} description={t.meta.downloadDescription}>
+	<DownloadBody lang={lang} />
+</Base>

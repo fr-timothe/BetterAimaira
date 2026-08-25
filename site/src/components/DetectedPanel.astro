@@ -1,0 +1,263 @@
+---
+// The top of the download page: what this device most likely needs.
+//
+// Everything here is server-rendered in a state that already works with no
+// JavaScript — the heading asks the visitor to pick a platform and the action
+// goes to the full list below. The script then narrows it to the detected
+// platform and points the action at the exact asset of the newest release.
+// Nothing is hidden waiting for the fetch, so a blocked API degrades to a
+// working page rather than an empty one.
+import Icon from './Icon.astro';
+import { repo, useContent, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+const locale = lang === 'fr' ? 'fr-FR' : 'en-GB';
+
+const labels = {
+	download: t.nav.download,
+	detectedFor: t.download.detectedFor,
+	buildFromSource: t.download.buildFromSource,
+	versionLabel: t.download.versionLabel,
+	publishedLabel: t.download.publishedLabel,
+	sizeLabel: t.download.sizeLabel,
+	fetchFailed: t.download.fetchFailed,
+	fetchFailedAction: t.download.fetchFailedAction,
+	notMyDevice: t.download.notMyDevice,
+	allPlatforms: t.download.allPlatforms,
+	releasesUrl: `${repo}/releases`,
+	platformNames: {
+		windows: t.download.platforms.windows.name,
+		macos: t.download.platforms.macos.name,
+		linux: t.download.platforms.linux.name,
+		android: t.download.platforms.android.name,
+		ios: t.download.platforms.ios.name,
+	},
+};
+---
+
+<section
+	class="rounded-xl bg-secondary px-6 py-8 text-secondary-foreground shadow-lg sm:px-10 sm:py-10"
+	data-release-root
+	data-locale={locale}
+>
+	<h2 class="text-2xl font-heavy tracking-[-0.02em] sm:text-3xl" data-detected-title>
+		{t.download.detectedUnknown}
+	</h2>
+
+	<div class="mt-7 flex flex-wrap items-center gap-x-4 gap-y-3">
+		<a
+			href="#all"
+			class="inline-flex min-h-(--tap-min) items-center justify-center gap-2 rounded-md bg-primary px-6 text-lg font-semibold text-primary-foreground no-underline transition-[background-color,scale] duration-fast ease-out hover:bg-primary-soft active:scale-(--press-scale)"
+			data-detected-cta
+		>
+			<Icon name="download" class="size-5 shrink-0" />
+			<span data-detected-cta-label>{t.download.allPlatforms}</span>
+		</a>
+		<a
+			href="#all"
+			class="hidden min-h-(--tap-min) items-center rounded-md px-3 text-md font-medium text-primary-soft no-underline underline-offset-4 hover:text-secondary-foreground hover:underline"
+			data-detected-escape
+		>
+			{t.download.notMyDevice}
+		</a>
+	</div>
+
+	<dl
+		class="mt-7 flex flex-wrap gap-x-10 gap-y-4 border-t border-white/15 pt-6 text-md"
+		data-detected-meta
+		aria-live="polite"
+		hidden
+	>
+		<div>
+			<dt class="text-sm text-primary-soft">{t.download.versionLabel}</dt>
+			<dd class="mt-0.5 font-semibold" data-meta-version>—</dd>
+		</div>
+		<div>
+			<dt class="text-sm text-primary-soft">{t.download.sizeLabel}</dt>
+			<dd class="mt-0.5 font-semibold" data-meta-size data-numeric>—</dd>
+		</div>
+		<div>
+			<dt class="text-sm text-primary-soft">{t.download.publishedLabel}</dt>
+			<dd class="mt-0.5 font-semibold" data-meta-date data-numeric>—</dd>
+		</div>
+	</dl>
+
+	<p class="mt-6 flex items-start gap-2 text-md text-primary-soft" data-detected-note aria-live="polite">
+		<Icon name="clock" class="mt-0.5 size-[1.125rem] shrink-0" />
+		<span data-detected-note-text>{t.download.detecting}</span>
+	</p>
+</section>
+
+<script type="application/json" id="release-labels" is:inline set:html={JSON.stringify(labels)} />
+
+<script>
+	import {
+		assetFor,
+		detectPlatform,
+		fetchLatestRelease,
+		formatDate,
+		formatSize,
+		type PlatformId,
+		type Release,
+	} from '../lib/release';
+
+	interface Labels {
+		download: string;
+		detectedFor: string;
+		buildFromSource: string;
+		versionLabel: string;
+		publishedLabel: string;
+		sizeLabel: string;
+		fetchFailed: string;
+		fetchFailedAction: string;
+		notMyDevice: string;
+		allPlatforms: string;
+		releasesUrl: string;
+		platformNames: Record<PlatformId, string>;
+	}
+
+	const root = document.querySelector<HTMLElement>('[data-release-root]');
+	const labelSource = document.getElementById('release-labels');
+
+	/** Platforms that ship a downloadable asset; the other two are source builds. */
+	const withAssets: PlatformId[] = ['windows', 'android', 'ios'];
+
+	function fillPlatformAnchors(release: Release, labels: Labels, locale: string): void {
+		for (const id of withAssets) {
+			const anchor = document.querySelector<HTMLAnchorElement>(`[data-asset="${id}"]`);
+			const label = document.querySelector<HTMLElement>(`[data-asset-label="${id}"]`);
+			const meta = document.querySelector<HTMLElement>(`[data-asset-meta="${id}"]`);
+			const asset = assetFor(release, id);
+
+			if (!asset) {
+				// The anchor keeps its server-rendered link to the releases page.
+				if (meta) meta.textContent = labels.fetchFailed;
+				continue;
+			}
+
+			if (anchor) anchor.href = asset.url;
+			if (label) label.textContent = `${labels.download} ${release.version}`;
+			if (meta) {
+				meta.textContent = `${asset.name} · ${formatSize(asset.size, locale)} · ${labels.publishedLabel} ${formatDate(
+					release.publishedAt,
+					locale,
+				)}`;
+			}
+		}
+	}
+
+	function renderDetected(
+		platform: PlatformId | null,
+		release: Release,
+		labels: Labels,
+		locale: string,
+	): void {
+		const title = document.querySelector<HTMLElement>('[data-detected-title]');
+		const cta = document.querySelector<HTMLAnchorElement>('[data-detected-cta]');
+		const ctaLabel = document.querySelector<HTMLElement>('[data-detected-cta-label]');
+		const escape = document.querySelector<HTMLElement>('[data-detected-escape]');
+		const meta = document.querySelector<HTMLElement>('[data-detected-meta]');
+		const noteText = document.querySelector<HTMLElement>('[data-detected-note-text]');
+		const version = document.querySelector<HTMLElement>('[data-meta-version]');
+		const size = document.querySelector<HTMLElement>('[data-meta-size]');
+		const date = document.querySelector<HTMLElement>('[data-meta-date]');
+
+		if (version) version.textContent = release.version;
+		if (date) date.textContent = formatDate(release.publishedAt, locale);
+		if (meta) meta.hidden = false;
+
+		if (!platform) {
+			// Detection failed: the server-rendered "pick your platform" state is
+			// already the right one, so only the metadata is added.
+			if (size) size.textContent = '—';
+			if (noteText) noteText.remove();
+			return;
+		}
+
+		const name = labels.platformNames[platform];
+		if (title) title.textContent = `${labels.detectedFor} ${name}`;
+		if (escape) {
+			escape.classList.remove('hidden');
+			escape.classList.add('inline-flex');
+		}
+
+		const asset = assetFor(release, platform);
+		if (asset) {
+			if (cta) {
+				cta.href = asset.url;
+				cta.setAttribute('download', '');
+			}
+			if (ctaLabel) ctaLabel.textContent = `${labels.download} ${release.version}`;
+			if (size) size.textContent = formatSize(asset.size, locale);
+			if (noteText) noteText.textContent = asset.name;
+			return;
+		}
+
+		// macOS and Linux have no published asset: the action is the build guide.
+		if (cta) cta.href = `#${platform}`;
+		if (ctaLabel) ctaLabel.textContent = labels.buildFromSource;
+		if (size) size.textContent = '—';
+		if (noteText) noteText.textContent = `${name} · ${labels.buildFromSource}`;
+	}
+
+	function renderFailure(labels: Labels): void {
+		const cta = document.querySelector<HTMLAnchorElement>('[data-detected-cta]');
+		const ctaLabel = document.querySelector<HTMLElement>('[data-detected-cta-label]');
+		const noteText = document.querySelector<HTMLElement>('[data-detected-note-text]');
+
+		if (cta) cta.href = labels.releasesUrl;
+		if (ctaLabel) ctaLabel.textContent = labels.fetchFailedAction;
+		if (noteText) noteText.textContent = labels.fetchFailed;
+
+		// Every platform slot is still showing its resolving line. Leaving them
+		// there would be a loading state that never ends; the anchors keep their
+		// server-rendered link to the releases page, so the page still works.
+		for (const id of withAssets) {
+			const meta = document.querySelector<HTMLElement>(`[data-asset-meta="${id}"]`);
+			if (meta) meta.textContent = labels.fetchFailed;
+		}
+	}
+
+	if (root && labelSource?.textContent) {
+		const labels = JSON.parse(labelSource.textContent) as Labels;
+		const locale = root.dataset.locale ?? 'fr-FR';
+
+		void (async () => {
+			try {
+				const release = await fetchLatestRelease();
+				fillPlatformAnchors(release, labels, locale);
+				renderDetected(detectPlatform(), release, labels, locale);
+			} catch {
+				renderFailure(labels);
+			}
+		})();
+	}
+
+	// The AltStore source URL is long and typed by hand otherwise.
+	for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy-source]')) {
+		button.addEventListener('click', async () => {
+			const input = document.querySelector<HTMLInputElement>('[data-altstore-input]');
+			const label = button.querySelector<HTMLElement>('[data-copy-label]');
+			if (!input || !label) return;
+
+			try {
+				await navigator.clipboard.writeText(input.value);
+			} catch {
+				// No clipboard permission: select the field so the visitor can copy it.
+				input.select();
+				return;
+			}
+
+			const original = label.textContent;
+			label.textContent = button.dataset.copiedLabel ?? original;
+			window.setTimeout(() => {
+				label.textContent = original;
+			}, 2000);
+		});
+	}
+</script>

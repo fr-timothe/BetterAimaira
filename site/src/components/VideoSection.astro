@@ -1,0 +1,100 @@
+---
+// The presentation video weighs 6.8 MB, so nothing about it is fetched until the
+// visitor asks: `preload="none"`, with a real still from the video itself as the
+// poster rather than a third appearance of the Today screenshot. The frame is
+// taken at 8s, where the film is showing the app at work; the title card at 3s
+// would have promoted one of the film's marketing chips to a permanent claim the
+// product documentation does not make.
+// `ffmpeg -ss 8 -frames:v 1` on `assets/showcase/betteraimaira-presentation.mp4`.
+//
+// The markup ships the native player, `controls` and all, and the script trades
+// it for a drawn play affordance. That order is deliberate: the browser's default
+// control bar is the one surface on this page nobody designed and it sits across
+// 1152px of it, but with no JavaScript it is also the only working player, so it
+// is what the HTML carries. Activating the affordance puts `controls` back and
+// starts playback, which is how keyboard and screen-reader users get the full
+// native player the moment they ask for it.
+import Icon from './Icon.astro';
+import { useContent, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+---
+
+<section class="border-y border-border-subtle bg-card">
+	<div class="mx-auto w-full max-w-[76rem] px-5 py-20 sm:px-8 sm:py-24">
+		<div class="max-w-[44rem]">
+			<h2 class="text-3xl font-heavy tracking-[-0.02em] text-foreground sm:text-4xl">{t.video.title}</h2>
+			<p class="mt-4 text-lg leading-relaxed text-muted-foreground">{t.video.body}</p>
+		</div>
+
+		<figure class="mt-10">
+			<div class="relative overflow-hidden rounded-xl bg-secondary shadow-lg" data-player>
+				<video
+					class="block h-auto w-full"
+					controls
+					preload="none"
+					playsinline
+					poster="/media/presentation-poster.webp"
+					width="1920"
+					height="1080"
+					data-video
+				>
+					<source src="/media/presentation.mp4" type="video/mp4" />
+					{t.video.fallback}
+				</video>
+
+				<button
+					type="button"
+					class="group absolute inset-0 flex cursor-pointer items-center justify-center bg-secondary/25 transition-colors duration-normal ease-out hover:bg-secondary/10 focus-visible:bg-secondary/10"
+					data-play
+					hidden
+				>
+					<span
+						class="flex size-16 items-center justify-center rounded-pill bg-primary text-primary-foreground shadow-lg transition-[scale] duration-normal ease-out group-hover:scale-105 group-active:scale-(--press-scale) sm:size-20"
+					>
+						<Icon name="play" class="size-7 translate-x-0.5 sm:size-9" strokeWidth={2.25} />
+					</span>
+					<span class="sr-only">{t.video.play}</span>
+				</button>
+			</div>
+
+			<figcaption class="mt-4">
+				<a
+					href="/media/presentation.mp4"
+					download
+					class="inline-flex min-h-(--tap-min) items-center gap-2 text-md font-medium text-primary-deep no-underline hover:underline"
+				>
+					<Icon name="download" class="size-[1.125rem]" />
+					{t.video.download}
+				</a>
+			</figcaption>
+		</figure>
+	</div>
+</section>
+
+<script>
+	const player = document.querySelector<HTMLElement>('[data-player]');
+	const video = player?.querySelector<HTMLVideoElement>('[data-video]');
+	const play = player?.querySelector<HTMLButtonElement>('[data-play]');
+
+	if (video && play) {
+		// The script is here, so the designed affordance takes over from the
+		// native bar the HTML shipped for readers who have no script.
+		video.controls = false;
+		play.hidden = false;
+
+		play.addEventListener('click', () => {
+			video.controls = true;
+			play.remove();
+			// A blocked autoplay policy still leaves the visitor a native player,
+			// so a rejected promise is not a failure worth reporting.
+			void video.play().catch(() => {});
+			video.focus();
+		});
+	}
+</script>

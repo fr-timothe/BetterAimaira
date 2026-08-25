@@ -1,0 +1,101 @@
+---
+import Icon from './Icon.astro';
+import Lockup from './Lockup.astro';
+import { localePath, repo, useContent, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+
+const resources = [
+	{ href: `${repo}/blob/master/docs/README.md`, label: t.footer.documentation },
+	{ href: `${repo}/releases`, label: t.footer.releases },
+	{ href: `${repo}/blob/master/LICENSE`, label: t.footer.licence },
+];
+
+const project = [
+	{ href: repo, label: t.footer.source },
+	{ href: `${repo}/issues`, label: t.footer.issues },
+];
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-border-subtle bg-card">
+	<div class="mx-auto w-full max-w-[76rem] px-5 py-14 sm:px-8">
+		<div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr]">
+			<div>
+				<Lockup />
+				<p class="mt-4 max-w-[34ch] text-md leading-relaxed text-muted-foreground">{t.footer.tagline}</p>
+				<a
+					href={repo}
+					rel="noreferrer"
+					target="_blank"
+					class="mt-5 inline-flex min-h-(--tap-min) items-center gap-2 rounded-md border border-border px-3.5 text-md font-semibold text-foreground no-underline transition-colors duration-fast hover:bg-muted"
+				>
+					<Icon name="github" class="size-[1.125rem]" />
+					GitHub
+				</a>
+			</div>
+
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t.footer.resources}</h2>
+				<ul class="mt-1">
+					{
+						resources.map((item) => (
+							<li>
+								<a
+									href={item.href}
+									rel="noreferrer"
+									target="_blank"
+									class="inline-flex min-h-(--tap-min) items-center gap-1.5 text-md text-foreground no-underline transition-colors duration-fast hover:text-primary-deep hover:underline"
+								>
+									{item.label}
+									<Icon name="external-link" class="size-3.5 text-muted-foreground" />
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</div>
+
+			<div>
+				<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t.footer.project}</h2>
+				<ul class="mt-1">
+					{
+						project.map((item) => (
+							<li>
+								<a
+									href={item.href}
+									rel="noreferrer"
+									target="_blank"
+									class="inline-flex min-h-(--tap-min) items-center gap-1.5 text-md text-foreground no-underline transition-colors duration-fast hover:text-primary-deep hover:underline"
+								>
+									{item.label}
+									<Icon name="external-link" class="size-3.5 text-muted-foreground" />
+								</a>
+							</li>
+						))
+					}
+					<li>
+						<a
+							href={localePath(lang, 'download')}
+							class="inline-flex min-h-(--tap-min) items-center text-md text-foreground no-underline transition-colors duration-fast hover:text-primary-deep hover:underline"
+						>
+							{t.nav.download}
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+
+		<div
+			class="mt-12 flex flex-col gap-3 border-t border-border-subtle pt-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+		>
+			<p class="max-w-[68ch]">{t.footer.unofficial}</p>
+			<p class="shrink-0">© {year} Timothé Montfrond · GPL-3.0</p>
+		</div>
+	</div>
+</footer>

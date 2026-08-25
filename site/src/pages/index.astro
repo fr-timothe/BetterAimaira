@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import Strengths from '../components/Strengths.astro';
+import Features from '../components/Features.astro';
+import Privacy from '../components/Privacy.astro';
+import VideoSection from '../components/VideoSection.astro';
+import Platforms from '../components/Platforms.astro';
+import Faq from '../components/Faq.astro';
+import Closing from '../components/Closing.astro';
+import { useContent } from '../i18n/content';
+
+const lang = 'fr' as const;
+const t = useContent(lang);
+---
+
+<Base lang={lang} page="" title={t.meta.homeTitle} description={t.meta.homeDescription}>
+	<Hero lang={lang} />
+	<Strengths lang={lang} />
+	<Features lang={lang} />
+	<Privacy lang={lang} />
+	<VideoSection lang={lang} />
+	<Platforms lang={lang} />
+	<Faq lang={lang} />
+	<Closing lang={lang} />
+</Base>

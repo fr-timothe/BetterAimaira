@@ -1,0 +1,72 @@
+---
+// The site's only control primitive. Every action on both pages goes through
+// it, so the tap floor, the press feedback and the focus ring are declared once.
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+
+type Variant = 'ink' | 'accent' | 'outline' | 'quiet';
+type Size = 'md' | 'lg';
+
+interface Props {
+	href?: string;
+	variant?: Variant;
+	size?: Size;
+	icon?: IconName;
+	/** Places the icon after the label instead of before it. */
+	iconTrailing?: boolean;
+	external?: boolean;
+	download?: boolean;
+	class?: string;
+	id?: string;
+	/** Marks the anchor the release script rewrites to a direct asset URL. */
+	'data-asset'?: string;
+}
+
+const {
+	href,
+	variant = 'ink',
+	size = 'md',
+	icon,
+	iconTrailing = false,
+	external = false,
+	download = false,
+	class: className,
+	...rest
+} = Astro.props;
+
+const base =
+	'group inline-flex items-center justify-center gap-2 rounded-md font-semibold min-h-(--tap-min) transition-[background-color,color,border-color,box-shadow,scale] duration-fast ease-out active:scale-(--press-scale) no-underline';
+
+const variants: Record<Variant, string> = {
+	// White on ink clears 11:1; the primary action on both pages.
+	ink: 'bg-secondary text-secondary-foreground hover:bg-secondary-hover shadow-sm',
+	// White on --primary-deep clears 6.6:1. --primary itself is a fill only.
+	accent: 'bg-primary-deep text-white hover:bg-primary-deep-hover shadow-sm',
+	outline: 'border border-border text-foreground bg-card hover:bg-muted',
+	quiet: 'text-foreground hover:bg-muted',
+};
+
+const sizes: Record<Size, string> = {
+	// Tighter chrome at the narrowest step: at 390 the header bar has 350px of
+	// content box for a 356px cluster, and a tap target may never be the thing
+	// that gives.
+	md: 'px-2.5 text-md sm:px-4',
+	lg: 'px-6 text-lg gap-2.5',
+};
+
+const iconSize = size === 'lg' ? 'size-5' : 'size-[1.125rem]';
+const classes = [base, variants[variant], sizes[size], className].filter(Boolean).join(' ');
+---
+
+<a
+	href={href}
+	class={classes}
+	download={download ? '' : undefined}
+	rel={external ? 'noreferrer' : undefined}
+	target={external ? '_blank' : undefined}
+	{...rest}
+>
+	{icon && !iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
+	<span><slot /></span>
+	{icon && iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
+</a>

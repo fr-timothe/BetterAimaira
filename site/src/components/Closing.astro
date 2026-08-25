@@ -1,0 +1,33 @@
+---
+// The page ends on the honest statement rather than a louder repeat of the
+// hero: the product is a prerelease, and saying so is the last thing a visitor
+// reads before the download button.
+import Button from './Button.astro';
+import Icon from './Icon.astro';
+import { localePath, repo, useContent, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+---
+
+<section class="bg-muted">
+	<div class="mx-auto w-full max-w-[76rem] px-5 py-20 sm:px-8 sm:py-24">
+		<div class="max-w-[46rem]">
+			<Icon name="circle-alert" class="size-7 text-primary-deep" />
+			<h2 class="mt-5 text-3xl font-heavy tracking-[-0.02em] text-foreground sm:text-4xl">{t.closing.title}</h2>
+			<p class="mt-5 max-w-[62ch] text-lg leading-relaxed text-muted-foreground">{t.closing.body}</p>
+			<div class="mt-9 flex flex-wrap items-center gap-3">
+				<Button href={localePath(lang, 'download')} variant="ink" size="lg" icon="download">
+					{t.closing.primary}
+				</Button>
+				<Button href={`${repo}/releases`} variant="outline" size="lg" icon="external-link" iconTrailing external>
+					{t.closing.secondary}
+				</Button>
+			</div>
+		</div>
+	</div>
+</section>

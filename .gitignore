@@ -22,3 +22,9 @@ videos/**/renders/
 videos/**/snapshots/
 videos/**/node_modules/
 videos/**/.cache/
+
+# Showcase site (site/): build output, Astro cache, and the assets copied in
+# from assets/ at build time — assets/ stays the single source of truth.
+/site/dist
+/site/.astro
+/site/public/media

@@ -1,0 +1,71 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { localePath, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+	page: '' | 'download';
+	title: string;
+	description: string;
+}
+
+const { lang, page, title, description } = Astro.props;
+const canonical = new URL(localePath(lang, page), Astro.site);
+const other: Lang = lang === 'fr' ? 'en' : 'fr';
+---
+
+<!doctype html>
+<html lang={lang}>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<link rel="canonical" href={canonical.href} />
+		<link rel="alternate" hreflang={lang} href={canonical.href} />
+		<link rel="alternate" hreflang={other} href={new URL(localePath(other, page), Astro.site).href} />
+		<link rel="alternate" hreflang="x-default" href={new URL(localePath('fr', page), Astro.site).href} />
+		<link rel="icon" href="/media/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/media/favicon.png" />
+		<meta name="theme-color" content="#eef1f4" />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="BetterAimaira" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical.href} />
+		<meta property="og:locale" content={lang === 'fr' ? 'fr_FR' : 'en_GB'} />
+		<meta property="og:image" content={new URL('/media/screenshot-today.png', Astro.site).href} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="generator" content={Astro.generator} />
+	</head>
+	<body>
+		<!--
+		  DIRECTION CONTRACT — BetterAimaira showcase site
+		  THESIS: the category-standard product landing, played straight. It refuses
+		  composition invention and spends the whole budget on finish.
+		  OWN-WORLD: FL-Theme, copied token for token from src/app.css. Cool
+		  near-white ground, ink-blue type, cyan as a fill only with --primary-deep
+		  for every meaningful stroke, Inter variable, 12-20px radii, elevation
+		  declared once and always by shadow.
+		  STORY: a student learns this reads their own Aimaira portal locally,
+		  believes their credentials never leave the device, and downloads the build
+		  for their own hardware.
+		  FIRST VIEWPORT: sticky header with lockup, section links, FR/EN and
+		  Download. Left, the headline plus a lead naming what the app refuses to do,
+		  then two actions. Right, the Today screenshot in its frame.
+		  FORM: the standing exit, the category canon, calibrated on papillon.bzh,
+		  Raycast/Linear, Tauri/Zed and Proton/Signal. Taken over dealt structures
+		  5, 4 and 6. Seed key 166efabf.
+		  FINISH: unreviewed and undocumented is unfinished; this build ends with the
+		  finish review, the verdict, DESIGN.md, and every shipping raster carrying
+		  its provenance.
+		-->
+		<Header lang={lang} page={page} />
+		<main id="main">
+			<slot />
+		</main>
+		<Footer lang={lang} />
+	</body>
+</html>

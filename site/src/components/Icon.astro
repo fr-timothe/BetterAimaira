@@ -1,0 +1,33 @@
+---
+// Icons are decorative by default and get `aria-hidden`. An icon that is the
+// only label for its control takes a `label`, which turns it into an `img` role
+// with an accessible name. Geometry lives in `src/lib/icons.ts`.
+import { filledIcons, iconPaths, type IconName } from '../lib/icons';
+
+interface Props {
+	name: IconName;
+	/** Only when the icon is the sole label for its control. */
+	label?: string;
+	class?: string;
+	/** Stroke width on the 24x24 grid. 1.75 is this site's weight. */
+	strokeWidth?: number;
+}
+
+const { name, label, class: className, strokeWidth = 1.75 } = Astro.props;
+const filled = filledIcons.has(name);
+---
+
+<svg
+	xmlns="http://www.w3.org/2000/svg"
+	viewBox="0 0 24 24"
+	fill={filled ? 'currentColor' : 'none'}
+	stroke={filled ? 'none' : 'currentColor'}
+	stroke-width={filled ? undefined : strokeWidth}
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	class={className}
+	role={label ? 'img' : undefined}
+	aria-label={label}
+	aria-hidden={label ? undefined : 'true'}
+	set:html={iconPaths[name]}
+/>

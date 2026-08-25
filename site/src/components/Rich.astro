@@ -1,0 +1,26 @@
+---
+// Copy in `content.ts` writes file names, commands and config keys inside
+// backticks, the way the repository's own documentation does. This renders that
+// one inline mark and nothing else: the text is escaped first, so the component
+// stays safe even though every string it receives is authored in this repo.
+interface Props {
+	text: string;
+	/**
+	 * Set when the surrounding panel is already `--muted`: the chip's own fill
+	 * would be the same tint as its container and disappear, so it steps up to
+	 * `--muted-strong`.
+	 */
+	onMuted?: boolean;
+}
+
+const { text, onMuted = false } = Astro.props;
+
+const field = onMuted ? 'bg-muted-strong' : 'bg-muted';
+const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const html = escaped.replace(
+	/`([^`]+)`/g,
+	`<code class="rounded-xs ${field} px-1.5 py-0.5 text-[0.9em] text-primary-deep">$1</code>`,
+);
+---
+
+<Fragment set:html={html} />
