@@ -70,6 +70,19 @@ class Onboarding {
     return this.permissions.length > 0;
   }
 
+  /**
+   * Whether the introduction may be left behind.
+   *
+   * A right the app cannot open a screen for is not counted: the reader has no
+   * way to grant it from here, and blocking on it would lock them out of the
+   * app entirely.
+   */
+  get allGranted(): boolean {
+    return this.permissions.every(
+      (permission) => permission.granted || !permission.requestable
+    );
+  }
+
   async load(): Promise<void> {
     try {
       this.permissions = await permissionStates();
@@ -124,9 +137,17 @@ class Onboarding {
     rememberStep(this.step);
   }
 
-  /** Ends the introduction, granted or not: the rights are never mandatory. */
-  finish(): void {
+  /**
+   * Ends the introduction, and only then: every right the reader can grant is
+   * a condition of entry, so a missing one leaves them on this step.
+   *
+   * Returns whether the introduction actually ended, so the caller does not
+   * hand a reader to the login form who never got past the permission panel.
+   */
+  finish(): boolean {
+    if (!this.allGranted) return false;
     markSeen();
+    return true;
   }
 }
 

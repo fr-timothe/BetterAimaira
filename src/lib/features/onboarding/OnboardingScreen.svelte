@@ -50,7 +50,7 @@
       grant: m.onboarding_permission_grant(),
       recheck: m.onboarding_permission_recheck(),
       pending: m.onboarding_permission_pending(),
-      optional: m.onboarding_permissions_optional(),
+      required: m.onboarding_permissions_required(),
       errorCheck: m.onboarding_permission_error_check(),
       errorRequest: m.onboarding_permission_error_request(),
       errorUnavailable: m.onboarding_permission_error_unavailable(),
@@ -106,9 +106,10 @@
     finish();
   }
 
+  // The state refuses to end while a right is still missing, so the reader is
+  // only handed to the login form once it says the introduction is over.
   function finish() {
-    onboarding.finish();
-    onDone();
+    if (onboarding.finish()) onDone();
   }
 </script>
 
@@ -221,8 +222,8 @@
       {/if}
 
       <div class="grid gap-2">
-        <p class="text-sm leading-[1.5] text-muted-foreground">{copy.optional}</p>
-        <Button variant="ink" size="lg" block onclick={finish}>
+        <p class="text-sm leading-[1.5] text-muted-foreground">{copy.required}</p>
+        <Button variant="ink" size="lg" block disabled={!onboarding.allGranted} onclick={finish}>
           {copy.start}
           <ArrowRight size={18} aria-hidden="true" />
         </Button>
