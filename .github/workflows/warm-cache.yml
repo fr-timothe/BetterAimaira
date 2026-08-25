@@ -64,7 +64,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # `packages` defaults to `tools platform-tools`, and the obsolete `tools`
+      # meta-package drags the Android Emulator in with it: a ~500 MB download
+      # that failed here on a corrupt archive, and that a job compiling an APK
+      # has no use for. The runner image already ships the platforms and
+      # build-tools Gradle needs.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - uses: nttld/setup-ndk@v1
         id: ndk
