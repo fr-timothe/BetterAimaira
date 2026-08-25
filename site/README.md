@@ -2,7 +2,7 @@
 
 # Site vitrine
 
-Le site public de BetterAimaira : une page d'accueil et une page de téléchargement, en français et en anglais. Servi à la racine de **https://betteraimaira.montfrond.work**.
+Le site public de BetterAimaira : une page d'accueil, une page de téléchargement et une page de compatibilité, en français et en anglais. Servi à la racine de **https://betteraimaira.montfrond.work**.
 
 C'est un projet Astro autonome, avec ses propres dépendances. Il ne partage rien avec l'application Tauri à la racine du dépôt, à l'exception des assets de `assets/` et des valeurs de tokens de `src/app.css`.
 
@@ -57,11 +57,14 @@ site/
     ├── layouts/Base.astro  head, contrat de direction, en-tête, pied de page
     ├── components/         sections de la page d'accueil et de la page téléchargement
     └── pages/
-        ├── index.astro     accueil FR      → /
+        ├── index.astro     accueil FR        → /
         ├── download.astro  téléchargement FR → /download
-        ├── en/             les deux pages EN → /en/ et /en/download
+        ├── ecoles.astro    compatibilité FR  → /ecoles
+        ├── en/             les trois pages EN → /en/, /en/download, /en/schools
         └── 404.astro
 ```
+
+Les chemins ne sont pas identiques d'une langue à l'autre : `/ecoles` répond en français, `/en/schools` en anglais. C'est la table `pageSlugs` de [`src/i18n/content.ts`](src/i18n/content.ts) qui les apparie, pour que le sélecteur de langue arrive sur le jumeau de la page lue et non sur l'accueil.
 
 ---
 
@@ -86,6 +89,25 @@ La stratégie de mouvement tient en une ligne : **un seul moment animé**, l'arr
 
 ---
 
+## Page de compatibilité
+
+`/ecoles` et `/en/schools` répondent à une seule question : *est-ce que mon école marche avec cette application ?*
+
+La liste vient de [`assets/schools/schools.json`](../assets/schools/README.md), importée au build. Les 129 fiches sont rendues en statique et filtrées dans le navigateur par [`src/components/SchoolsBody.astro`](src/components/SchoolsBody.astro) — pas de requête, pas d'index, pas de portail contacté. Sans JavaScript la page reste juste : elle affiche tout.
+
+Chaque fiche porte un des quatre statuts, dérivés de `portalUrl` et `portalLogin` :
+
+| Statut | Ce que le portail sert | Ce que l'application en fait |
+|---|---|---|
+| Prise en charge | `/User/LoginPost`, identifiant + mot de passe | se connecte, c'est le formulaire que `src-tauri/src/aimaira.rs` remplit |
+| À vérifier | `/User/DetectAuthent`, l'e-mail d'abord | non testé — le déroulé en deux temps n'a pas de compte pour être vérifié |
+| Non prise en charge | `/User/LoginExternalPost`, aucun champ de mot de passe | rien, l'authentification appartient à un fournisseur externe |
+| Adresse inconnue | — | l'école est cliente d'Aimaira, mais l'adresse n'a pas été confirmée |
+
+Le statut est écrit en toutes lettres sur la fiche **et** dans une légende placée avant la liste : la couleur du badge ne porte jamais l'information seule.
+
+---
+
 ## Téléchargements
 
 La page `/download` résout la dernière version côté client, dans [`src/lib/release.ts`](src/lib/release.ts).
@@ -101,6 +123,8 @@ La page `/download` résout la dernière version côté client, dans [`src/lib/r
 
 [`scripts/copy-media.mjs`](scripts/copy-media.mjs) ne recopie **que ce qu'une page référence réellement**. Le script échoue si un fichier de la liste est absent : une capture manquante casse le build au lieu de laisser un cadre vide en production.
 
+Une exception : `assets/schools/logos/` est recopié comme répertoire entier. C'est un seul asset en 129 morceaux, et ajouter une école ne doit pas demander de modifier ce script. Ces logos ne servent pas que le site — **l'application installée les charge depuis `/media/schools/<id>.webp`**, ce qui lui évite de les embarquer et permet d'allonger la liste sans publier de version.
+
 | Fichier servi | Provenance |
 |---|---|
 | `favicon.svg`, `favicon.png` | `static/`, la marque officielle du projet |
@@ -109,6 +133,7 @@ La page `/download` résout la dernière version côté client, dans [`src/lib/r
 | `screenshot-grades.png` | `assets/showcase/screenshot-4.png`, capture de l'application |
 | `presentation.mp4` | `assets/showcase/`, vidéo de présentation du projet, 24 s |
 | `presentation-poster.webp` | image extraite de cette vidéo à 8 s, là où le film montre l'application en usage : `ffmpeg -ss 8 -i assets/showcase/betteraimaira-presentation.mp4 -frames:v 1 -c:v libwebp -quality 82 assets/showcase/presentation-poster.webp` |
+| `schools/<id>.webp` | `assets/schools/logos/`, recopié en entier — 129 logos d'écoles |
 
 Le contenu de portail visible dans les trois captures est un **jeu de démonstration écrit à la main** — aucun relevé réel n'est dans ce dépôt, `PRODUCT.md` l'interdit. Chaque capture est rendue dans un `figure` dont la légende le dit, via la clé `demoNote` de `src/i18n/content.ts`.
 

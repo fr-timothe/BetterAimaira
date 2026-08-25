@@ -23,6 +23,15 @@ export const altStoreSource = 'https://betteraimaira.montfrond.work/updates/beta
 
 export type PlatformId = 'windows' | 'android' | 'ios' | 'macos' | 'linux';
 
+/** The pages that exist in both languages, and pair up in the language switch. */
+export type PageId = '' | 'download' | 'schools';
+
+/** How a school's portal signs a student in, from `assets/schools/schools.json`. */
+export type PortalLogin = 'password' | 'email-first' | 'sso';
+
+/** What the app can do with that portal, which is what the page is asked. */
+export type SchoolStatus = 'ready' | 'emailFirst' | 'sso' | 'unknown';
+
 /** `release` ships a downloadable asset; `source` is built locally. */
 export type PlatformAvailability = 'release' | 'source';
 
@@ -43,6 +52,8 @@ interface Content {
 		homeDescription: string;
 		downloadTitle: string;
 		downloadDescription: string;
+		schoolsTitle: string;
+		schoolsDescription: string;
 	};
 	nav: {
 		skip: string;
@@ -51,6 +62,7 @@ interface Content {
 		faq: string;
 		docs: string;
 		download: string;
+		schools: string;
 		languageLabel: string;
 		menuLabel: string;
 		home: string;
@@ -143,6 +155,30 @@ interface Content {
 		signatureNote: string;
 		platforms: Record<PlatformId, PlatformCard>;
 	};
+	schools: {
+		title: string;
+		lead: string;
+		searchLabel: string;
+		searchPlaceholder: string;
+		clear: string;
+		countOne: string;
+		countOther: string;
+		filterLabel: string;
+		filterAll: string;
+		categories: Record<string, string>;
+		statusLabel: string;
+		/** One badge and one sentence per outcome, so no visitor has to guess. */
+		status: Record<SchoolStatus, { badge: string; body: string }>;
+		portalLabel: string;
+		groupNote: string;
+		websiteLabel: string;
+		emptyTitle: string;
+		emptyBody: string;
+		missingTitle: string;
+		missingBody: string;
+		sourceNote: string;
+		cta: string;
+	};
 }
 
 const buildCommands = `git clone https://github.com/fr-timothe/BetterAimaira.git
@@ -159,6 +195,9 @@ const fr: Content = {
 		downloadTitle: 'Télécharger BetterAimaira',
 		downloadDescription:
 			'Installeur Windows, APK Android, IPA iOS via AltStore, et compilation depuis les sources sur macOS et Linux.',
+		schoolsTitle: 'Ton école est-elle compatible ? — BetterAimaira',
+		schoolsDescription:
+			'La liste des établissements qui utilisent Aimaira, avec l’adresse de leur portail et ce que BetterAimaira sait en faire. Si ton école n’y est pas, son portail n’est probablement pas compatible.',
 	},
 	nav: {
 		skip: 'Aller au contenu',
@@ -167,6 +206,7 @@ const fr: Content = {
 		faq: 'Questions',
 		docs: 'Documentation',
 		download: 'Télécharger',
+		schools: 'Écoles',
 		languageLabel: 'Langue',
 		menuLabel: 'Menu',
 		home: 'Accueil',
@@ -341,6 +381,61 @@ const fr: Content = {
 		unofficial:
 			'Client non officiel. Aimaira est une marque de son éditeur ; ce projet n’a aucun lien avec lui ni avec un établissement.',
 	},
+	schools: {
+		title: 'Ton école est-elle compatible ?',
+		lead: 'Ces établissements utilisent Aimaira. Trouve le tien pour voir l’adresse de son portail et ce que BetterAimaira sait en faire. La liste est tenue à la main : elle ne t’observe pas et n’interroge aucun portail.',
+		searchLabel: 'Chercher ton établissement',
+		searchPlaceholder: 'Nom, sigle ou groupe — ESGI, Eduservices, Nantes…',
+		clear: 'Effacer',
+		countOne: 'établissement',
+		countOther: 'établissements',
+		filterLabel: 'Filtrer par domaine',
+		filterAll: 'Tous',
+		categories: {
+			arts: 'Arts du spectacle',
+			business: 'Commerce & management',
+			communication: 'Communication & marketing',
+			creation: 'Création & multimédia',
+			droits: 'Droit & sciences politiques',
+			gestion: 'Gestion & comptabilité',
+			hotel: 'Hôtellerie & gastronomie',
+			immobilier: 'Immobilier',
+			informatique: 'Informatique & technologie',
+			inge: 'Ingénierie & sciences',
+			mode: 'Mode & artisanat',
+			sante: 'Santé & médico-social',
+			sport: 'Sport',
+			tourisme: 'Tourisme',
+		},
+		statusLabel: 'Connexion',
+		status: {
+			ready: {
+				badge: 'Prise en charge',
+				body: 'Le portail présente le formulaire identifiant + mot de passe que BetterAimaira sait remplir.',
+			},
+			emailFirst: {
+				badge: 'À vérifier',
+				body: 'Le portail demande d’abord ton adresse e-mail, puis décide de la suite. Ce déroulé n’a pas été testé depuis l’application : essaie, et dis-nous ce que ça donne.',
+			},
+			sso: {
+				badge: 'Non prise en charge',
+				body: 'La connexion passe par un compte extérieur au portail. BetterAimaira ne sait pas s’y authentifier.',
+			},
+			unknown: {
+				badge: 'Adresse inconnue',
+				body: 'L’établissement utilise Aimaira, mais l’adresse de son portail ne nous a pas été confirmée. Saisis-la toi-même dans l’application.',
+			},
+		},
+		portalLabel: 'Portail',
+		groupNote: 'Portail du groupe {group}.',
+		websiteLabel: 'Site de l’école',
+		emptyTitle: 'Aucun établissement ne correspond',
+		emptyBody: 'Essaie le sigle plutôt que le nom complet, ou le nom du groupe auquel ton école appartient.',
+		missingTitle: 'Ton école n’est pas dans la liste ?',
+		missingBody: 'Alors elle n’utilise probablement pas Aimaira, et BetterAimaira ne pourra rien en lire. Si tu sais qu’elle l’utilise, ouvre une issue avec l’adresse de son portail : elle sera ajoutée ici.',
+		sourceNote: 'Liste mise à jour à la main. Adresses de portail vérifiées une par une, sans jamais interroger le compte de qui que ce soit.',
+		cta: 'Télécharger l’application',
+	},
 	download: {
 		title: 'Télécharger BetterAimaira',
 		lead: 'Trois plateformes ont un installateur publié. Sur macOS et Linux, la compilation locale prend une commande.',
@@ -431,6 +526,9 @@ const en: Content = {
 		downloadTitle: 'Download BetterAimaira',
 		downloadDescription:
 			'Windows installer, Android APK, iOS IPA through AltStore, and a source build on macOS and Linux.',
+		schoolsTitle: 'Is your school supported? — BetterAimaira',
+		schoolsDescription:
+			'The list of schools running Aimaira, with their portal address and what BetterAimaira can do with it. If your school is not there, its portal is probably not supported.',
 	},
 	nav: {
 		skip: 'Skip to content',
@@ -439,6 +537,7 @@ const en: Content = {
 		faq: 'Questions',
 		docs: 'Documentation',
 		download: 'Download',
+		schools: 'Schools',
 		languageLabel: 'Language',
 		menuLabel: 'Menu',
 		home: 'Home',
@@ -613,6 +712,61 @@ const en: Content = {
 		unofficial:
 			'Unofficial client. Aimaira is a trademark of its vendor; this project is unaffiliated with it and with any school.',
 	},
+	schools: {
+		title: 'Is your school supported?',
+		lead: 'These schools run Aimaira. Find yours to see its portal address and what BetterAimaira can do with it. The list is maintained by hand: it does not watch you, and it queries no portal.',
+		searchLabel: 'Find your school',
+		searchPlaceholder: 'Name, initials or group — ESGI, Eduservices, Nantes…',
+		clear: 'Clear',
+		countOne: 'school',
+		countOther: 'schools',
+		filterLabel: 'Filter by field',
+		filterAll: 'All',
+		categories: {
+			arts: 'Performing arts',
+			business: 'Business & management',
+			communication: 'Communication & marketing',
+			creation: 'Design & multimedia',
+			droits: 'Law & political science',
+			gestion: 'Accounting & finance',
+			hotel: 'Hospitality & gastronomy',
+			immobilier: 'Real estate',
+			informatique: 'Computing & technology',
+			inge: 'Engineering & science',
+			mode: 'Fashion & craft',
+			sante: 'Health & social care',
+			sport: 'Sport',
+			tourisme: 'Tourism',
+		},
+		statusLabel: 'Sign-in',
+		status: {
+			ready: {
+				badge: 'Supported',
+				body: 'The portal serves the username and password form BetterAimaira knows how to fill in.',
+			},
+			emailFirst: {
+				badge: 'Unverified',
+				body: 'The portal asks for your email address first and decides what to do with it server-side. That flow has not been tested from the app: try it, and tell us how it goes.',
+			},
+			sso: {
+				badge: 'Not supported',
+				body: 'Sign-in goes through an account outside the portal. BetterAimaira cannot authenticate against it.',
+			},
+			unknown: {
+				badge: 'Address unknown',
+				body: 'The school runs Aimaira, but its portal address has not been confirmed. Enter it yourself in the app.',
+			},
+		},
+		portalLabel: 'Portal',
+		groupNote: 'Shared {group} group portal.',
+		websiteLabel: 'School website',
+		emptyTitle: 'No school matches',
+		emptyBody: 'Try the initials rather than the full name, or the name of the group your school belongs to.',
+		missingTitle: 'Your school is not in the list?',
+		missingBody: 'Then it probably does not run Aimaira, and BetterAimaira will have nothing to read. If you know it does, open an issue with its portal address and it will be added here.',
+		sourceNote: 'Maintained by hand. Portal addresses were confirmed one by one, without ever querying anybody’s account.',
+		cta: 'Download the app',
+	},
 	download: {
 		title: 'Download BetterAimaira',
 		lead: 'Three platforms have a published installer. On macOS and Linux, the local build is one command.',
@@ -700,9 +854,19 @@ export function useContent(lang: Lang) {
 	return content[lang];
 }
 
-/** `/` and `/download` in French, `/en/` and `/en/download` in English. */
-export function localePath(lang: Lang, path = ''): string {
-	const clean = path.replace(/^\/+/, '');
+/**
+ * The slug each page answers on, per language. The pair is what makes the
+ * language switch land on the twin of the page being read rather than the home
+ * page — and the schools page is the reason this is a table and no longer one
+ * shared string: it is `/ecoles` in French and `/en/schools` in English.
+ */
+const pageSlugs: Record<Lang, Record<PageId, string>> = {
+	fr: { '': '', download: 'download', schools: 'ecoles' },
+	en: { '': '', download: 'download', schools: 'schools' },
+};
+
+/** `/`, `/download` and `/ecoles` in French; `/en/…` in English. */
+export function localePath(lang: Lang, page: PageId = ''): string {
 	const prefix = lang === defaultLang ? '/' : `/${lang}/`;
-	return `${prefix}${clean}`;
+	return `${prefix}${pageSlugs[lang][page]}`;
 }

@@ -12,12 +12,12 @@
 import Button from './Button.astro';
 import Lockup from './Lockup.astro';
 import Icon from './Icon.astro';
-import { languages, localePath, repo, useContent, type Lang } from '../i18n/content';
+import { languages, localePath, repo, useContent, type Lang, type PageId } from '../i18n/content';
 
 interface Props {
 	lang: Lang;
-	/** The path of the current page, so the language switch lands on its twin. */
-	page: '' | 'download';
+	/** The page being read, so the language switch lands on its twin. */
+	page: PageId;
 }
 
 const { lang, page } = Astro.props;
@@ -26,10 +26,13 @@ const home = localePath(lang);
 const other: Lang = lang === 'fr' ? 'en' : 'fr';
 const docs = `${repo}/blob/master/docs/README.md`;
 
+// In-page anchors on the home page, absolute links back to it from anywhere
+// else. The schools page is a page of its own, so it is not one of them.
 const sections = [
 	{ href: `${home}#features`, label: t.nav.features },
 	{ href: `${home}#privacy`, label: t.nav.privacy },
 	{ href: `${home}#faq`, label: t.nav.faq },
+	{ href: localePath(lang, 'schools'), label: t.nav.schools },
 ];
 ---
 

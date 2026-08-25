@@ -9,6 +9,11 @@
 // The list holds only what a page actually references. `logo-lockup.svg` is not
 // here because the lockup is rendered as real text (see `Lockup.astro`), and no
 // screenshot is copied unless `content.ts` names it.
+//
+// `assets/schools/logos/` is copied whole rather than named file by file: the
+// directory is one asset with 129 parts, and the installed app fetches those
+// parts from `/media/schools/` by name. Adding a school must not mean editing
+// this script.
 import { cp, mkdir, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +33,9 @@ const files = [
 	['assets/showcase/presentation-poster.webp', 'presentation-poster.webp'],
 ];
 
+/** @type {Array<[string, string]>} directories, copied whole */
+const directories = [['assets/schools/logos', 'schools']];
+
 await rm(target, { recursive: true, force: true });
 await mkdir(target, { recursive: true });
 
@@ -43,10 +51,23 @@ for (const [source, name] of files) {
 	await cp(from, join(target, name));
 }
 
+for (const [source, name] of directories) {
+	const from = join(repoRoot, source);
+	try {
+		await stat(from);
+	} catch {
+		missing.push(source);
+		continue;
+	}
+	await cp(from, join(target, name), { recursive: true });
+}
+
 if (missing.length > 0) {
 	// A missing asset is a broken page, not a warning to scroll past.
 	console.error(`copy-media: missing source assets:\n  ${missing.join('\n  ')}`);
 	process.exit(1);
 }
 
-console.log(`copy-media: ${files.length} assets copied into public/media/`);
+console.log(
+	`copy-media: ${files.length} assets and ${directories.length} directories copied into public/media/`
+);

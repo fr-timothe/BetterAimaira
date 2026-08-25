@@ -24,6 +24,10 @@ on:
     paths:
       - "site/**"
       - "assets/showcase/**"
+      # The school directory: the site renders the list, and the installed app
+      # loads the logos from `/media/schools/`. A school added there has to
+      # reach the site on its own, without a site file being touched.
+      - "assets/schools/**"
       - "static/favicon.svg"
       - "static/favicon.png"
       - ".github/workflows/pages.yml"

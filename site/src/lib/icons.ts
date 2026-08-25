@@ -30,12 +30,14 @@ export type IconName =
 	| 'menu'
 	| 'monitor'
 	| 'play'
+	| 'search'
 	| 'shield-check'
 	| 'smartphone'
 	| 'terminal'
 	| 'x';
 
 export const iconPaths: Record<IconName, string> = {
+	'search': '<path d="m21 21-4.34-4.34" /><circle cx="11" cy="11" r="8" />',
 	'clock': '<circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />',
 	'calendar-days': '<path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /><path d="M8 14h.01" /><path d="M12 14h.01" /><path d="M16 14h.01" /><path d="M8 18h.01" /><path d="M12 18h.01" /><path d="M16 18h.01" />',
 	'database': '<ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5V19A9 3 0 0 0 21 19V5" /><path d="M3 12A9 3 0 0 0 21 12" />',

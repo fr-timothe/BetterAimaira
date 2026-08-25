@@ -1,0 +1,12 @@
+---
+import Base from '../../layouts/Base.astro';
+import SchoolsBody from '../../components/SchoolsBody.astro';
+import { useContent } from '../../i18n/content';
+
+const lang = 'en' as const;
+const t = useContent(lang);
+---
+
+<Base lang={lang} page="schools" title={t.meta.schoolsTitle} description={t.meta.schoolsDescription}>
+	<SchoolsBody lang={lang} />
+</Base>
