@@ -23,6 +23,7 @@
   import type { SavedIdentity } from '$lib/features/auth/session';
   import type { School } from '$lib/data/schools';
   import { connectivity } from '$lib/state/connectivity.svelte';
+  import { updates } from '$lib/features/updates/updates.svelte';
   import { cn } from '$lib/utils';
 
   type ScheduleAppComponent = (typeof import('$lib/features/schedule/ScheduleApp.svelte'))['default'];
@@ -199,6 +200,11 @@
 
   onMount(() => {
     const clock = setInterval(() => (now = new Date()), 30_000);
+    // Asked for at boot, in parallel with the sign-in it does not depend on:
+    // by the time the schedule is on screen the answer is already there. It
+    // stays silent until the signed-in shell opens the notice surface, so
+    // nothing about a release lands on the login or onboarding screens.
+    void updates.checkOnStart();
     if (isTauri()) {
       void startSession();
     } else {

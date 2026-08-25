@@ -29,8 +29,10 @@ export type UpdateStatus =
 const AUTO_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const LAST_CHECK_KEY = 'betteraimaira.update.lastCheck';
 const CHANNEL_KEY = 'betteraimaira.update.channel';
-/** The version the last check found waiting, if it found one. */
-const PENDING_VERSION_KEY = "betteraimaira.update.pendingVersion";
+/** The last check's answer, kept so the next launch can speak before the network does. */
+const PENDING_SNAPSHOT_KEY = "betteraimaira.update.pending";
+/** Superseded by the snapshot above; read once more only to clear it. */
+const LEGACY_PENDING_VERSION_KEY = "betteraimaira.update.pendingVersion";
 /** The version whose notice was closed by hand; it never raises one again. */
 const NOTICE_DISMISSED_KEY = 'betteraimaira.update.noticeDismissed';
 
@@ -60,15 +62,31 @@ function writeDismissedNotice(version: string): void {
   localStorage.setItem(NOTICE_DISMISSED_KEY, version);
 }
 
-function readPendingVersion(): string | null {
+/**
+ * The whole answer, not just its version: the notice, the badge and the card
+ * can then be right at the first frame instead of after a network round trip.
+ */
+function readPendingSnapshot(): UpdateInfo | null {
   if (typeof localStorage === "undefined") return null;
-  return localStorage.getItem(PENDING_VERSION_KEY);
+  localStorage.removeItem(LEGACY_PENDING_VERSION_KEY);
+  const stored = localStorage.getItem(PENDING_SNAPSHOT_KEY);
+  if (!stored) return null;
+  try {
+    const parsed = JSON.parse(stored) as UpdateInfo;
+    // A snapshot that is not an offer is not worth restoring.
+    return parsed?.available === true ? parsed : null;
+  } catch {
+    // Written by an older build, or half-written: a bad cache must not be able
+    // to break the update path it exists to speed up.
+    localStorage.removeItem(PENDING_SNAPSHOT_KEY);
+    return null;
+  }
 }
 
-function writePendingVersion(version: string | null): void {
+function writePendingSnapshot(info: UpdateInfo | null): void {
   if (typeof localStorage === "undefined") return;
-  if (version) localStorage.setItem(PENDING_VERSION_KEY, version);
-  else localStorage.removeItem(PENDING_VERSION_KEY);
+  if (info?.available) localStorage.setItem(PENDING_SNAPSHOT_KEY, JSON.stringify(info));
+  else localStorage.removeItem(PENDING_SNAPSHOT_KEY);
 }
 
 function readStoredChannel(): UpdateChannel | null {
@@ -101,10 +119,12 @@ class Updates {
   /** The system installer's own wording, when it failed and gave one. */
   installMessage = $state<string | null>(null);
   /**
-   * The in-app notice raised when a check finds a new version. It is what the
-   * user sees at launch: the badge on More is a mark, not an announcement.
+   * Open only while the signed-in shell is on screen. Login, the session
+   * restore screen and onboarding are not places to be told about a release:
+   * the reader is busy getting in, and the card the notice points at does not
+   * exist there.
    */
-  noticeVisible = $state(false);
+  noticeSurfaceOpen = $state(false);
   /**
    * Set when the notice is tapped. The update card watches it and scrolls
    * itself into view, so the shell does not have to wait for a lazily loaded
@@ -112,6 +132,8 @@ class Updates {
    */
   revealRequested = $state(false);
 
+  /** The version waiting to be announced, once there is a surface to say it on. */
+  #announcement = $state<string | null>(null);
   #dismissedNoticeVersion: string | null = readDismissedNotice();
   /** Announced once per version per run: a re-check is not a second event. */
   #announcedVersion: string | null = null;
@@ -119,8 +141,36 @@ class Updates {
   #channelReady: Promise<UpdateChannel> | null = null;
   #listening = false;
 
+  /**
+   * The in-app notice. It is what the user sees at launch: the badge on More is
+   * a mark, not an announcement.
+   */
+  noticeVisible = $derived(this.noticeSurfaceOpen && this.#announcement !== null);
+
+  constructor() {
+    // The last answer is restored before anything is asked of the network, so a
+    // launch that already knew about a release says so on its first frame
+    // instead of after the sign-in, the lazy import and the manifest request.
+    // The check that follows corrects it within a second if it went stale.
+    const snapshot = readPendingSnapshot();
+    if (!snapshot) return;
+    this.info = snapshot;
+    this.status = 'available';
+    this.#raiseNotice(snapshot.latestVersion ?? 'unknown');
+  }
+
   get available(): boolean {
     return this.info?.available === true;
+  }
+
+  /** Called by the signed-in shell: the notice may speak from here on. */
+  openNoticeSurface(): void {
+    this.noticeSurfaceOpen = true;
+  }
+
+  /** Called when that shell goes away, at logout or on unmount. */
+  closeNoticeSurface(): void {
+    this.noticeSurfaceOpen = false;
   }
 
   /**
@@ -162,7 +212,7 @@ class Updates {
     this.info = null;
     this.progress = null;
     this.installMessage = null;
-    this.noticeVisible = false;
+    this.#announcement = null;
     this.#announcedVersion = null;
     this.errorCode = null;
     this.status = 'idle';
@@ -175,14 +225,12 @@ class Updates {
   /** Runs at app start, skips a recent check, and never surfaces an error. */
   async checkOnStart(): Promise<void> {
     if (!updatesSupported()) return;
-    await this.resolveChannel();
     const previous = readLastCheck();
     // An update already known to be waiting is re-checked on every launch: the
     // throttle exists to spare pointless requests, and this one is not
     // pointless. Skipping it would leave the notice unraised and the card empty
     // for six hours after the update landed.
-    const pending = readPendingVersion();
-    if (previous && Date.now() - previous < AUTO_CHECK_INTERVAL_MS && !pending) {
+    if (previous && Date.now() - previous < AUTO_CHECK_INTERVAL_MS && !this.available) {
       this.lastCheckedAt = previous;
       return;
     }
@@ -238,22 +286,30 @@ class Updates {
    */
   #refreshNotice(info: UpdateInfo): void {
     const version = info.available ? (info.latestVersion ?? "unknown") : null;
-    writePendingVersion(version);
+    writePendingSnapshot(info);
     if (!version) {
-      this.noticeVisible = false;
+      this.#announcement = null;
       return;
     }
+    this.#raiseNotice(version);
+  }
+
+  /**
+   * A version already turned down stays turned down, and a version already
+   * announced this run stays quiet: opening the update card runs a check of its
+   * own, and without that guard the notice the user just tapped would raise
+   * itself again behind the card.
+   */
+  #raiseNotice(version: string): void {
     if (version === this.#dismissedNoticeVersion) return;
-    // Opening the update card runs a check of its own, and without this the
-    // notice the user just tapped would raise itself again behind the card.
     if (version === this.#announcedVersion) return;
     this.#announcedVersion = version;
-    this.noticeVisible = true;
+    this.#announcement = version;
   }
 
   /** Tapped: hand the user to the card that installs it. */
   revealFromNotice(): void {
-    this.noticeVisible = false;
+    this.#announcement = null;
     this.revealRequested = true;
   }
 
@@ -264,7 +320,7 @@ class Updates {
 
   /** Closed by hand: this version never announces itself again. */
   dismissNotice(): void {
-    this.noticeVisible = false;
+    this.#announcement = null;
     const version = this.info?.latestVersion;
     if (!version) return;
     this.#dismissedNoticeVersion = version;
@@ -276,7 +332,7 @@ class Updates {
    * launch raises it again: an announcement nobody saw was not turned down.
    */
   hideNotice(): void {
-    this.noticeVisible = false;
+    this.#announcement = null;
   }
 
   /**
@@ -288,7 +344,10 @@ class Updates {
     if (!updatesSupported() || !this.available) return;
 
     this.status = 'installing';
-    this.noticeVisible = false;
+    this.#announcement = null;
+    // The restart lands on the new version: a snapshot left behind would have
+    // it announce the release it just installed.
+    writePendingSnapshot(null);
     this.errorCode = null;
     this.progress = null;
     this.installMessage = null;
