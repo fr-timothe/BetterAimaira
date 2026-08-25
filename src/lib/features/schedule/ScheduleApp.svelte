@@ -82,6 +82,16 @@
   let drawerAlerts = $state<Grade[]>([]);
   let gradeAlertDrawerOpen = $state(false);
   let scheduleRefreshing = $state(false);
+  let scheduleRefreshFailed = $state(false);
+  /**
+   * The period the calendar is showing. A refresh has to reload this, not the
+   * current week: in month scope the two are five weeks apart, and reloading
+   * the week would replace the month's events with a single week of them.
+   */
+  let visiblePeriod = $state({
+    startDate: startOfWeek(new Date()),
+    durationDays: DEFAULT_WEEK_DURATION,
+  });
   let visibleSundays = $state(false);
   let CalendarView = $state<CalendarViewComponent | null>(null);
   let GradesView = $state<GradesViewComponent | null>(null);
@@ -246,6 +256,7 @@
 
       if (currentSequence !== requestSequence) return;
 
+      scheduleRefreshFailed = false;
       setScheduleState({
         kind: "ready",
         events: result.events,
@@ -256,6 +267,14 @@
       pendingSchedules.delete(key);
       if (currentSequence !== requestSequence) return;
       const code = parseScheduleError(error);
+      // Data already on screen is kept and marked as failed rather than thrown
+      // away: an expired session is the one failure a retry cannot fix, so it
+      // still takes over the view.
+      if (schedule.kind === "ready" && code !== "session_expired") {
+        scheduleRefreshFailed = true;
+        console.error("Failed to refresh the schedule", error);
+        return;
+      }
       setScheduleState({ kind: "error", code });
     } finally {
       if (currentSequence === requestSequence) {
@@ -332,6 +351,7 @@
     if (view === "today" && !isSameWeek(weekStart, now)) {
       weekStart = startOfWeek(new Date());
       selectedDate = startOfDay(new Date());
+      visiblePeriod = { startDate: weekStart, durationDays: DEFAULT_WEEK_DURATION };
       void loadSchedule(weekStart, DEFAULT_WEEK_DURATION);
     }
   }
@@ -364,7 +384,12 @@
 
   async function handleCalendarPeriodChange(startDate: Date, durationDays: number) {
     weekStart = startOfWeek(startDate);
+    visiblePeriod = { startDate, durationDays };
     await loadSchedule(startDate, durationDays);
+  }
+
+  async function refreshVisibleSchedule() {
+    await loadSchedule(visiblePeriod.startDate, visiblePeriod.durationDays, true);
   }
 
   async function openTempoSession(event: CalendarEvent) {
@@ -380,7 +405,7 @@
         ]);
         break;
       case "schedule":
-        await loadSchedule(weekStart, DEFAULT_WEEK_DURATION, true);
+        await refreshVisibleSchedule();
         break;
       case "grades":
         if (gradesRefresh) {
@@ -688,7 +713,7 @@
                     title={copy.offlineHeading}
                     description={copy.offlineDescription}
                     actionLabel={copy.retry}
-                    onAction={() => loadSchedule(weekStart, DEFAULT_WEEK_DURATION, true)}
+                    onAction={() => refreshVisibleSchedule()}
                   />
                 {:else if schedule.code === "session_expired"}
                   <StateCard
@@ -706,7 +731,7 @@
                     title={copy.errorHeading}
                     description={scheduleErrorMessage(schedule.code)}
                     actionLabel={copy.retry}
-                    onAction={() => loadSchedule(weekStart, DEFAULT_WEEK_DURATION, true)}
+                    onAction={() => refreshVisibleSchedule()}
                   />
                 {/if}
               </div>
@@ -720,7 +745,9 @@
                 {selectedDate}
                 loading={schedule.kind === "loading" || scheduleRefreshing}
                 onPeriodChange={handleCalendarPeriodChange}
-                onRefresh={() => loadSchedule(weekStart, DEFAULT_WEEK_DURATION, true)}
+                fetchedAt={schedule.kind === "ready" ? schedule.fetchedAt : null}
+                refreshFailed={scheduleRefreshFailed}
+                onRefresh={refreshVisibleSchedule}
                 onOpenTempo={openTempoSession}
               />
             {:else}

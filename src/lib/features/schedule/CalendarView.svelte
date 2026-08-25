@@ -4,6 +4,7 @@
     Calendar,
     CalendarCheck,
     CalendarDays,
+    CalendarSearch,
     ChevronLeft,
     ChevronRight,
     Clock,
@@ -15,8 +16,12 @@
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
   import Badge from '$lib/components/ui/Badge.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
+  import FreshnessLabel from '$lib/components/ui/FreshnessLabel.svelte';
+  import IconButton from '$lib/components/ui/IconButton.svelte';
   import KindBadge from '$lib/components/ui/KindBadge.svelte';
-  import Spinner from '$lib/components/ui/Spinner.svelte';
+  import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
+  import Sheet from '$lib/components/ui/Sheet.svelte';
   import StateCard from '$lib/components/ui/StateCard.svelte';
   import CalendarViewSkeleton from './CalendarViewSkeleton.svelte';
   import CourseDetailModal from './CourseDetailModal.svelte';
@@ -37,11 +42,19 @@
     eventSecondary,
     eventTitle,
     formatDuration,
-    formatDurationRange,
     getEventStatus,
     openExternalUrl,
     parseRoomAndTeacher,
   } from './course-utils';
+  import {
+    blockGeometry,
+    gapMinutes,
+    layoutDay,
+    ratioInWindow,
+    timeWindowFor,
+    windowHours,
+  } from './calendar-layout';
+  import type { PositionedEvent } from './calendar-layout';
   import type { CalendarEvent, CalendarScope } from './types';
   import { cn } from '$lib/utils';
 
@@ -53,6 +66,10 @@
     selectedDate?: Date;
     now?: Date;
     loading?: boolean;
+    /** Epoch ms of the last successful fetch, for the freshness statement. */
+    fetchedAt?: number | null;
+    /** A refresh failed while these events were already on screen. */
+    refreshFailed?: boolean;
     onPeriodChange?: (startDate: Date, durationDays: number) => void | Promise<void>;
     onRefresh?: () => void | Promise<void>;
     onEventClick?: (event: CalendarEvent) => void;
@@ -67,211 +84,39 @@
     selectedDate,
     now = new Date(),
     loading = false,
+    fetchedAt = null,
+    refreshFailed = false,
     onPeriodChange,
     onRefresh,
     onEventClick,
     onOpenTempo,
   }: Props = $props();
 
-  type CourseRowVariant = 'timeline' | 'compact' | 'week' | 'detailed';
-
-  type CourseRowShape = {
-    /** `inline` prints the whole range in one run; `stacked` splits start and end. */
-    time: 'inline' | 'stacked';
-    endTime: boolean;
-    duration: boolean;
-    rail: boolean;
-    status: 'all' | 'live' | 'none';
-    secondary: boolean;
-    teacher: boolean;
-    tempo: boolean;
-  };
-
   /**
-   * The four scopes show the same course at four levels of detail. Keeping that
-   * difference as data is what lets a single snippet own the button, the
-   * keyboard behaviour and the status logic; only the grid differs per scope.
+   * Row height of one hour, per scope. It is not a free aesthetic choice: at
+   * 4.5rem an hour, the shortest slot the portal returns (30 min) is still
+   * 36px tall, and the `min-h-(--tap-min)` floor on a block then only has to
+   * stretch the rarest case instead of every second course.
    */
-  const rowShape: Record<CourseRowVariant, CourseRowShape> = {
-    timeline: {
-      time: 'stacked',
-      endTime: true,
-      duration: true,
-      rail: true,
-      status: 'all',
-      secondary: true,
-      teacher: true,
-      tempo: true,
-    },
-    compact: {
-      time: 'inline',
-      endTime: false,
-      duration: false,
-      rail: false,
-      status: 'none',
-      secondary: false,
-      teacher: true,
-      tempo: true,
-    },
-    week: {
-      time: 'stacked',
-      endTime: false,
-      duration: true,
-      rail: false,
-      status: 'none',
-      secondary: false,
-      teacher: false,
-      tempo: false,
-    },
-    detailed: {
-      time: 'stacked',
-      endTime: true,
-      duration: false,
-      rail: true,
-      status: 'live',
-      secondary: true,
-      teacher: true,
-      tempo: true,
-    },
-  };
+  const HOUR_HEIGHT_REM = { day: 5, week: 4.5 } as const;
 
-  /**
-   * The same four levels of detail, as classes. Every element the row owns has
-   * one entry per variant, so a scope's whole look is readable in one place
-   * instead of spread over four blocks of descendant selectors.
-   */
-  type RowSkin = {
-    root: string;
-    open: string;
-    time: string;
-    strong: string;
-    span: string;
-    small: string;
-    rail: string;
-    node: string;
-    bar: string;
-    body: string;
-    tags: string;
-    title: string;
-    subtitle: string;
-    meta: string;
-    tempo: string;
-  };
-
-  const rowBase = {
-    root: 'course-row relative min-w-0',
-    open: 'w-full cursor-pointer bg-transparent p-0 text-start text-inherit',
-    time: 'flex min-w-0 flex-col tabular-nums',
-    strong: 'text-base font-extrabold text-foreground',
-    span: 'text-xs text-muted-foreground',
-    small: 'mt-1 text-2xs font-semibold text-primary-deep',
-    rail: 'relative flex flex-col items-center',
-    node: 'z-raised size-3 rounded-full border-2 border-primary-deep bg-card',
-    bar: 'w-0.5 flex-1 bg-border-subtle',
-    body: 'flex min-w-0 flex-col gap-1',
-    tags: 'flex min-w-0 max-w-full flex-wrap items-center gap-2',
-    // The leading is applied after the variant size on purpose: tailwind-merge
-    // reads `text-base` as a size-and-leading shorthand and would drop an earlier
-    // `leading-*`.
-    title: 'min-w-0 text-md font-extrabold wrap-anywhere text-foreground',
-    subtitle: 'min-w-0 text-sm wrap-anywhere text-muted-foreground',
-    meta:
-      'flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground',
-    tempo:
-      'inline-flex min-h-(--tap-min) items-center gap-1 rounded-pill border border-muted-strong' +
-      ' bg-card px-3 text-xs font-bold text-primary-deep transition-control' +
-      ' active:scale-(--press-scale) hover:bg-muted'
-  } as const satisfies RowSkin;
-
-  /** The three card variants share one surface and one press/hover behaviour. */
-  const metaItem = 'inline-flex min-w-0 max-w-full items-center gap-1 wrap-anywhere';
-
-  const cardSurface =
-    'rounded-lg border transition-control active:scale-(--press-scale)' +
-    ' hover:border-primary-deep hover:shadow-sm';
-
-  // The timeline widens its own rail column once there is room for it.
-  const timelineGrid =
-    'grid-cols-[3.6rem_1rem_minmax(0,1fr)] gap-x-2.5 gap-y-0' +
-    ' md:grid-cols-[4.25rem_1.25rem_minmax(0,1fr)] md:gap-x-3';
-
-  const rowSkin: Record<CourseRowVariant, Partial<RowSkin>> = {
-    // Its surface covers only the third column, while both the open button and
-    // the Tempo action sit inside it — so it is painted by a grid-placed
-    // pseudo-element rather than by either of them.
-    timeline: {
-      root:
-        'grid ' + timelineGrid + ' transition-transform duration-instant ease-out' +
-        ' active:scale-(--press-scale)' +
-        " before:col-start-3 before:row-start-1 before:row-end-[-1] before:content-['']" +
-        ' before:rounded-lg before:border' +
-        ' before:transition-[background-color,border-color,box-shadow] before:duration-fast' +
-        ' before:ease-out hover:before:border-primary-deep hover:before:shadow-sm',
-      open: 'grid col-span-full row-start-1 items-stretch rounded-lg ' + timelineGrid,
-      time: 'pt-2.5 md:pt-3',
-      node: 'mt-3.5 md:mt-4',
-      body: 'gap-1.5 p-3.5 md:gap-2 md:p-4',
-      tempo:
-        'col-start-3 row-start-2 mx-3.5 mt-0 mb-3.5 justify-self-start md:mx-4 md:mb-4'
-    },
-    compact: {
-      root: 'grid gap-2 p-3 ' + cardSurface,
-      open: 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-sm',
-      // `contents` lets the body's children join the row's own grid, so the time
-      // and the tags share a line without a second wrapper.
-      body: 'contents',
-      time: '[grid-area:1/1]',
-      strong: 'text-xs font-bold text-primary-deep',
-      tags: '[grid-area:1/2] justify-self-end',
-      title: '[grid-area:2/1/auto/-1] text-base',
-      meta: '[grid-area:3/1/auto/-1] flex-col items-start gap-1 text-xs',
-      tempo: 'justify-self-start'
-    },
-    week: {
-      root: 'grid gap-1 rounded-md border p-2 transition-control active:scale-(--press-scale)' +
-        ' hover:border-primary-deep hover:shadow-sm',
-      open: 'grid gap-1 rounded-sm',
-      body: 'contents',
-      time: 'row-start-1 flex-row items-baseline justify-between gap-1',
-      strong: 'text-2xs font-bold text-primary-deep',
-      small: 'mt-0 text-muted-foreground',
-      title: 'row-start-2 line-clamp-2 text-sm',
-      meta: 'row-start-3 text-2xs',
-      tags: 'row-start-4 justify-self-start'
-    },
-    detailed: {
-      root: 'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 p-3 ' + cardSurface,
-      open:
-        'grid grid-cols-[3.5rem_3px_minmax(0,1fr)] items-stretch gap-2.5 rounded-sm' +
-        ' lte-600:grid-cols-[3.25rem_3px_minmax(0,1fr)] lte-600:gap-2',
-      time: 'pt-[0.15rem]',
-      node: 'hidden',
-      rail: 'h-full items-center',
-      bar: 'h-full w-[3px] rounded-pill bg-primary-deep',
-      body: 'gap-1 pl-0',
-      title: 'text-base font-bold',
-      subtitle: 'text-xs',
-      meta: 'text-xs'
-    }
-  };
-
-  /** The live and finished states paint the row, so they close over the variant. */
-  function rowInk(variant: CourseRowVariant, live: boolean) {
-    if (variant === 'timeline') {
-      return live
-        ? 'before:border-primary-deep before:bg-muted'
-        : 'before:border-border-subtle before:bg-surface-sunken';
-    }
-    return live
-      ? 'border-primary-deep bg-muted'
-      : 'border-border-subtle bg-surface-sunken';
-  }
+  /** Below this a block has no room for a third line, so the room is dropped. */
+  const ROOM_VISIBLE_FROM_MINUTES = 60;
 
   let currentScope = $state<CalendarScope>('week');
   let anchorDate = $state<Date>(startOfDay(new Date()));
   let activeDate = $state<Date>(startOfDay(new Date()));
   let modalEvent = $state<CalendarEvent | null>(null);
-  let ribbonRef = $state<HTMLDivElement | null>(null);
+  let pickerOpen = $state(false);
+  let pickerMonth = $state<Date>(startOfMonth(new Date()));
+  /**
+   * The month grid is one tab stop, not 42. This is the cell the arrow keys
+   * moved to, which is also the only cell carrying `tabindex="0"`.
+   */
+  let monthFocusDate = $state<Date>(startOfDay(new Date()));
+  let stripRef = $state<HTMLDivElement | null>(null);
+  let gridScrollRef = $state<HTMLDivElement | null>(null);
+  let monthGridRef = $state<HTMLDivElement | null>(null);
 
   $effect.pre(() => {
     if (initialScope) currentScope = initialScope;
@@ -281,23 +126,51 @@
     if (selectedDate) {
       anchorDate = startOfDay(selectedDate);
       activeDate = startOfDay(selectedDate);
+      monthFocusDate = startOfDay(selectedDate);
     }
   });
+
+  function prefersReducedMotion(): boolean {
+    // The global `prefers-reduced-motion` rule in app.css cannot reach a JS
+    // scroll option, so the preference is read again here.
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
 
   $effect(() => {
     activeDate;
     currentScope;
     void tick().then(() => {
-      // The global `prefers-reduced-motion` rule cannot reach a JS scroll
-      // option, so the preference is read here as well.
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      ribbonRef
-        ?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')
-        ?.scrollIntoView({
-          behavior: reduceMotion ? 'auto' : 'smooth',
-          block: 'nearest',
-          inline: 'center',
-        });
+      stripRef?.querySelector<HTMLButtonElement>('[aria-pressed="true"]')?.scrollIntoView({
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    });
+  });
+
+  /**
+   * The grid opens on the hour that matters rather than on its first row: now
+   * when today is in view, otherwise the first course. The scroll is written on
+   * the region itself so the page around it does not move.
+   */
+  $effect(() => {
+    currentScope;
+    anchorDate;
+    timeWindow;
+    void tick().then(() => {
+      const region = gridScrollRef;
+      if (!region) return;
+
+      const ratio = gridDays.some((day) => isSameDay(day, now))
+        ? ratioInWindow(now, timeWindow)
+        : firstEventRatio;
+      if (ratio === null) return;
+
+      const target = ratio * region.scrollHeight - region.clientHeight / 2;
+      region.scrollTo({
+        top: Math.max(0, target),
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      });
     });
   });
 
@@ -310,45 +183,24 @@
     })
   );
 
-  const shortDayFormatter = $derived(
-    new Intl.DateTimeFormat(locale, {
-      weekday: 'short',
-      day: 'numeric',
-    })
-  );
-
   const weekdayShortFormatter = $derived(
-    new Intl.DateTimeFormat(locale, {
-      weekday: 'short',
-    })
+    new Intl.DateTimeFormat(locale, { weekday: 'short' })
   );
 
   const monthYearFormatter = $derived(
-    new Intl.DateTimeFormat(locale, {
-      month: 'long',
-      year: 'numeric',
-    })
+    new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' })
   );
 
   const timeFormatter = $derived(
-    new Intl.DateTimeFormat(locale, {
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' })
   );
 
   const rangeFormatter = $derived(
-    new Intl.DateTimeFormat(locale, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })
+    new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', year: 'numeric' })
   );
 
   const sortedEvents = $derived.by(() =>
-    [...events].sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
-    )
+    [...events].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
   );
 
   const eventsByDay = $derived.by(() => {
@@ -370,59 +222,117 @@
 
   const monthFirstDay = $derived(startOfMonth(anchorDate));
   const monthGridStart = $derived(startOfWeek(monthFirstDay));
+  /**
+   * Only the weeks the month actually touches. A fixed 42 cells adds a whole
+   * trailing week of foreign days to a short February, and asks the portal for
+   * six weeks when five are shown.
+   */
+  const monthWeekCount = $derived.by(() => {
+    const nextMonth = addMonths(monthFirstDay, 1);
+    const spannedDays = Math.round(
+      (nextMonth.getTime() - monthGridStart.getTime()) / 86_400_000
+    );
+    return Math.ceil(spannedDays / 7);
+  });
   const monthGridDays = $derived(
-    Array.from({ length: 42 }, (_, i) => addDays(monthGridStart, i))
+    Array.from({ length: monthWeekCount * 7 }, (_, i) => addDays(monthGridStart, i))
   );
 
-  // A fixed Monday-first week, only ever used to print weekday column titles.
-  const monthHeaderDays = Array.from(
-    { length: 7 },
-    (_, i) => new Date(2024, 0, 1 + i)
+  /** A fixed Monday-first week, only ever used to print weekday column titles. */
+  const monthHeaderDays = Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i));
+
+  const pickerFirstDay = $derived(startOfMonth(pickerMonth));
+  const pickerGridStart = $derived(startOfWeek(pickerFirstDay));
+  const pickerWeekCount = $derived.by(() => {
+    const nextMonth = addMonths(pickerFirstDay, 1);
+    const spannedDays = Math.round(
+      (nextMonth.getTime() - pickerGridStart.getTime()) / 86_400_000
+    );
+    return Math.ceil(spannedDays / 7);
+  });
+  const pickerDays = $derived(
+    Array.from({ length: pickerWeekCount * 7 }, (_, i) => addDays(pickerGridStart, i))
   );
+
+  /** The days the time grid draws: one in day scope, the portal week otherwise. */
+  const gridDays = $derived(currentScope === 'day' ? [activeDate] : weekDays);
+  const gridEvents = $derived.by(() => gridDays.flatMap((day) => eventsForDay(day)));
+  const timeWindow = $derived(timeWindowFor(gridEvents));
+  const gridHours = $derived(windowHours(timeWindow));
+  const gridSpanHours = $derived((timeWindow.endMinutes - timeWindow.startMinutes) / 60);
+  const hourHeightRem = $derived(
+    currentScope === 'day' ? HOUR_HEIGHT_REM.day : HOUR_HEIGHT_REM.week
+  );
+
+  const firstEventRatio = $derived.by(() => {
+    const first = gridEvents
+      .map((event) => new Date(event.startsAt))
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+    return first ? ratioInWindow(first, timeWindow) : null;
+  });
 
   const activeDateEvents = $derived(eventsForDay(activeDate));
+  const activeDateDurationMinutes = $derived.by(() =>
+    activeDateEvents.reduce((total, event) => total + eventDurationMinutes(event), 0)
+  );
+  const activeDateGapMinutes = $derived(gapMinutes(activeDateEvents));
 
   const periodLabel = $derived.by(() => {
     switch (currentScope) {
       case 'day':
-        return capitalizeFirst(dayFormatter.format(anchorDate));
+        return capitalizeFirst(dayFormatter.format(activeDate));
       case 'week': {
-        const wEnd = addDays(weekStartDate, visibleWeekDaysCount - 1);
-        const wNum = getWeekNumber(weekStartDate);
-        const formattedRange = rangeFormatter.formatRange(weekStartDate, wEnd);
-        return m.calendar_week_range({ week: wNum, range: formattedRange });
+        const weekEnd = addDays(weekStartDate, visibleWeekDaysCount - 1);
+        return m.calendar_week_range({
+          week: getWeekNumber(weekStartDate),
+          range: rangeFormatter.formatRange(weekStartDate, weekEnd),
+        });
       }
       case 'month':
         return capitalizeFirst(monthYearFormatter.format(anchorDate));
     }
   });
 
-  const activeDateDurationMinutes = $derived.by(() => {
-    return activeDateEvents.reduce((total, event) => total + eventDurationMinutes(event), 0);
-  });
-
-  const availableScopes = $derived.by(() => {
+  const scopeOptions = $derived.by(() => {
     locale;
     return [
-      { id: 'day' as CalendarScope, label: m.scope_day(), shortLabel: m.scope_day(), icon: Clock },
-      { id: 'week' as CalendarScope, label: m.scope_week(), shortLabel: 'Sem.', icon: CalendarDays },
-      { id: 'month' as CalendarScope, label: m.scope_month(), shortLabel: m.scope_month(), icon: Calendar },
+      { value: 'day', label: m.scope_day() },
+      { value: 'week', label: m.scope_week() },
+      { value: 'month', label: m.scope_month() },
     ];
+  });
+
+  const ScopeIcon = $derived(
+    currentScope === 'day' ? Clock : currentScope === 'week' ? CalendarDays : Calendar
+  );
+
+  const scopeName = $derived.by(() => {
+    locale;
+    switch (currentScope) {
+      case 'day':
+        return m.scope_day();
+      case 'week':
+        return m.scope_week();
+      case 'month':
+        return m.scope_month();
+    }
   });
 
   function eventsForDay(date: Date): CalendarEvent[] {
     return eventsByDay.get(dayKey(date)) ?? [];
   }
 
-  function eventTime(event: CalendarEvent): string {
-    const start = new Date(event.startsAt);
-    const end = new Date(event.endsAt);
-    return `${timeFormatter.format(start)} – ${timeFormatter.format(end)}`;
+  function eventTimeRange(event: CalendarEvent): string {
+    return `${timeFormatter.format(new Date(event.startsAt))} – ${timeFormatter.format(new Date(event.endsAt))}`;
   }
 
-  function setScope(scope: CalendarScope) {
-    currentScope = scope;
-    triggerPeriodChange(anchorDate, scope);
+  function dayCountLabel(date: Date): string {
+    return m.day_course_count({ count: eventsForDay(date).length });
+  }
+
+  function setScope(scope: string) {
+    currentScope = scope as CalendarScope;
+    triggerPeriodChange(anchorDate, currentScope);
   }
 
   function movePeriod(direction: -1 | 1) {
@@ -442,6 +352,7 @@
         break;
     }
     anchorDate = newAnchor;
+    monthFocusDate = activeDate;
     triggerPeriodChange(newAnchor, currentScope);
   }
 
@@ -449,39 +360,37 @@
     const today = startOfDay(new Date());
     anchorDate = today;
     activeDate = today;
+    monthFocusDate = today;
     triggerPeriodChange(today, currentScope);
   }
 
   function selectDate(date: Date) {
     activeDate = startOfDay(date);
+    monthFocusDate = activeDate;
     if (currentScope === 'day') {
       anchorDate = activeDate;
       triggerPeriodChange(activeDate, currentScope);
     }
   }
 
-  function formatWeekInputValue(date: Date): string {
-    const weekStart = startOfWeek(date);
-    const isoYear = addDays(weekStart, 3).getFullYear();
-    return `${isoYear}-W${String(getWeekNumber(date)).padStart(2, '0')}`;
+  function openPicker() {
+    pickerMonth = startOfMonth(activeDate);
+    pickerOpen = true;
   }
 
-  function handleWeekInputChange(event: Event) {
-    const input = event.currentTarget;
-    if (!(input instanceof HTMLInputElement)) return;
-    const match = input.value.match(/^(\d{4})-W(\d{2})$/);
-    if (!match) return;
-
-    const year = Number.parseInt(match[1], 10);
-    const week = Number.parseInt(match[2], 10);
-    const januaryFourth = startOfDay(new Date(year, 0, 4));
-    const selectedWeek = addDays(startOfWeek(januaryFourth), (week - 1) * 7);
-    anchorDate = selectedWeek;
-    activeDate = selectedWeek;
-    triggerPeriodChange(selectedWeek, currentScope);
+  /**
+   * Replaces `<input type="week">`, which neither WKWebView nor WebKitGTK
+   * implements: on those platforms it degrades to a text field expecting
+   * `2026-W35`, which is not a control a student can operate.
+   */
+  function pickDate(date: Date) {
+    const picked = startOfDay(date);
+    anchorDate = currentScope === 'week' ? startOfWeek(picked) : picked;
+    activeDate = picked;
+    monthFocusDate = picked;
+    pickerOpen = false;
+    triggerPeriodChange(anchorDate, currentScope);
   }
-
-  const weekInputValue = $derived(formatWeekInputValue(anchorDate));
 
   function triggerPeriodChange(date: Date, scope: CalendarScope) {
     if (!onPeriodChange) return;
@@ -497,21 +406,24 @@
         startDate = startOfWeek(date);
         durationDays = 7;
         break;
-      case 'month':
-        startDate = startOfWeek(startOfMonth(date));
-        durationDays = 42;
+      case 'month': {
+        const first = startOfMonth(date);
+        const gridStart = startOfWeek(first);
+        const spannedDays = Math.round(
+          (addMonths(first, 1).getTime() - gridStart.getTime()) / 86_400_000
+        );
+        startDate = gridStart;
+        durationDays = Math.ceil(spannedDays / 7) * 7;
         break;
+      }
     }
 
     void onPeriodChange(startDate, durationDays);
   }
 
   function handleCourseClick(event: CalendarEvent) {
-    if (onEventClick) {
-      onEventClick(event);
-    } else {
-      modalEvent = event;
-    }
+    if (onEventClick) onEventClick(event);
+    else modalEvent = event;
   }
 
   async function handleTempoClick(e: MouseEvent, event: CalendarEvent) {
@@ -522,34 +434,119 @@
     }
     await openExternalUrl(event.tempoUrl);
   }
+
+  /**
+   * Arrow keys walk the month, so the grid costs one tab stop instead of 42.
+   * Moving out of the displayed month moves the month with it, which is what
+   * makes the keyboard path equivalent to the pointer one.
+   */
+  function handleMonthKeydown(event: KeyboardEvent) {
+    let next: Date | null = null;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        next = addDays(monthFocusDate, -1);
+        break;
+      case 'ArrowRight':
+        next = addDays(monthFocusDate, 1);
+        break;
+      case 'ArrowUp':
+        next = addDays(monthFocusDate, -7);
+        break;
+      case 'ArrowDown':
+        next = addDays(monthFocusDate, 7);
+        break;
+      case 'Home':
+        next = startOfWeek(monthFocusDate);
+        break;
+      case 'End':
+        next = addDays(startOfWeek(monthFocusDate), 6);
+        break;
+      case 'PageUp':
+        next = addMonths(monthFocusDate, -1);
+        break;
+      case 'PageDown':
+        next = addMonths(monthFocusDate, 1);
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    monthFocusDate = next;
+
+    if (!isSameMonth(next, anchorDate)) {
+      anchorDate = startOfMonth(next);
+      triggerPeriodChange(anchorDate, 'month');
+    }
+
+    void tick().then(() => {
+      monthGridRef
+        ?.querySelector<HTMLButtonElement>(`[data-day="${dayKey(monthFocusDate)}"]`)
+        ?.focus();
+    });
+  }
+
+  /**
+   * Horizontal drag moves the period. Week scope is excluded on purpose: there
+   * the same gesture already scrolls the day columns, and two meanings on one
+   * axis is how a swipe becomes a coin toss.
+   */
+  const SWIPE_DISTANCE = 64;
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+  let swipeTracking = false;
+
+  function handleSwipeStart(event: PointerEvent) {
+    swipeTracking = event.pointerType !== 'mouse' && currentScope !== 'week';
+    swipeStartX = event.clientX;
+    swipeStartY = event.clientY;
+  }
+
+  function handleSwipeEnd(event: PointerEvent) {
+    if (!swipeTracking) return;
+    swipeTracking = false;
+
+    const deltaX = event.clientX - swipeStartX;
+    const deltaY = event.clientY - swipeStartY;
+    if (Math.abs(deltaX) < SWIPE_DISTANCE || Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return;
+
+    movePeriod(deltaX < 0 ? 1 : -1);
+  }
+
   const container =
     'flex w-full flex-col gap-3 px-3 pt-3 pb-6' +
-    ' md:gap-5 md:px-8 md:pt-6 md:pb-8' +
+    ' md:gap-4 md:px-8 md:pt-6 md:pb-8' +
     ' lte-600:pr-[max(var(--space-2),var(--safe-right))]' +
     ' lte-600:pl-[max(var(--space-2),var(--safe-left))]';
 
-  const scopePill =
-    'relative flex min-h-[2.35rem] items-center justify-center gap-1 rounded-md border' +
-    ' border-transparent px-[0.2rem] py-1 text-xs font-semibold whitespace-nowrap' +
-    ' transition-control active:scale-(--press-scale)';
-
-  const navIconBtn =
-    'grid size-9 flex-none place-items-center rounded-full bg-surface-sunken text-foreground' +
-    ' transition-control active:scale-(--press-scale) hover:bg-muted';
-
   const panel = 'rounded-xl border border-border-subtle bg-card';
 
-  const ribbonDayBtn =
-    'flex min-h-18 min-w-14 flex-1 basis-0 flex-col items-center justify-center rounded-lg' +
-    ' border bg-card px-1 py-2 transition-control active:scale-(--press-scale)';
+  const uppercaseTiny = 'text-xs font-bold tracking-[0.04em] uppercase';
 
-  const dayHeaderRow =
-    'flex items-center justify-between gap-3 lte-600:items-start';
+  const stripDayBtn =
+    'flex min-h-18 min-w-14 flex-1 basis-0 flex-col items-center justify-center gap-[0.15rem]' +
+    ' rounded-lg border bg-card px-1 py-2 transition-control active:scale-(--press-scale)';
 
-  const uppercaseTiny =
-    'text-xs font-bold tracking-[0.04em] uppercase';
+  /** One block on the time grid. Elevation is the border; hover adds the lift. */
+  const blockBase =
+    'absolute flex min-h-(--tap-min) min-w-0 flex-col gap-[0.1rem] overflow-hidden rounded-sm' +
+    ' border border-l-[3px] px-1.5 py-1 text-start transition-control' +
+    ' active:scale-(--press-scale) hover:border-primary-deep hover:shadow-sm';
 
-  const dot = 'size-[0.35rem] rounded-full bg-primary-deep';
+  const monthCellBtn =
+    'flex min-h-(--tap-min) w-full cursor-pointer flex-col items-center justify-center gap-[0.15rem]' +
+    ' rounded-md border px-1 py-1.5 transition-control active:scale-(--press-scale)' +
+    ' hover:border-primary-deep hover:bg-muted';
+
+  const detailRow =
+    'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg border p-3' +
+    ' transition-control active:scale-(--press-scale) hover:border-primary-deep hover:shadow-sm';
+
+  const tempoBtn =
+    'inline-flex min-h-(--tap-min) items-center gap-1 rounded-pill border border-muted-strong' +
+    ' bg-card px-3 text-xs font-bold text-primary-deep transition-control' +
+    ' active:scale-(--press-scale) hover:bg-muted';
 </script>
 
 {#snippet statusBadge(status: 'live' | 'upcoming' | 'finished')}
@@ -562,87 +559,301 @@
   {/if}
 {/snippet}
 
-{#snippet courseRow(event: CalendarEvent, variant: CourseRowVariant)}
+<!-- One course on the time axis. Its height is its duration, so what it can
+     print depends on how long it lasts. -->
+{#snippet eventBlock(block: PositionedEvent)}
+  {@const event = block.event}
+  {@const geometry = blockGeometry(block, timeWindow)}
   {@const status = getEventStatus(event)}
   {@const details = parseRoomAndTeacher(event)}
-  {@const shape = rowShape[variant]}
-  {@const secondary = shape.secondary ? eventSecondary(event) : null}
-  {@const teacher = shape.teacher ? details.teacher : null}
-  {@const showStatus = shape.status === 'all' || (shape.status === 'live' && status === 'live')}
-  {@const skin = rowSkin[variant]}
+  {@const minutes = block.toMinutes - block.fromMinutes}
   {@const live = status === 'live'}
 
-  <div class={cn(rowBase.root, skin.root, rowInk(variant, live))}>
+  <button
+    type="button"
+    class={cn(
+      blockBase,
+      live
+        ? 'border-primary-deep bg-muted'
+        : status === 'finished'
+          ? 'border-border-subtle border-l-border bg-surface-sunken'
+          : 'border-border-subtle border-l-primary-deep bg-card'
+    )}
+    style:top={`${geometry.top}%`}
+    style:height={`${geometry.height}%`}
+    style:left={`calc(${geometry.left}% + ${geometry.left > 0 ? '2px' : '0px'})`}
+    style:width={`calc(${geometry.width}% - 2px)`}
+    onclick={() => handleCourseClick(event)}
+  >
+    <span
+      class={cn(
+        'text-2xs font-bold tabular-nums',
+        status === 'finished' ? 'text-muted-foreground' : 'text-primary-deep'
+      )}
+    >
+      {eventTimeRange(event)}
+    </span>
+    <span
+      class={cn(
+        'min-w-0 text-xs leading-[1.25] font-extrabold wrap-anywhere',
+        status === 'finished' ? 'text-muted-foreground' : 'text-foreground'
+      )}
+    >
+      {eventTitle(event)}
+    </span>
+    {#if minutes >= ROOM_VISIBLE_FROM_MINUTES && details.room}
+      <span class="min-w-0 text-2xs wrap-anywhere text-muted-foreground">{details.room}</span>
+    {/if}
+    {#if live}
+      <span class="mt-auto"><Badge tone="live" dot>{m.schedule_status_live()}</Badge></span>
+    {/if}
+  </button>
+{/snippet}
+
+<!-- The grid itself. Day scope passes one column, week scope the portal week;
+     the header row and the hour gutter live in the same grid so they can never
+     drift out of alignment with the columns. -->
+{#snippet timeGrid(days: Date[])}
+  {@const scrolls = days.length > 1}
+  <!-- Day scope names its day in the period title and in the strip above, so a
+       third copy over a single column is noise. -->
+  {@const showHeaders = days.length > 1}
+  {@const bodyRow = showHeaders ? 2 : 1}
+  <div
+    class={cn(
+      panel,
+      'relative overflow-y-auto px-2 pb-2 md:px-3 md:pb-3',
+      'max-h-[26rem] md:max-h-[38rem]',
+      'scrollbar-none [&::-webkit-scrollbar]:hidden'
+    )}
+    bind:this={gridScrollRef}
+  >
+    <div
+      class={cn(
+        scrolls && 'overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden md:overflow-x-visible'
+      )}
+    >
+      <div
+        class="grid gap-x-1.5"
+        style:--hour-height={`${hourHeightRem}rem`}
+        style:grid-template-columns={`3.25rem repeat(${days.length}, minmax(${scrolls ? '8.5rem' : '0'}, 1fr))`}
+        style:grid-template-rows={
+          showHeaders
+            ? `auto calc(var(--hour-height) * ${gridSpanHours})`
+            : `calc(var(--hour-height) * ${gridSpanHours})`
+        }
+        role="group"
+        aria-label={m.calendar_grid_label({ period: periodLabel })}
+      >
+        <!-- Row 1: the day headers, over one backdrop so nothing shows through
+             the column gaps while the band scrolls under them. -->
+        {#if showHeaders}
+          <div
+            class="sticky top-0 z-sticky col-start-1 col-end-[-1] row-start-1 bg-card"
+            aria-hidden="true"
+          ></div>
+        {/if}
+
+        {#each showHeaders ? days : [] as day, index (day.toISOString())}
+          {@const isDayToday = isSameDay(day, now)}
+          {@const isDayActive = isSameDay(day, activeDate)}
+          <button
+            type="button"
+            class={cn(
+              'sticky top-0 z-sticky mb-1 flex min-h-(--tap-min) flex-col items-center',
+              'justify-center gap-[0.1rem] rounded-md border px-1 py-1 transition-control',
+              'active:scale-(--press-scale) hover:border-primary-deep',
+              isDayToday
+                ? 'border-primary-deep bg-muted text-primary-deep'
+                : 'border-transparent bg-surface-sunken text-muted-foreground',
+              isDayActive && !isDayToday && 'border-border text-foreground'
+            )}
+            style:grid-column={index + 2}
+            style:grid-row="1"
+            aria-pressed={isDayActive}
+            onclick={() => selectDate(day)}
+          >
+            <span class="flex items-baseline gap-1">
+              <span class={uppercaseTiny}>{weekdayShortFormatter.format(day)}</span>
+              <span class="text-md font-extrabold tabular-nums">{day.getDate()}</span>
+            </span>
+            <span class="text-2xs font-semibold">{dayCountLabel(day)}</span>
+          </button>
+        {/each}
+
+        <!-- The hour scale, pinned while the columns scroll sideways. -->
+        <div class="sticky start-0 z-raised col-start-1 bg-card" style:grid-row={bodyRow}>
+          <div class="relative h-full">
+            {#each gridHours as hour, index (hour)}
+              <span
+                class={cn(
+                  'absolute end-1.5 text-2xs font-semibold tabular-nums text-muted-foreground',
+                  index === 0 ? 'translate-y-0' : '-translate-y-1/2'
+                )}
+                style:top={`${(index / gridSpanHours) * 100}%`}
+              >
+                {timeFormatter.format(new Date(2024, 0, 1, hour, 0))}
+              </span>
+            {/each}
+          </div>
+        </div>
+
+        <!-- The hour rules, drawn once across every column. -->
+        <div
+          class="pointer-events-none relative col-start-2 col-end-[-1]"
+          style:grid-row={bodyRow}
+          aria-hidden="true"
+        >
+          {#each gridHours as hour, index (hour)}
+            <span
+              class="absolute inset-x-0 border-t border-border-subtle"
+              style:top={`${(index / gridSpanHours) * 100}%`}
+            ></span>
+          {/each}
+        </div>
+
+        {#each days as day, index (day.toISOString())}
+          {@const dayEvents = eventsForDay(day)}
+          {@const isDayToday = isSameDay(day, now)}
+          {@const marker = isDayToday ? ratioInWindow(now, timeWindow) : null}
+          <div
+            class="relative rounded-md"
+            style:grid-column={index + 2}
+            style:grid-row={bodyRow}
+          >
+            {#each layoutDay(dayEvents) as block (block.event.id)}
+              {@render eventBlock(block)}
+            {/each}
+
+            {#if marker !== null}
+              <div
+                class="pointer-events-none absolute inset-x-0 z-raised border-t-2 border-primary-deep"
+                style:top={`${marker * 100}%`}
+              >
+                <span
+                  class="absolute end-0 -translate-y-1/2 rounded-pill bg-primary-deep px-1.5
+                         text-2xs font-bold tabular-nums text-card"
+                >
+                  {timeFormatter.format(now)}
+                </span>
+                <span class="sr-only">{m.calendar_now()}</span>
+              </div>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </div>
+  </div>
+{/snippet}
+
+{#snippet dayStrip()}
+  <div
+    class="flex gap-2 overflow-x-auto p-1 scrollbar-none [-webkit-overflow-scrolling:touch]
+           [&::-webkit-scrollbar]:hidden"
+    bind:this={stripRef}
+  >
+    {#each weekDays as day (day.toISOString())}
+      {@const dayEventsCount = eventsForDay(day).length}
+      {@const isDayToday = isSameDay(day, now)}
+      {@const isDaySelected = isSameDay(day, activeDate)}
+
+      <button
+        type="button"
+        class={cn(
+          stripDayBtn,
+          isDaySelected
+            ? 'border-primary-deep bg-muted text-primary-deep'
+            : cn(
+                'text-muted-foreground hover:border-border hover:text-foreground',
+                isDayToday ? 'border-primary-deep' : 'border-border-subtle'
+              )
+        )}
+        aria-pressed={isDaySelected}
+        onclick={() => selectDate(day)}
+      >
+        <span class={uppercaseTiny}>{weekdayShortFormatter.format(day)}</span>
+        <span class="text-xl leading-[1.2] font-extrabold tabular-nums">{day.getDate()}</span>
+        <span class="text-2xs font-semibold tabular-nums"
+          >{dayEventsCount > 0 ? dayEventsCount : '·'}</span
+        >
+      </button>
+    {/each}
+  </div>
+{/snippet}
+
+<!-- The one list-shaped row left: the selected day beside the month grid. -->
+{#snippet courseRow(event: CalendarEvent)}
+  {@const status = getEventStatus(event)}
+  {@const details = parseRoomAndTeacher(event)}
+  {@const secondary = eventSecondary(event)}
+  {@const live = status === 'live'}
+
+  <div
+    class={cn(
+      detailRow,
+      live ? 'border-primary-deep bg-muted' : 'border-border-subtle bg-surface-sunken'
+    )}
+  >
     <button
       type="button"
-      class={cn(rowBase.open, skin.open)}
+      class="grid w-full cursor-pointer grid-cols-[3.5rem_3px_minmax(0,1fr)] items-stretch gap-2.5
+             rounded-sm bg-transparent p-0 text-start text-inherit
+             lte-600:grid-cols-[3.25rem_3px_minmax(0,1fr)] lte-600:gap-2"
       onclick={() => handleCourseClick(event)}
     >
-      <span class={cn(rowBase.time, skin.time)}>
-        {#if shape.time === 'inline'}
-          <strong class={cn(rowBase.strong, skin.strong)}>{eventTime(event)}</strong>
-        {:else}
-          <strong class={cn(rowBase.strong, skin.strong)}
-            >{timeFormatter.format(new Date(event.startsAt))}</strong
-          >
-          {#if shape.endTime}
-            <span class={cn(rowBase.span, skin.span)}
-              >{timeFormatter.format(new Date(event.endsAt))}</span
-            >
-          {/if}
-        {/if}
-        {#if shape.duration}
-          <small class={cn(rowBase.small, skin.small)}
-            >{formatDurationRange(event.startsAt, event.endsAt)}</small
-          >
-        {/if}
+      <span class="flex min-w-0 flex-col pt-[0.15rem] tabular-nums">
+        <strong class="text-base font-extrabold text-foreground"
+          >{timeFormatter.format(new Date(event.startsAt))}</strong
+        >
+        <span class="text-xs text-muted-foreground"
+          >{timeFormatter.format(new Date(event.endsAt))}</span
+        >
       </span>
 
-      {#if shape.rail}
-        <span class={cn(rowBase.rail, skin.rail)}>
-          <span class={cn(rowBase.node, skin.node, live && 'bg-primary')}></span>
-          <span class={cn(rowBase.bar, skin.bar)}></span>
-        </span>
-      {/if}
+      <span class="relative flex h-full flex-col items-center">
+        <span class="h-full w-[3px] rounded-pill bg-primary-deep"></span>
+      </span>
 
-      <span class={cn(rowBase.body, skin.body)}>
-        {#if showStatus || event.kind}
-          <span class={cn(rowBase.tags, skin.tags)}>
-            {#if showStatus}{@render statusBadge(status)}{/if}
+      <span class="flex min-w-0 flex-col gap-1">
+        {#if live || event.kind}
+          <span class="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+            {#if live}{@render statusBadge(status)}{/if}
             {#if event.kind}<KindBadge {event} />{/if}
           </span>
         {/if}
 
-        <span
-          class={cn(
-            rowBase.title,
-            skin.title,
-            'leading-[1.3]',
-            variant === 'timeline' && status === 'finished' && 'text-muted-foreground'
-          )}>{eventTitle(event)}</span
+        <span class="min-w-0 text-base leading-[1.3] font-bold wrap-anywhere text-foreground"
+          >{eventTitle(event)}</span
         >
 
         {#if secondary}
-          <span class={cn(rowBase.subtitle, skin.subtitle)}>{secondary}</span>
+          <span class="min-w-0 text-xs wrap-anywhere text-muted-foreground">{secondary}</span>
         {/if}
 
-        {#if details.room || teacher}
-          <span class={cn(rowBase.meta, skin.meta)}>
+        {#if details.room || details.teacher}
+          <span
+            class="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-1 text-xs
+                   text-muted-foreground"
+          >
             {#if details.room}
-              <span class={metaItem}><MapPin size={14} aria-hidden="true" />{details.room}</span>
+              <span class="inline-flex min-w-0 items-center gap-1 wrap-anywhere">
+                <MapPin size={14} aria-hidden="true" />{details.room}
+              </span>
             {/if}
-            {#if teacher}
-              <span class={metaItem}><UserRound size={14} aria-hidden="true" />{teacher}</span>
+            {#if details.teacher}
+              <span class="inline-flex min-w-0 items-center gap-1 wrap-anywhere">
+                <UserRound size={14} aria-hidden="true" />{details.teacher}
+              </span>
             {/if}
           </span>
         {/if}
       </span>
     </button>
 
-    {#if shape.tempo && event.tempoUrl}
+    {#if event.tempoUrl}
       <button
         type="button"
-        class={cn(rowBase.tempo, skin.tempo)}
+        class={tempoBtn}
         aria-label={m.open_tempo()}
         title={m.open_tempo()}
         onclick={(e) => handleTempoClick(e, event)}
@@ -655,355 +866,146 @@
 {/snippet}
 
 <div class={container}>
-  <!-- 1. Scope Selector Bar (Pill buttons with always visible labels) -->
-  <div class="flex w-full justify-center">
-    <div
-      class="grid w-full max-w-[30rem] grid-cols-3 gap-[2px] rounded-lg border
-             border-border-subtle bg-surface-sunken p-[3px]"
-      role="tablist"
-      aria-label={m.calendar_scope_label()}
-    >
-      {#each availableScopes as s (s.id)}
-        <button
-          type="button"
-          role="tab"
-          class={cn(
-            scopePill,
-            currentScope === s.id
-              ? 'border-border-subtle bg-card font-extrabold text-primary-deep shadow-xs'
-              : 'bg-transparent text-muted-foreground hover:bg-card-hover hover:text-foreground'
-          )}
-          aria-selected={currentScope === s.id}
-          aria-label={s.label}
-          onclick={() => setScope(s.id)}
-        >
-          <s.icon size={15} strokeWidth={currentScope === s.id ? 2.5 : 1.9} aria-hidden="true" />
-          <span class="hidden min-[26rem]:inline">{s.label}</span>
-          <span class="inline text-2xs tracking-[-0.01em] min-[26rem]:hidden"
-            >{s.shortLabel}</span
-          >
-        </button>
-      {/each}
-    </div>
-  </div>
-
-  <!-- 2. Period Navigation Header -->
+  <!-- 1. One control bar: scope, period, navigation, freshness. -->
   <header
     class={cn(
       panel,
-      'flex items-center justify-between gap-2.5 px-3.5 py-3 shadow-xs',
-      'lte-600:flex-wrap lte-600:items-stretch'
+      'flex flex-col gap-2.5 p-3',
+      'md:flex-row md:items-center md:justify-between md:gap-4 md:px-4'
     )}
   >
-    <div
-      class="flex min-w-0 flex-auto flex-col items-start gap-[0.15rem] lte-600:basis-full"
-    >
+    <div class="flex min-w-0 flex-col gap-[0.15rem]">
       <span
         class="inline-flex min-w-0 items-center gap-1 text-2xs font-bold tracking-[0.05em]
                uppercase wrap-anywhere text-primary-deep"
       >
-        {#if currentScope === 'day'}
-          <Clock size={12} aria-hidden="true" />
-        {:else if currentScope === 'week'}
-          <CalendarDays size={12} aria-hidden="true" />
-        {:else if currentScope === 'month'}
-          <Calendar size={12} aria-hidden="true" />
-        {:else}
-          <CalendarDays size={12} aria-hidden="true" />
-        {/if}
-        <span>{availableScopes.find((s) => s.id === currentScope)?.label ?? ''}</span>
+        <ScopeIcon size={12} aria-hidden="true" />
+        <span>{scopeName}</span>
       </span>
       <h2
-        class="period-label max-w-full text-base leading-[1.3] font-extrabold wrap-anywhere
-               text-foreground md:text-lg"
+        class="max-w-full text-base leading-[1.3] font-extrabold wrap-anywhere text-foreground
+               md:text-lg"
       >{periodLabel}</h2>
+      <FreshnessLabel
+        {fetchedAt}
+        {locale}
+        refreshing={loading}
+        failed={refreshFailed}
+        class="mt-[0.15rem]"
+      />
     </div>
 
-    <div
-      class="flex flex-none items-center gap-1.5 lte-600:w-full lte-600:justify-between"
-    >
-      <button
-        type="button"
-        class={navIconBtn}
-        aria-label={m.previous_period()}
-        title={m.previous_period()}
-        onclick={() => movePeriod(-1)}
-      >
-        <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
-      </button>
+    <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+      <div class="flex items-center gap-1.5 lte-600:justify-between">
+        <IconButton label={m.previous_period()} onclick={() => movePeriod(-1)}>
+          <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
+        </IconButton>
 
-      <button
-        type="button"
-        class="inline-flex min-h-9 items-center gap-1 rounded-pill bg-muted
-               px-2.5 text-xs font-bold text-primary-deep transition-control
-               active:scale-(--press-scale) hover:bg-muted-strong"
-        onclick={goToToday}
-      >
-        <CalendarCheck size={14} aria-hidden="true" />
-        <span>{m.go_to_today()}</span>
-      </button>
+        <Button variant="accent" size="sm" onclick={goToToday}>
+          <CalendarCheck size={14} aria-hidden="true" />
+          <span>{m.go_to_today()}</span>
+        </Button>
 
-      <button
-        type="button"
-        class={navIconBtn}
-        aria-label={m.next_period()}
-        title={m.next_period()}
-        onclick={() => movePeriod(1)}
-      >
-        <ChevronRight size={18} strokeWidth={2.2} aria-hidden="true" />
-      </button>
+        <IconButton label={m.next_period()} onclick={() => movePeriod(1)}>
+          <ChevronRight size={18} strokeWidth={2.2} aria-hidden="true" />
+        </IconButton>
 
-      {#if currentScope === 'week'}
-        <input
-          class="min-h-9 min-w-[8.5rem] rounded-md border border-border-subtle bg-surface-sunken
-                 px-2 text-xs font-semibold tabular-nums text-foreground"
-          type="week"
-          value={weekInputValue}
-          aria-label={m.scope_week()}
-          title={m.scope_week()}
-          onchange={handleWeekInputChange}
-        />
-      {/if}
+        <IconButton label={m.calendar_pick_date()} onclick={openPicker}>
+          <CalendarSearch size={17} strokeWidth={2.1} aria-hidden="true" />
+        </IconButton>
 
-      {#if onRefresh}
-        <!-- `desktop-only` owns the display here; a display utility would lose to
-             its !important rules without a word. -->
-        <div class="desktop-only items-center gap-2">
-          <button
-            type="button"
-            class={navIconBtn}
-            aria-label={m.sync_refresh()}
-            title={m.sync_refresh()}
-            disabled={loading}
+        {#if onRefresh}
+          <IconButton
+            label={m.sync_refresh()}
+            loading={loading}
             onclick={() => void onRefresh?.()}
           >
-            <RefreshCw size={16} strokeWidth={2.2} class={loading ? 'animate-spin' : ''} aria-hidden="true" />
-          </button>
-        </div>
-      {/if}
+            <RefreshCw size={17} strokeWidth={2.2} aria-hidden="true" />
+          </IconButton>
+        {/if}
+      </div>
+
+      <SegmentedControl
+        options={scopeOptions}
+        value={currentScope}
+        label={m.calendar_scope_label()}
+        onChange={setScope}
+        class="md:w-[15rem]"
+      />
     </div>
   </header>
 
-  <!-- 3. Quick Date Selector Ribbon (visible in week and day scopes) -->
-  {#if currentScope === 'week' || currentScope === 'day'}
-    <div
-      class="flex gap-2 overflow-x-auto p-1 scrollbar-none
-             [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
-      bind:this={ribbonRef}
-    >
-      {#each weekDays as day (day.toISOString())}
-        {@const dayEventsCount = eventsForDay(day).length}
-        {@const isDayToday = isSameDay(day, now)}
-        {@const isDaySelected = isSameDay(day, activeDate)}
-
-        <button
-          type="button"
-          class={cn(
-            ribbonDayBtn,
-            isDaySelected
-              ? 'border-primary-deep bg-muted text-primary-deep'
-              : cn(
-                  'text-muted-foreground hover:border-border hover:text-foreground',
-                  isDayToday ? 'border-primary-deep' : 'border-border-subtle'
-                )
-          )}
-          aria-pressed={isDaySelected}
-          onclick={() => selectDate(day)}
-        >
-          <span class={uppercaseTiny}>{weekdayShortFormatter.format(day)}</span>
-          <span class="text-xl leading-[1.2] font-extrabold tabular-nums">{day.getDate()}</span>
-          <span class="mt-[0.15rem] flex h-2 items-center justify-center">
-            {#if dayEventsCount > 0}
-              <span class={dot}></span>
-            {/if}
-          </span>
-        </button>
-      {/each}
-    </div>
-  {/if}
-
-  <!-- 4. Interactive Scope Views -->
-  <main class="relative min-h-96">
-    {#if loading && events.length > 0}
-      <div
-        class="absolute inset-0 z-raised flex flex-col items-center justify-center gap-3
-               rounded-xl bg-card-scrim text-base text-muted-foreground backdrop-blur-[4px]"
-        role="status"
-        aria-live="polite"
-      >
-        <Spinner size={28} />
-        <span>{m.planning_loading()}</span>
-      </div>
-    {/if}
-
+  <!-- 2. Scope views. -->
+  <main
+    class="relative flex min-h-96 flex-col gap-3"
+    onpointerdown={handleSwipeStart}
+    onpointerup={handleSwipeEnd}
+    onpointercancel={() => (swipeTracking = false)}
+  >
     {#if loading && events.length === 0}
       <CalendarViewSkeleton ariaLabel={m.planning_loading()} />
-    <!-- SCOPE 1: 'day' (Jour - Vertical Timeline) -->
     {:else if currentScope === 'day'}
-      <section class="flex flex-col gap-4">
-        <div class={cn(panel, dayHeaderRow, 'px-5 py-4')}>
-          <div class="min-w-0">
-            <p class="text-sm text-muted-foreground">
-              {m.day_course_count({ count: activeDateEvents.length })}
-              {#if activeDateDurationMinutes > 0}
-                • {formatDuration(activeDateDurationMinutes, locale)}
-              {/if}
-            </p>
-          </div>
-          {#if isSameDay(anchorDate, now)}
-            <Badge tone="accent">{m.preview_today()}</Badge>
+      <div class={cn(panel, 'flex items-center justify-between gap-3 px-4 py-3 lte-600:items-start')}>
+        <p class="min-w-0 text-sm text-muted-foreground">
+          {m.day_course_count({ count: activeDateEvents.length })}
+          {#if activeDateDurationMinutes > 0}
+            · {formatDuration(activeDateDurationMinutes, locale)}
           {/if}
-        </div>
-
-        {#if activeDateEvents.length > 0}
-          <div class={cn(panel, 'p-5')}>
-            <div class="flex flex-col gap-3">
-              {#each activeDateEvents as event (event.id)}
-                {@render courseRow(event, 'timeline')}
-              {/each}
-            </div>
-          </div>
-        {:else}
-          <StateCard
-            kind="empty"
-            title={m.no_courses_day()}
-            description={m.no_courses_day_description()}
-            icon={CalendarCheck}
-          />
+          {#if activeDateGapMinutes > 0}
+            · {m.calendar_free_time({ duration: formatDuration(activeDateGapMinutes, locale) })}
+          {/if}
+        </p>
+        {#if isSameDay(activeDate, now)}
+          <Badge tone="accent">{m.preview_today()}</Badge>
         {/if}
-      </section>
-
-    <!-- SCOPE 2: 'week' (Semaine - Grille complète Desktop, liste groupée sur Mobile) -->
-    {:else if currentScope === 'week'}
-      <!-- Mobile Week View: every day is visible, grouped in chronological order. -->
-      <div class="flex flex-col gap-3 md:hidden">
-        {#each weekDays as day (day.toISOString())}
-          {@const dayEvents = eventsForDay(day)}
-          {@const isDayToday = isSameDay(day, now)}
-          {@const isDayActive = isSameDay(day, activeDate)}
-
-          <section class="mobile-week-day flex flex-col gap-3">
-            <button
-              type="button"
-              class={cn(
-                'flex min-h-(--tap-min) w-full items-center justify-between gap-2 rounded-lg',
-                'border px-3 py-2 text-start text-inherit transition-control',
-                'active:scale-(--press-scale) hover:bg-muted',
-                'focus-visible:outline-2 focus-visible:outline-offset-2',
-                'focus-visible:outline-primary-deep',
-                isDayToday ? 'border-primary-deep bg-muted' : 'border-border-subtle bg-card',
-                isDayActive && 'shadow-[inset_0_0_0_2px_var(--primary-deep)]'
-              )}
-              aria-pressed={isDayActive}
-              onclick={() => selectDate(day)}
-            >
-              <span class="flex min-w-0 flex-col gap-[0.15rem]">
-                <strong class="text-md font-extrabold wrap-anywhere text-foreground"
-                  >{capitalizeFirst(shortDayFormatter.format(day))}</strong
-                >
-                <span class="text-xs text-muted-foreground"
-                  >{m.day_course_count({ count: dayEvents.length })}</span
-                >
-              </span>
-              {#if isDayToday}
-                <Badge tone="accent" class="flex-none">{m.preview_today()}</Badge>
-              {/if}
-            </button>
-
-            <div class="flex flex-col gap-2 px-1">
-              {#each dayEvents as event (event.id)}
-                {@render courseRow(event, 'compact')}
-              {:else}
-                <p
-                  class="rounded-md border border-dashed border-border-subtle bg-surface-sunken
-                         p-3 text-sm text-muted-foreground"
-                >{m.no_courses_day()}</p>
-              {/each}
-            </div>
-          </section>
-        {/each}
       </div>
 
-      <!-- Desktop Week View (Multi-column grid 6 or 7 days) -->
-      <!-- The column count is written per render, so the template reads it. -->
-      <section
-        class="hidden gap-2 overflow-x-auto md:grid
-               grid-cols-[repeat(var(--week-cols,6),minmax(9rem,1fr))]
-               min-[56rem]:grid-cols-[repeat(var(--week-cols,6),minmax(0,1fr))]"
-        style:--week-cols={visibleWeekDaysCount}
-      >
-        {#each weekDays as day (day.toISOString())}
-          {@const dayEvents = eventsForDay(day)}
-          {@const isDayToday = isSameDay(day, now)}
-          {@const isDayActive = isSameDay(day, activeDate)}
+      {@render dayStrip()}
 
-          <div
-            class={cn(
-              panel,
-              'flex min-h-72 flex-col p-3',
-              isDayToday && 'border-primary-deep'
-            )}
-          >
-            <button
-              type="button"
-              class="mb-2 flex min-h-(--tap-min) w-full cursor-pointer items-center
-                     justify-between border-b border-border-subtle bg-transparent px-0 pt-0
-                     pb-2 text-inherit"
-              onclick={() => selectDate(day)}
-            >
-              <span class="flex items-center gap-1">
-                <strong class="text-sm font-extrabold uppercase text-foreground"
-                  >{weekdayShortFormatter.format(day)}</strong
-                >
-                <span
-                  class={cn(
-                    'grid size-6 place-items-center rounded-full text-xs font-bold tabular-nums',
-                    isDayToday
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-surface-sunken text-foreground'
-                  )}>{day.getDate()}</span
-                >
-              </span>
-              <span
-                class="rounded-pill bg-surface-sunken px-2 py-[0.2rem] text-2xs font-bold
-                       tabular-nums text-muted-foreground">{dayEvents.length}</span
-              >
-            </button>
-
-            <div class="flex flex-1 flex-col gap-2">
-              {#each dayEvents as event (event.id)}
-                {@render courseRow(event, 'week')}
-              {:else}
-                <div class="flex h-16 items-center justify-center text-muted-foreground">
-                  <span>-</span>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/each}
-      </section>
-
-    <!-- SCOPE 3: 'month' (Mois - Grille calendrier interactif + détail du jour) -->
+      {#if activeDateEvents.length > 0}
+        {@render timeGrid([activeDate])}
+      {:else}
+        <StateCard
+          kind="empty"
+          title={m.no_courses_day()}
+          description={m.no_courses_day_description()}
+          icon={CalendarCheck}
+        />
+      {/if}
+    {:else if currentScope === 'week'}
+      {#if gridEvents.length > 0}
+        {@render timeGrid(weekDays)}
+      {:else}
+        <StateCard
+          kind="empty"
+          title={m.no_events_period()}
+          description={m.no_courses_day_description()}
+          icon={CalendarDays}
+        />
+      {/if}
     {:else if currentScope === 'month'}
-      <section
-        class="grid grid-cols-1 gap-4 min-[54rem]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
-      >
-        <div class={cn(panel, 'p-5')}>
-          <!-- Weekday column titles -->
+      <section class="grid grid-cols-1 gap-4 min-[54rem]:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <div class={cn(panel, 'p-4 md:p-5')}>
           <div
             class={cn(
               'mb-3 grid grid-cols-7 text-center text-muted-foreground',
               uppercaseTiny,
               'tracking-normal'
             )}
+            aria-hidden="true"
           >
             {#each monthHeaderDays as day (day.getTime())}
               <span>{weekdayShortFormatter.format(day)}</span>
             {/each}
           </div>
 
-          <!-- 42-day Month Grid -->
-          <div class="grid grid-cols-7 gap-1">
+          <!-- One tab stop: the arrow keys walk the grid from the focused cell. -->
+          <div
+            class="grid grid-cols-7 gap-1"
+            role="grid"
+            aria-label={m.calendar_month_grid_label({ period: periodLabel })}
+            bind:this={monthGridRef}
+          >
             {#each monthGridDays as day (day.toISOString())}
               {@const dayEvents = eventsForDay(day)}
               {@const isDayInMonth = isSameMonth(day, anchorDate)}
@@ -1012,47 +1014,61 @@
 
               <button
                 type="button"
+                role="gridcell"
+                data-day={dayKey(day)}
+                tabindex={isSameDay(day, monthFocusDate) ? 0 : -1}
                 class={cn(
-                  'month-cell-btn flex min-h-(--tap-min) cursor-pointer flex-col items-center',
-                  'justify-between gap-1 rounded-md border px-1 py-2 transition-control',
-                  'active:scale-(--press-scale) hover:border-primary-deep hover:bg-muted',
-                  !isDayInMonth && 'opacity-55',
+                  monthCellBtn,
                   isDaySelected
                     ? 'border-primary-deep bg-muted'
-                    : cn('bg-surface-sunken', isDayToday ? 'border-primary-deep' : 'border-border-subtle')
+                    : cn(
+                        isDayInMonth ? 'bg-card' : 'bg-surface-sunken',
+                        isDayToday ? 'border-primary-deep' : 'border-border-subtle'
+                      )
                 )}
-                aria-pressed={isDaySelected}
+                aria-selected={isDaySelected}
+                aria-label={m.calendar_day_cell_label({
+                  date: dayFormatter.format(day),
+                  courses: dayCountLabel(day),
+                })}
                 onclick={() => selectDate(day)}
+                onkeydown={handleMonthKeydown}
               >
                 <span
                   class={cn(
                     'text-sm tabular-nums',
                     isDayToday || isDaySelected
                       ? 'font-extrabold text-primary-deep'
-                      : 'font-bold text-foreground'
+                      : isDayInMonth
+                        ? 'font-bold text-foreground'
+                        : 'font-medium text-muted-foreground'
                   )}>{day.getDate()}</span
                 >
 
-                <span class="flex min-h-2 items-center justify-center gap-[0.2rem]">
+                <!-- Density: the bar is scanned, the count is read. -->
+                <span class="flex h-1 w-full items-center px-1" aria-hidden="true">
                   {#if dayEvents.length > 0}
-                    {#if dayEvents.length <= 3}
-                      {#each dayEvents.slice(0, 3) as dayEvent (dayEvent.id)}
-                        <span class={dot}></span>
-                      {/each}
-                    {:else}
-                      <span class={dot}></span>
-                      <span class="text-2xs leading-none font-extrabold text-primary-deep">+{dayEvents.length}</span>
-                    {/if}
+                    <span
+                      class="h-1 rounded-pill bg-primary-deep"
+                      style:width={`${(Math.min(dayEvents.length, 4) / 4) * 100}%`}
+                    ></span>
                   {/if}
                 </span>
+
+                <span
+                  class="text-2xs leading-none font-bold tabular-nums text-muted-foreground"
+                  aria-hidden="true">{dayEvents.length > 0 ? dayEvents.length : ''}</span
+                >
               </button>
             {/each}
           </div>
         </div>
 
-        <!-- Selected Day Detailed Courses List -->
         <div class={cn(panel, 'flex flex-col gap-3 p-4 min-[54rem]:p-5')}>
-          <header class={cn(dayHeaderRow, 'border-b border-border-subtle pb-3')}>
+          <header
+            class="flex items-center justify-between gap-3 border-b border-border-subtle pb-3
+                   lte-600:items-start"
+          >
             <div class="min-w-0">
               <h3 class="mb-[0.15rem] text-lg font-extrabold wrap-anywhere"
                 >{capitalizeFirst(dayFormatter.format(activeDate))}</h3
@@ -1060,7 +1076,7 @@
               <p class="text-xs text-muted-foreground">
                 {m.day_course_count({ count: activeDateEvents.length })}
                 {#if activeDateDurationMinutes > 0}
-                  • {formatDuration(activeDateDurationMinutes, locale)}
+                  · {formatDuration(activeDateDurationMinutes, locale)}
                 {/if}
               </p>
             </div>
@@ -1069,12 +1085,10 @@
             {/if}
           </header>
 
-          <div
-            class="flex flex-col gap-2.5 min-[54rem]:max-h-[28rem] min-[54rem]:overflow-y-auto"
-          >
+          <div class="flex flex-col gap-2.5 min-[54rem]:max-h-[28rem] min-[54rem]:overflow-y-auto">
             {#if activeDateEvents.length > 0}
               {#each activeDateEvents as event (event.id)}
-                {@render courseRow(event, 'detailed')}
+                {@render courseRow(event)}
               {/each}
             {:else}
               <p
@@ -1085,11 +1099,87 @@
           </div>
         </div>
       </section>
-
     {/if}
   </main>
 
-  <!-- 5. Course Detail Modal Popup -->
+  <!-- 3. Date picker. -->
+  {#if pickerOpen}
+    <Sheet
+      title={m.calendar_pick_date_title()}
+      closeLabel={m.close()}
+      onClose={() => (pickerOpen = false)}
+    >
+      <div class="flex flex-col gap-3 p-4">
+        <div class="flex items-center justify-between gap-2">
+          <IconButton
+            label={m.previous_period()}
+            onclick={() => (pickerMonth = addMonths(pickerMonth, -1))}
+          >
+            <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
+          </IconButton>
+          <strong class="text-md font-extrabold"
+            >{capitalizeFirst(monthYearFormatter.format(pickerMonth))}</strong
+          >
+          <IconButton
+            label={m.next_period()}
+            onclick={() => (pickerMonth = addMonths(pickerMonth, 1))}
+          >
+            <ChevronRight size={18} strokeWidth={2.2} aria-hidden="true" />
+          </IconButton>
+        </div>
+
+        <div
+          class={cn(
+            'grid grid-cols-7 text-center text-muted-foreground',
+            uppercaseTiny,
+            'tracking-normal'
+          )}
+          aria-hidden="true"
+        >
+          {#each monthHeaderDays as day (day.getTime())}
+            <span>{weekdayShortFormatter.format(day)}</span>
+          {/each}
+        </div>
+
+        <div class="grid grid-cols-7 gap-1">
+          {#each pickerDays as day (day.toISOString())}
+            {@const isDayInMonth = isSameMonth(day, pickerMonth)}
+            {@const isDayToday = isSameDay(day, now)}
+            {@const isDaySelected = isSameDay(day, activeDate)}
+            <button
+              type="button"
+              class={cn(
+                monthCellBtn,
+                isDaySelected
+                  ? 'border-primary-deep bg-muted text-primary-deep'
+                  : cn(
+                      isDayInMonth ? 'bg-card' : 'bg-surface-sunken text-muted-foreground',
+                      isDayToday ? 'border-primary-deep' : 'border-border-subtle'
+                    )
+              )}
+              aria-label={m.calendar_day_cell_label({
+                date: dayFormatter.format(day),
+                courses: dayCountLabel(day),
+              })}
+              onclick={() => pickDate(day)}
+            >
+              <span class="text-sm font-bold tabular-nums">{day.getDate()}</span>
+              {#if eventsForDay(day).length > 0}
+                <span class="size-[0.3rem] rounded-full bg-primary-deep" aria-hidden="true"></span>
+              {/if}
+            </button>
+          {/each}
+        </div>
+
+        <Button variant="outline" block onclick={() => pickDate(new Date())}>
+          <CalendarCheck size={16} aria-hidden="true" />
+          <span>{m.go_to_today()}</span>
+        </Button>
+      </div>
+    </Sheet>
+  {/if}
+
+  <!-- 4. Course detail. -->
   <CourseDetailModal
     event={modalEvent}
     {locale}
@@ -1098,18 +1188,3 @@
     {onOpenTempo}
   />
 </div>
-
-<style>
-  /* The separator between two adjacent days. There is no sibling-combinator
-     variant, and the line belongs to the pair rather than to either day. */
-  .mobile-week-day + .mobile-week-day {
-    padding-top: var(--space-1);
-  }
-
-  .mobile-week-day + .mobile-week-day::before {
-    height: 1px;
-    margin-bottom: var(--space-2);
-    background: var(--border-subtle);
-    content: '';
-  }
-</style>

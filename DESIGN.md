@@ -14,7 +14,7 @@ Tailwind v4 is the styling layer. `@theme inline` in `src/app.css` republishes e
 
 Three families have no Tailwind namespace and are read straight from the token: `min-h-(--tap-min)`, `active:scale-(--press-scale)`, and `duration-fast` / `z-nav` through the `--transition-duration-*` and `--z-index-*` aliases.
 
-**Utilities first.** Scoped `<style>` is for what a utility cannot say, and the file that keeps one says why at the top of the block. As of this pass that is: the three portal tables, whose display model switches between a card stack and real columns; the presence gradient and the SVG internals in `HeroStat`; the brand mark's own SVG paint in `Logo`; the shell's layout-mode block, where root classes must beat a width query on specificity; the separator between two adjacent days in the calendar's mobile week list; and the two states that paint a whole course row on Today.
+**Utilities first.** Scoped `<style>` is for what a utility cannot say, and the file that keeps one says why at the top of the block. As of this pass that is: the three portal tables, whose display model switches between a card stack and real columns; the presence gradient and the SVG internals in `HeroStat`; the brand mark's own SVG paint in `Logo`; the shell's layout-mode block, where root classes must beat a width query on specificity; and the two states that paint a whole course row on Today. The calendar's time grid keeps none: its columns, hour rules and blocks are placed by inline `grid-row` / `top` / `height` values computed in `calendar-layout.ts`, because those numbers are data, not style.
 
 **Global CSS must be layered.** `@import "tailwindcss"` declares `@layer theme, base, components, utilities`, and unlayered CSS outranks every utility regardless of specificity. Anything global added to `app.css` goes inside `@layer base`, or it silently wins against the utility that was supposed to override it. The one deliberate exception is `.desktop-only` / `.mobile-only`, which needs to beat a co-located `display` and is commented as such.
 
@@ -98,7 +98,7 @@ Shared keyframes live in `app.css`: `spin`, `pulse-soft`, `pulse-beacon`, `fade-
 
 - Compact windows and expanded desktop windows share the mobile-first structural baseline. They use a sticky top app bar with a menu trigger, brand badge, active view indicator, notification indicator, and user profile pill. On mobile screens (< 768px), a floating five-destination bottom bar provides quick navigation with safe-area padding; on desktop windows (>= 768px), the bottom bar is hidden while the drawer and top bar handle navigation.
 - Today exposes sync freshness first, then displays the current or next course in an ink-blue container. Time, location text, portal note, progress, and available Tempo action stay together.
-- Schedule uses a touch-scrollable day picker and daily list on compact and medium windows, then presents the portal six- or seven-day week when the window can display it without clipping.
+- Schedule is a time grid: courses sit on an hour scale, so a duration is a height and a free slot is a gap. The band opens on 08:00–18:00 and widens outward to whole hours until the earliest and latest course of the visible period fit. Overlapping courses split their column into lanes. A line marks the current time in today's column only, labelled with the hour. One control bar owns the scope, the period, its navigation, the date picker and the sync statement; the day strip appears in day scope only, because in week scope the grid's own day headers already pick the day. Compact windows scroll the week's columns sideways with the hour gutter and the day headers pinned; expanded windows show the portal six- or seven-day week at once. Month stays a calendar grid — one tab stop, walked with the arrow keys — beside the selected day's list, and each cell carries a density bar and the course count.
 - More groups Profile, Documents, and Questionnaires as accessible tabs. Profile owns the language selector and sign-out action. Sign-out requires confirmation in a modal.
 - Grades, Attendance, Profile, Documents, and Questionnaires render semantic data returned by Rust without inferring values from localized portal strings. Questionnaire responses remain read-only.
 - Expanded desktop windows maintain the centered layout with a minimum window size of `680x580`, using a slide-out drawer for profile, navigation, preferences, and quick actions.
@@ -119,12 +119,13 @@ A refresh that fails while data is already displayed must say so. Swallowing the
 
 ## Interaction
 
-- Minimum control target is `--tap-min` (`2.75rem` / 44px). This is a floor, including for icon-only and compact controls.
+- Minimum control target is `--tap-min` (`2.75rem` / 44px). This is a floor, including for icon-only and compact controls. The one place a control's size is data rather than a choice is a course block on the time grid: its height is its duration. The hour row is therefore 4.5rem, which keeps the shortest slot the portal returns above 36px, and the block carries `min-h-(--tap-min)` so the rare quarter-hour course is still reachable.
 - Focus uses a high-contrast ink-blue outline. `outline: none` on a focusable element is only acceptable when a `:focus-visible` style replaces it in the same rule set.
 - Any element with `onclick` is a `<button>`. A `div role="button"` must handle both `Enter` and `Space` with `preventDefault()` — so prefer the button.
 - Icons are decorative unless they are the only label: `aria-hidden="true"` on the icon, the name on the control.
 - Password visibility uses Lucide eye icons with translated accessible names.
 - Locale controls expose pressed state.
+- A date is never chosen with `<input type="week">` or `type="date"`. Neither WKWebView nor WebKitGTK implements the week picker, where it degrades into a text field expecting `2026-W35`; the app ships its own month sheet instead.
 - Motion is limited to loading feedback and short control transitions. `--press-scale` is the single tap-feedback value.
 
 ## Responsive rules
