@@ -1,0 +1,1051 @@
+[
+	{
+		"id": "89-l-ecole-superieure-du-numerique",
+		"name": "89 - L'École Supérieure du Numérique",
+		"category": "informatique",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://ecole-89.com/"
+	},
+	{
+		"id": "acfa-multimedia",
+		"name": "ACFA Multimédia",
+		"category": "creation",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.acfamultimedia.com/"
+	},
+	{
+		"id": "aflokkat",
+		"name": "Aflokkat",
+		"category": "business",
+		"portalUrl": "https://aflokkat.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://aflokkat.com/"
+	},
+	{
+		"id": "aftec-formation-professionnelle",
+		"name": "AFTEC - Formation Professionnelle",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.aftec.fr/"
+	},
+	{
+		"id": "agr-l-ecole-de-l-image",
+		"name": "AGR - L'École de l'Image",
+		"category": "communication",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://www.agr.fr/"
+	},
+	{
+		"id": "aicom",
+		"name": "Aicom",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://aicomparis.com/"
+	},
+	{
+		"id": "aivancity",
+		"name": "Aivancity",
+		"category": "informatique",
+		"portalUrl": "https://aivancity.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.aivancity.ai/"
+	},
+	{
+		"id": "asta-academie-superieure-du-theatre-et-des-arts",
+		"name": "ASTA - Académie Supérieure du Théâtre et des Arts",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://www.asta-angers.fr/"
+	},
+	{
+		"id": "atla-musiques-actuelles-paris",
+		"name": "ATLA - Musiques Actuelles Paris",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://atla.fr/"
+	},
+	{
+		"id": "atlas-institute-l-ecole-superieure-du-tourisme-durable-et-d-aventure",
+		"name": "Atlas Institute - L'École supérieure du tourisme durable et d'aventure",
+		"category": "tourisme",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://atlas-institute.com/"
+	},
+	{
+		"id": "bachelor-institute-l-ecole-de-management-specialisee-en-3-ans",
+		"name": "Bachelor Institute - L'École de management spécialisée en 3 ans",
+		"category": "business",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://bachelor-institute.com/"
+	},
+	{
+		"id": "campus-fonderie-de-l-image",
+		"name": "Campus Fonderie de l'Image",
+		"category": "creation",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://www.campusfonderiedelimage.org/"
+	},
+	{
+		"id": "campus-saint-marc",
+		"name": "Campus Saint-Marc",
+		"category": "business",
+		"portalUrl": "https://csm.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://campus-saint-marc.com/"
+	},
+	{
+		"id": "cdaf-formation",
+		"name": "CDAF Formation",
+		"category": "gestion",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.cdaf-formation.fr/"
+	},
+	{
+		"id": "ciam-amplificateur-de-talents",
+		"name": "CIAM amplificateur de talents",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://www.le-ciam.com/"
+	},
+	{
+		"id": "cinecreatis-l-ecole-du-cinema",
+		"name": "CinéCréatis - L'École du cinéma",
+		"category": "creation",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.cinecreatis.net/"
+	},
+	{
+		"id": "craf2s",
+		"name": "CRAF2S",
+		"category": "sport",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.craf2s.fr/"
+	},
+	{
+		"id": "cs-college-salette",
+		"name": "CS - Collège Salette",
+		"category": "creation",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://collegesalette.com/"
+	},
+	{
+		"id": "ecitv",
+		"name": "ECITV",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.ecitv.fr/"
+	},
+	{
+		"id": "ecma",
+		"name": "ECMA",
+		"category": "business",
+		"portalUrl": "https://aflokkat.myintranet.online/",
+		"portalLogin": "password",
+		"group": "Aflokkat",
+		"website": "https://aflokkat.com/ecoles/ecma-ecole-de-commerce-et-de-management-aflokkat/"
+	},
+	{
+		"id": "ecole-2600",
+		"name": "École 2600",
+		"category": "informatique",
+		"portalUrl": "https://ecole2600.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.2600.eu/"
+	},
+	{
+		"id": "ecole-pivault",
+		"name": "École Pivault",
+		"category": "creation",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.ecole-pivaut.fr/"
+	},
+	{
+		"id": "ecole-studio-mode-paris",
+		"name": "École Studio Mode Paris",
+		"category": "mode",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "ecole-superieur-de-l-immobilier",
+		"name": "École Supérieur de l'Immobilier",
+		"category": "immobilier",
+		"portalUrl": "https://esi.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.groupe-esi.fr/"
+	},
+	{
+		"id": "ecole-superieure-du-bois",
+		"name": "École Supérieure du Bois",
+		"category": "inge",
+		"portalUrl": "https://esb.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.esb-campus.fr/"
+	},
+	{
+		"id": "edbs-evenementiel-digital-and-business-school",
+		"name": "EDBS - Evenementiel, Digital & Business School",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.edbs-france.fr/"
+	},
+	{
+		"id": "eduservices",
+		"name": "Eduservices",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.groupe-eduservices.fr/"
+	},
+	{
+		"id": "eegp-ecole-d-arts-and-design",
+		"name": "EEGP - École d'Arts & Design",
+		"category": "creation",
+		"portalUrl": "https://eegp.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.eegp.fr/"
+	},
+	{
+		"id": "ef2m",
+		"name": "EF2M",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://ef2m.com/"
+	},
+	{
+		"id": "efab",
+		"name": "EFAB",
+		"category": "immobilier",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.efab.fr/"
+	},
+	{
+		"id": "efet-crea",
+		"name": "Efet Créa",
+		"category": "creation",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://efet-crea.fr/"
+	},
+	{
+		"id": "efet-photo",
+		"name": "Efet Photo",
+		"category": "creation",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.efet-photo.fr/"
+	},
+	{
+		"id": "efficom",
+		"name": "EFFICOM",
+		"category": "communication",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.efficom.fr/"
+	},
+	{
+		"id": "efht-ecole-superieure-de-tourisme-paris",
+		"name": "efht - École Supérieure de Tourisme Paris",
+		"category": "tourisme",
+		"portalUrl": "https://efht.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.efht.fr/"
+	},
+	{
+		"id": "eiml-paris",
+		"name": "EIML Paris",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "http://eiml-paris.fr/"
+	},
+	{
+		"id": "em-normandie",
+		"name": "EM Normandie",
+		"category": "business",
+		"portalUrl": "https://emnormandie.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.em-normandie.com/"
+	},
+	{
+		"id": "ema-ecole-des-musiques-actuelles",
+		"name": "Éma - École des musiques actuelles",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://ema.school/"
+	},
+	{
+		"id": "emma",
+		"name": "EMMA",
+		"category": "sante",
+		"portalUrl": "https://aflokkat.myintranet.online/",
+		"portalLogin": "password",
+		"group": "Aflokkat",
+		"website": "https://aflokkat.com/ecoles/emma-ecole-des-metiers-du-medico-social-aflokkat/"
+	},
+	{
+		"id": "engde",
+		"name": "ENGDE",
+		"category": "gestion",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.engde.fr/"
+	},
+	{
+		"id": "ensi-caen",
+		"name": "ENSI Caen",
+		"category": "inge",
+		"portalUrl": "https://ensicaen.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.ensicaen.fr/"
+	},
+	{
+		"id": "esap-ecole-superieure-des-acheteurs-professionnels",
+		"name": "ESAP - École Supérieure des Acheteurs Professionnels",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.esap.fr/paris/"
+	},
+	{
+		"id": "esccot-groupe",
+		"name": "ESCCOT Groupe",
+		"category": "communication",
+		"portalUrl": "https://esccot.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.groupe-esccot.fr/"
+	},
+	{
+		"id": "esce-international-careers",
+		"name": "ESCE - International Careers",
+		"category": "business",
+		"portalUrl": "https://inseec.myintranet.online/",
+		"portalLogin": "password",
+		"group": "OMNES Education",
+		"website": "https://www.esce.fr/"
+	},
+	{
+		"id": "escen-international-and-digital-business-school",
+		"name": "ESCEN - International & Digital Business School",
+		"category": "business",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://escen.fr/"
+	},
+	{
+		"id": "esgi-ecole-superieure-de-genie-informatique",
+		"name": "ESGI - École supérieure de génie informatique",
+		"category": "informatique",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.esgi.fr/"
+	},
+	{
+		"id": "esi-mode",
+		"name": "ESI Mode",
+		"category": "mode",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.esimode.fr/"
+	},
+	{
+		"id": "esia",
+		"name": "ESIA",
+		"category": "informatique",
+		"portalUrl": "https://aflokkat.myintranet.online/",
+		"portalLogin": "password",
+		"group": "Aflokkat",
+		"website": "https://aflokkat.com/ecoles/esia-ecole-superieure-informatique-aflokkat/"
+	},
+	{
+		"id": "esicad",
+		"name": "ESICAD",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.esicad.com/"
+	},
+	{
+		"id": "esis-ecole-superieure-de-l-image-et-du-son",
+		"name": "ESIS - École Supérieure de l'Image et du Son",
+		"category": "creation",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.esis-paris.fr/"
+	},
+	{
+		"id": "esma-ecole-superieure-des-metiers-artistiques",
+		"name": "ESMA - École Supérieure des Métiers Artistiques",
+		"category": "creation",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.esma-artistique.com/"
+	},
+	{
+		"id": "esmac",
+		"name": "ESMAC",
+		"category": "creation",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.esmac.fr/"
+	},
+	{
+		"id": "espe",
+		"name": "ESPÉ",
+		"category": "sante",
+		"portalUrl": "https://espe.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.espe-psy.com/"
+	},
+	{
+		"id": "espl",
+		"name": "ESPL",
+		"category": "communication",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.espl.fr/"
+	},
+	{
+		"id": "essec-business-school",
+		"name": "ESSEC - Business School",
+		"category": "business",
+		"portalUrl": "https://essec.myintranet.online/",
+		"portalLogin": "sso",
+		"website": "https://www.essec.edu/fr/"
+	},
+	{
+		"id": "esupcom-la-grande-ecole-de-communication",
+		"name": "ESUPCOM' - La Grande École de Communication",
+		"category": "communication",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.esupcom.com/"
+	},
+	{
+		"id": "etpa-ecole-de-photographie",
+		"name": "etpa - École de Photographie",
+		"category": "creation",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.etpa.com/"
+	},
+	{
+		"id": "european-business-school-ebs",
+		"name": "European Business School (EBS)",
+		"category": "business",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.ebs-paris.fr/"
+	},
+	{
+		"id": "excelia",
+		"name": "Excelia",
+		"category": "business",
+		"portalUrl": "https://excelia.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.excelia-group.fr/"
+	},
+	{
+		"id": "ferrieres",
+		"name": "Ferrières",
+		"category": "hotel",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://www.ferrieres-paris.com/"
+	},
+	{
+		"id": "g-art",
+		"name": "G.Art",
+		"category": "creation",
+		"portalUrl": "https://gamingcampus.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://gamingcampus.fr/ecoles/ecole-game-art-g-art.html"
+	},
+	{
+		"id": "g-business",
+		"name": "G.Business",
+		"category": "business",
+		"portalUrl": "https://gamingcampus.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://gamingcampus.fr/ecoles/ecole-commerce-jeux-video-g-business.html?utm_term=g.%20business&#038;utm_campaign=SEA-GBS-Marque&#038;utm_source=adwords&#038;utm_medium=ppc&#038;hsa_acc=5656227748&#038;hsa_cam=20753248498&#038;hsa_grp=158361690874&#038;hsa_ad=679825523666&#038;hsa_src=g&#038;hsa_tgt=kwd-2243635208383&#038;hsa_kw=g.%20business&#038;hsa_mt=p&#038;hsa_net=adwords&#038;hsa_ver=3&#038;gad_source=1&#038;gad_campaignid=20753248498&#038;gbraid=0AAAAADBtiBKumJIPQ-wGCSZ5UCb9YtsMM&#038;gclid=CjwKCAiAvaLLBhBFEiwAYCNTf-JZcyE9Qh3gBKH7metkeUDhBnVBeVk3V72GDSWY4dxyQ6TTCABvwRoCqBoQAvD_BwE"
+	},
+	{
+		"id": "g-tech",
+		"name": "G.Tech",
+		"category": "informatique",
+		"portalUrl": "https://gamingcampus.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://gamingcampus.fr/ecoles/ecole-developpeur-jeux-video-g-tech.html"
+	},
+	{
+		"id": "grim",
+		"name": "GRIM",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts",
+		"website": "https://www.grimedif.com/"
+	},
+	{
+		"id": "groupe-accelis",
+		"name": "Groupe Accelis",
+		"category": "business",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://accelis.fr/pole-education-2/"
+	},
+	{
+		"id": "groupe-ipesup",
+		"name": "Groupe Ipesup",
+		"category": "business",
+		"portalUrl": "https://ipesup.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.ipesup.fr/"
+	},
+	{
+		"id": "groupe-isc-paris",
+		"name": "Groupe ISC Paris",
+		"category": "business",
+		"portalUrl": "https://isc.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.iscparis.com/"
+	},
+	{
+		"id": "guardia-cs",
+		"name": "GUARDIA CS",
+		"category": "informatique",
+		"portalUrl": "https://guardia.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://guardia.school/"
+	},
+	{
+		"id": "h-tech-valley-le-numerique-au-service-de-l-homme",
+		"name": "H-Tech Valley - Le numérique au service de l'Homme",
+		"category": "informatique",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://htechvalley.io/"
+	},
+	{
+		"id": "head",
+		"name": "HEAD",
+		"category": "droits",
+		"portalUrl": "https://head.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.ecolehead.fr/"
+	},
+	{
+		"id": "hec-paris",
+		"name": "HEC Paris",
+		"category": "business",
+		"portalUrl": "https://hec.myintranet.online/",
+		"portalLogin": "sso",
+		"website": "https://www.hec.edu/fr"
+	},
+	{
+		"id": "ican-institut-de-creation-et-animation-numeriques",
+		"name": "ICAN - Institut de Création et Animation Numériques",
+		"category": "creation",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.ican-design.fr/"
+	},
+	{
+		"id": "icones",
+		"name": "Icônes",
+		"category": "creation",
+		"portalUrl": "https://icones.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.ecolescreatives.com/"
+	},
+	{
+		"id": "idri",
+		"name": "IDRI",
+		"category": "informatique",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.institutderelooking.com/lecole/skolae/"
+	},
+	{
+		"id": "ifec-institut-franco-europeen-de-chiropraxie",
+		"name": "IFEC - Institut Franco-Européen de Chiropraxie",
+		"category": "sante",
+		"portalUrl": "https://ifec.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.ifec.net/"
+	},
+	{
+		"id": "iffdec",
+		"name": "IFFDEC",
+		"category": "communication",
+		"portalUrl": null,
+		"portalLogin": null,
+		"website": "https://iffdec.com/"
+	},
+	{
+		"id": "inead",
+		"name": "INEAD",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://www.inead.fr/"
+	},
+	{
+		"id": "infn-institut-national-des-formations-notariales",
+		"name": "INFN - Institut National des Formations Notariales",
+		"category": "droits",
+		"portalUrl": "https://infn.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.infn.fr/"
+	},
+	{
+		"id": "inseec",
+		"name": "INSEEC",
+		"category": "business",
+		"portalUrl": "https://inseec.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://ecoles.inseec.com/"
+	},
+	{
+		"id": "institut-des-hautes-etudes-comptables-et-financieres-ihecf",
+		"name": "Institut des Hautes Études Comptables et Financières (IHECF)",
+		"category": "gestion",
+		"portalUrl": "https://intranet-ihecf.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.ihecf.fr/ecole-comptabilite-caen"
+	},
+	{
+		"id": "institut-francais-de-la-mode",
+		"name": "Institut Français de la Mode",
+		"category": "mode",
+		"portalUrl": "https://ifm.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://www.ifmparis.fr/fr"
+	},
+	{
+		"id": "institut-lyfe",
+		"name": "Institut Lyfe",
+		"category": "hotel",
+		"portalUrl": "https://my.institutlyfe.com/",
+		"portalLogin": "password",
+		"website": "https://www.institutlyfe.com/"
+	},
+	{
+		"id": "instn",
+		"name": "INSTN",
+		"category": "inge",
+		"portalUrl": "https://instn.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://instn.cea.fr/"
+	},
+	{
+		"id": "ipac",
+		"name": "IPAC",
+		"category": "tourisme",
+		"portalUrl": "https://intranet-ipac.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.ipac-france.com/"
+	},
+	{
+		"id": "ipac-bachelor-factory",
+		"name": "IPAC Bachelor Factory",
+		"category": "business",
+		"portalUrl": "https://intranet-ipacbachelorfactory.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.ipacbachelorfactory.com/"
+	},
+	{
+		"id": "ipac-design-geneve",
+		"name": "IPAC Design Genève",
+		"category": "creation",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.ipac-design.ch/"
+	},
+	{
+		"id": "ipac-online",
+		"name": "IPAC Online",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices",
+		"website": "https://www.ipac-online.com/"
+	},
+	{
+		"id": "ircom-ecole-superieure-des-humanites-et-du-management",
+		"name": "IRCOM - École supérieure des Humanités et du Management",
+		"category": "business",
+		"portalUrl": "https://ircom.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.ircom.fr/"
+	},
+	{
+		"id": "isa-institut-superieur-d-audiovisuel",
+		"name": "ISA - Institut Supérieur d'Audiovisuel",
+		"category": "creation",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE",
+		"website": "https://isa-paris.com/"
+	},
+	{
+		"id": "iscom",
+		"name": "ISCOM",
+		"category": "communication",
+		"portalUrl": "https://intranet-iscom.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.iscom.fr/"
+	},
+	{
+		"id": "isd-institut-superieur-du-droit",
+		"name": "ISD - Institut Supérieur du Droit",
+		"category": "droits",
+		"portalUrl": "https://isd.myintranet.online/",
+		"portalLogin": "password",
+		"website": "https://institutsuperieurdudroit.fr/"
+	},
+	{
+		"id": "isep-ecole-d-ingenieurs-du-numerique",
+		"name": "ISEP - École d'ingénieurs du numérique",
+		"category": "inge",
+		"portalUrl": "https://isep.myintranet.online/",
+		"portalLogin": "email-first",
+		"website": "https://www.isep.fr/"
+	},
+	{
+		"id": "isfj-institut-superieur-de-formation-au-journalisme",
+		"name": "ISFJ - Institut Supérieur de Formation au Journalisme",
+		"category": "communication",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "isifa-plus-values",
+		"name": "ISIFA Plus Values",
+		"category": "business",
+		"portalUrl": "https://intranet-isifa.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "isrp-institut-superieur-de-reeducation-psychomotrice",
+		"name": "ISRP - Institut Supérieur de Rééducation Psychomotrice",
+		"category": "sante",
+		"portalUrl": "https://isrp.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "jedha-ai-school",
+		"name": "Jedha AI School",
+		"category": "informatique",
+		"portalUrl": "https://quest.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "l-ecole-du-design-nantes-atlantique",
+		"name": "L'École du Design Nantes Atlantique",
+		"category": "creation",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts"
+	},
+	{
+		"id": "l-ecole-du-jeu",
+		"name": "L'École du Jeu",
+		"category": "arts",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "l-ecole-francaise",
+		"name": "L'École Française",
+		"category": "creation",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "l-ecole-multimedia",
+		"name": "L'École multimédia",
+		"category": "creation",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts"
+	},
+	{
+		"id": "maestri-bts",
+		"name": "MAESTRI BTS",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "magnum-institute-l-ecole-du-vin-et-spiritueux-a-l-international",
+		"name": "Magnum Institute - L'École du Vin et Spiritueux à l'international",
+		"category": "hotel",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "mai-music-academy-international",
+		"name": "MAI - Music Academy International",
+		"category": "arts",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password",
+		"group": "School of Arts"
+	},
+	{
+		"id": "marsan",
+		"name": "Marsan",
+		"category": "creation",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "mbway-management-and-business-school",
+		"name": "MBway - Management & Business School",
+		"category": "business",
+		"portalUrl": "https://intranet-mbway.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "mira",
+		"name": "MIRA",
+		"category": "inge",
+		"portalUrl": "https://mira.myintranet.online/",
+		"portalLogin": "password"
+	},
+	{
+		"id": "modart-international",
+		"name": "MODART International",
+		"category": "mode",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "my-digital-school",
+		"name": "My Digital School",
+		"category": "informatique",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "my-french-degree",
+		"name": "My French Degree",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "next-u-education-groupe",
+		"name": "Next-U Education Groupe",
+		"category": "business",
+		"portalUrl": "https://nextu.myintranet.online/",
+		"portalLogin": "password"
+	},
+	{
+		"id": "omnes-education",
+		"name": "OMNES Education",
+		"category": "business",
+		"portalUrl": "https://inseec.myintranet.online/",
+		"portalLogin": "password",
+		"group": "OMNES Education"
+	},
+	{
+		"id": "pigier",
+		"name": "Pigier",
+		"category": "business",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "ppa-business-school-la-grande-ecole-en-alternance",
+		"name": "PPA Business School - La Grande École en Alternance",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "ppa-digital-la-grande-ecole-du-marketing-digital",
+		"name": "PPA Digital - La Grande école du Marketing Digital",
+		"category": "communication",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "ppa-sport",
+		"name": "PPA Sport",
+		"category": "sport",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "SKOLAE"
+	},
+	{
+		"id": "purpan-ecole-d-ingenieurs",
+		"name": "PURPAN - École d'ingénieurs",
+		"category": "inge",
+		"portalUrl": "https://purpan.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "quest-education-groupe",
+		"name": "QUEST Education Groupe",
+		"category": "business",
+		"portalUrl": "https://quest.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "QUEST Education"
+	},
+	{
+		"id": "rennes-school-of-business",
+		"name": "Rennes School of Business",
+		"category": "business",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "school-of-arts",
+		"name": "School of Arts",
+		"category": "creation",
+		"portalUrl": "https://soa.myintranet.online/",
+		"portalLogin": "password"
+	},
+	{
+		"id": "skolae",
+		"name": "SKOLAE",
+		"category": "business",
+		"portalUrl": "https://skolae.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "speos-l-ecole-photo-internationale",
+		"name": "Spéos - L'école photo internationale",
+		"category": "creation",
+		"portalUrl": "https://speos.myintranet.online/",
+		"portalLogin": "password"
+	},
+	{
+		"id": "studio-m",
+		"name": "STUDIO M",
+		"category": "creation",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "studio-mercier-beziers",
+		"name": "Studio Mercier Béziers",
+		"category": "creation",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "sup-veto",
+		"name": "SUP-VETO",
+		"category": "sante",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "tbs-education",
+		"name": "TBS Education",
+		"category": "business",
+		"portalUrl": "https://tbs.myintranet.online/",
+		"portalLogin": "password"
+	},
+	{
+		"id": "tunon-ecole-internationale-des-metiers-pour-recevoir-le-monde",
+		"name": "TUNON - École Internationale des métiers pour recevoir le monde",
+		"category": "tourisme",
+		"portalUrl": "https://eduservices.myintranet.online/",
+		"portalLogin": "email-first",
+		"group": "Eduservices"
+	},
+	{
+		"id": "vatel-hotel-and-tourisme-business-school",
+		"name": "VATEL - Hôtel & Tourisme Business School",
+		"category": "hotel",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "webtech-institute-code-and-tech-school",
+		"name": "Webtech Institute - Code & Tech School",
+		"category": "informatique",
+		"portalUrl": null,
+		"portalLogin": null
+	},
+	{
+		"id": "win-ecole-de-management-du-sport",
+		"name": "WIN - École de management du sport",
+		"category": "sport",
+		"portalUrl": "https://intranet-win.myintranet.online/",
+		"portalLogin": "email-first"
+	},
+	{
+		"id": "zone-01",
+		"name": "Zone 01",
+		"category": "informatique",
+		"portalUrl": null,
+		"portalLogin": null
+	}
+]
