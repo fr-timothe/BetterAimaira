@@ -84,7 +84,13 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # No emulator: the default `packages` value pulls it in through the
+      # obsolete `tools` meta-package, and it is roughly 500 MB this job never
+      # opens. Dropping it is what `warm-cache` runs on, which is how we know
+      # the runner's own platforms and build-tools are enough for Gradle.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - uses: nttld/setup-ndk@v1
         id: ndk
