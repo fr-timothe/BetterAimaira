@@ -1,0 +1,114 @@
+name: Site
+
+# Builds the showcase site in `site/` and publishes it to the root of the
+# `gh-pages` branch.
+#
+# It commits into that branch rather than using `actions/deploy-pages` on
+# purpose. Pages is configured as "Deploy from a branch" (`gh-pages`, root), and
+# the same branch carries the update feed the installed app polls
+# (`updates/<channel>/latest.json`) plus the `CNAME` that serves the custom
+# domain. Switching Pages to the Actions source would take the feed offline and
+# break every installed client's updater, so this job leaves the source alone
+# and only replaces the files the site owns.
+#
+# `release.yml` writes to the same branch when a `v*` tag is published. Neither
+# job force-pushes, and the two touch disjoint paths, so a race is resolved by
+# the rebase-and-retry at the end of this one.
+
+on:
+  push:
+    branches:
+      - master
+    # The asset paths are exactly what `site/scripts/copy-media.mjs` copies: a
+    # screenshot or the presentation video replaced there must reach the site.
+    paths:
+      - "site/**"
+      - "assets/showcase/**"
+      - "static/favicon.svg"
+      - "static/favicon.png"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# A second run must not publish an older build over a newer one.
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install site dependencies
+        working-directory: site
+        run: bun install --frozen-lockfile
+
+      - name: Build the site
+        working-directory: site
+        run: bun run build
+
+      - name: Type-check the site
+        working-directory: site
+        run: bun run check
+
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          worktree=$(mktemp -d)
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # A clone that misses means the branch does not exist yet, which only
+          # happens before the first release.
+          if ! git clone --depth 1 --branch gh-pages "$remote" "$worktree" 2>/dev/null; then
+            git init -q -b gh-pages "$worktree"
+            git -C "$worktree" remote add origin "$remote"
+          fi
+
+          # Everything the site owns goes; the update feed, the custom domain and
+          # the Jekyll opt-out belong to `release.yml` and stay.
+          find "$worktree" -mindepth 1 -maxdepth 1 \
+            ! -name '.git' \
+            ! -name 'CNAME' \
+            ! -name '.nojekyll' \
+            ! -name 'updates' \
+            -exec rm -rf {} +
+
+          cp -R "$GITHUB_WORKSPACE/site/dist/." "$worktree/"
+
+          # Pages runs Jekyll by default, which would hide `_astro/`.
+          touch "$worktree/.nojekyll"
+          if [ ! -f "$worktree/CNAME" ]; then
+            echo -n "betteraimaira.montfrond.work" > "$worktree/CNAME"
+          fi
+
+          git -C "$worktree" config user.name "github-actions[bot]"
+          git -C "$worktree" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$worktree" add -A
+          if git -C "$worktree" diff --cached --quiet; then
+            echo "Site already up to date for ${GITHUB_SHA}"
+            exit 0
+          fi
+          git -C "$worktree" commit -q -m "chore(site): publish ${GITHUB_SHA:0:7}"
+
+          # A release job publishing the feed at the same moment makes the first
+          # push non-fast-forward. The two commits touch disjoint paths, so a
+          # rebase resolves it without a merge.
+          for attempt in 1 2 3; do
+            if git -C "$worktree" push -q origin gh-pages; then
+              echo "Published on attempt ${attempt}"
+              exit 0
+            fi
+            echo "Push rejected, rebasing onto the current gh-pages (attempt ${attempt})"
+            git -C "$worktree" fetch -q origin gh-pages
+            git -C "$worktree" rebase -q origin/gh-pages
+          done
+
+          echo "Could not publish the site after three attempts" >&2
+          exit 1
