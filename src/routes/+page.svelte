@@ -17,9 +17,11 @@
   import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
   import { clearPortalResourceCache } from '$lib/features/schedule/portal-cache';
   import SessionRestoreScreen from '$lib/features/auth/SessionRestoreScreen.svelte';
+  import SchoolPicker from '$lib/features/auth/SchoolPicker.svelte';
   import OnboardingScreen from '$lib/features/onboarding/OnboardingScreen.svelte';
   import { onboardingSeen } from '$lib/features/onboarding/onboarding.svelte';
   import type { SavedIdentity } from '$lib/features/auth/session';
+  import type { School } from '$lib/data/schools';
   import { connectivity } from '$lib/state/connectivity.svelte';
   import { cn } from '$lib/utils';
 
@@ -51,11 +53,12 @@
 
   /**
    * `checking` reads the credential store, `restoring` logs the saved account
-   * back in, `failed` holds a recoverable startup error, `manual` is the login
-   * form and `ready` the authenticated app. Startup begins on `checking` so a
-   * returning account never sees the form flash by.
+   * back in, `failed` holds a recoverable startup error, `school` is the picker
+   * that fills the portal address, `manual` is the login form and `ready` the
+   * authenticated app. Startup begins on `checking` so a returning account never
+   * sees the form flash by.
    */
-  type BootPhase = 'checking' | 'restoring' | 'failed' | 'manual' | 'ready';
+  type BootPhase = 'checking' | 'restoring' | 'failed' | 'school' | 'manual' | 'ready';
 
   /** How long a restore may run before the screen admits it is slow. */
   const SLOW_RESTORE_DELAY = 12_000;
@@ -92,6 +95,10 @@
   let restoreOffline = $state(false);
   let restoreSlow = $state(false);
   let savedIdentity = $state<SavedIdentity | null>(null);
+  // The school behind the address in the field, when it came from the picker.
+  // Kept so the form can name it, and so a school whose portal address is not
+  // known can explain itself instead of leaving an empty field with no reason.
+  let selectedSchool = $state<School | null>(null);
   // Deliberately not reactive: the counter only guards the retry effect, and a
   // reactive read there would re-run the effect on its own write.
   let autoRetries = 0;
@@ -106,6 +113,8 @@
   let slowTimer: ReturnType<typeof setTimeout> | null = null;
 
   const restoring = $derived(phase === 'checking' || phase === 'restoring');
+  /** Both steps a reader signs in through, picker and form. */
+  const atLogin = $derived(phase === 'school' || phase === 'manual');
 
   const signalTime = $derived(
     new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(now)
@@ -135,7 +144,28 @@
       successHeading: m.success_heading(),
       successDescription: m.success_description(),
       credentialsNotSaved: m.credentials_not_saved(),
+      schoolSelected: m.school_selected(),
+      schoolChange: m.school_change(),
+      schoolChoose: m.school_choose(),
     };
+  });
+
+  /**
+   * What the form has to say about the school the picker handed it: nothing at
+   * all when its portal answers the ordinary sign-in form, a reason when the
+   * address is missing, and a warning when the portal signs in elsewhere.
+   */
+  const schoolNotice = $derived.by(() => {
+    locale;
+    const school = selectedSchool;
+    if (!school) return null;
+    if (!school.portalUrl) {
+      return { tone: 'info' as const, text: m.school_portal_unknown_hint({ school: school.name }) };
+    }
+    if (school.portalLogin === 'sso') {
+      return { tone: 'warning' as const, text: m.school_login_sso_hint({ school: school.name }) };
+    }
+    return null;
   });
 
   const errorMessage = $derived.by(() => {
@@ -172,7 +202,9 @@
     if (isTauri()) {
       void startSession();
     } else {
-      phase = 'manual';
+      // No credential store to read outside Tauri, so skip straight to the
+      // first step a reader sees — the picker, same as a fresh install.
+      openLoginForm();
     }
     return () => {
       clearInterval(clock);
@@ -212,7 +244,13 @@
     phase = 'failed';
   }
 
-  /** Sends the reader to the login form, with the saved account already filled. */
+  /**
+   * Sends the reader to the login form, with the saved account already filled.
+   *
+   * A first-time reader with no address to start from goes to the picker
+   * instead: the form's first field would otherwise be an empty box asking for
+   * a URL they have never been told.
+   */
   function openLoginForm(code: ErrorCode | null = null) {
     stopSlowWatchdog();
     restoreSlow = false;
@@ -223,6 +261,20 @@
       username ||= savedIdentity.username;
     }
     errorCode = code;
+    phase = code === null && !portalUrl ? 'school' : 'manual';
+  }
+
+  function chooseSchool(school: School) {
+    selectedSchool = school;
+    portalUrl = school.portalUrl ?? '';
+    errorCode = null;
+    phase = 'manual';
+  }
+
+  /** Leaves the list behind for a hand-typed address. */
+  function enterAddressManually() {
+    selectedSchool = null;
+    errorCode = null;
     phase = 'manual';
   }
 
@@ -373,7 +425,7 @@
     onLocaleChange={changeLocale}
     onLogout={logout}
   />
-{:else if introductionPending && phase === 'manual' && !savedIdentity}
+{:else if introductionPending && atLogin && !savedIdentity}
   <!-- First start only: a device with a saved account has been through this. -->
   <OnboardingScreen {locale} onDone={() => (introductionPending = false)} />
 {:else if phase === 'checking' || phase === 'restoring' || phase === 'failed'}
@@ -390,6 +442,8 @@
     }}
     onManualLogin={() => openLoginForm()}
   />
+{:else if phase === 'school'}
+  <SchoolPicker {locale} onSelect={chooseSchool} onManual={enterAddressManually} />
 {:else}
 <main
   class="login-shell grid min-h-full grow grid-cols-[minmax(360px,0.84fr)_minmax(460px,1.16fr)] lte-820:block"
@@ -529,6 +583,40 @@
           <p id="portal-hint" class="text-xs leading-[1.45] text-muted-foreground">
             {copy.portalHint}
           </p>
+
+          <!-- The picker is one tap away from the field it fills, in both
+               directions: a reader who typed the wrong address can go back to
+               the list, and one who skipped it can still open it. -->
+          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {#if selectedSchool}
+              <span class="min-w-0 text-xs leading-[1.45] text-muted-foreground">
+                {copy.schoolSelected} :
+                <strong class="font-bold text-foreground">{selectedSchool.name}</strong>
+              </span>
+            {/if}
+            <button
+              class="min-h-(--tap-min) rounded-sm bg-transparent text-xs font-bold text-primary-deep
+                     underline underline-offset-2 transition-control hover:text-secondary
+                     active:scale-(--press-scale)"
+              type="button"
+              onclick={() => (phase = 'school')}
+            >
+              {selectedSchool ? copy.schoolChange : copy.schoolChoose}
+            </button>
+          </div>
+
+          {#if schoolNotice}
+            <p
+              class={cn(
+                'rounded-sm px-[0.7rem] py-[0.55rem] text-xs leading-[1.45]',
+                schoolNotice.tone === 'warning'
+                  ? 'bg-danger-surface text-danger-strong'
+                  : 'bg-muted text-muted-foreground'
+              )}
+            >
+              {schoolNotice.text}
+            </p>
+          {/if}
         </div>
 
         <div class="grid gap-2">
