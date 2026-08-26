@@ -1,0 +1,47 @@
+---
+// The measurement banner, and the one piece of chrome on this site that starts
+// hidden.
+//
+// It is rendered on every page but revealed only once PostHog reports that no
+// choice has been made yet, so a visitor who already answered never sees it
+// flash. Refusing is not a dead end here — measurement falls back to cookieless,
+// which writes nothing to the device — so neither button is the escape hatch and
+// neither is styled as the one that gets you out of the way. Refusing has to be
+// exactly as cheap as accepting: same row, same size, same tap floor.
+import Button from './Button.astro';
+import { localePath, useContent, type Lang } from '../i18n/content';
+
+interface Props {
+	lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useContent(lang);
+---
+
+<section
+	class="fixed inset-x-0 bottom-0 z-50 hidden border-t border-border-subtle bg-card
+	       px-5 py-4 shadow-xl sm:px-8"
+	aria-label={t.consent.label}
+	data-consent-banner
+>
+	<div
+		class="mx-auto flex w-full max-w-[76rem] flex-col gap-4
+		       sm:flex-row sm:items-center sm:justify-between sm:gap-8"
+	>
+		<p class="max-w-[68ch] text-base leading-[1.5] text-muted-foreground">
+			{t.consent.body}{' '}
+			<a
+				href={`${localePath(lang, '')}#privacy`}
+				class="font-semibold text-foreground underline decoration-border underline-offset-2"
+			>
+				{t.consent.more}
+			</a>
+		</p>
+
+		<div class="flex flex-none items-center gap-2">
+			<Button as="button" variant="outline" data-consent-reject>{t.consent.reject}</Button>
+			<Button as="button" variant="ink" data-consent-accept>{t.consent.accept}</Button>
+		</div>
+	</div>
+</section>

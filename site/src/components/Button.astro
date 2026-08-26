@@ -18,10 +18,19 @@ interface Props {
 	download?: boolean;
 	class?: string;
 	id?: string;
+	/**
+	 * Renders a real `<button>` instead of an anchor, for the actions that go
+	 * nowhere. An anchor without an `href` is not keyboard-focusable and is not
+	 * announced as actionable, so an in-page action may never be one.
+	 */
+	as?: 'a' | 'button';
 	/** Marks the anchor the release script rewrites to a direct asset URL. */
 	'data-asset'?: string;
 	/** Marks an anchor the home compatibility check shows, hides or retargets. */
 	'data-check'?: string;
+	/** Marks the two buttons of the measurement banner. */
+	'data-consent-accept'?: boolean;
+	'data-consent-reject'?: boolean;
 }
 
 const {
@@ -33,6 +42,7 @@ const {
 	external = false,
 	download = false,
 	class: className,
+	as = 'a',
 	...rest
 } = Astro.props;
 
@@ -60,15 +70,29 @@ const iconSize = size === 'lg' ? 'size-5' : 'size-[1.125rem]';
 const classes = [base, variants[variant], sizes[size], className].filter(Boolean).join(' ');
 ---
 
-<a
-	href={href}
-	class={classes}
-	download={download ? '' : undefined}
-	rel={external ? 'noreferrer' : undefined}
-	target={external ? '_blank' : undefined}
-	{...rest}
->
-	{icon && !iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
-	<span><slot /></span>
-	{icon && iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
-</a>
+{
+	as === 'button' ? (
+		<button type="button" class={classes} {...rest}>
+			{icon && !iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
+			<span>
+				<slot />
+			</span>
+			{icon && iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
+		</button>
+	) : (
+		<a
+			href={href}
+			class={classes}
+			download={download ? '' : undefined}
+			rel={external ? 'noreferrer' : undefined}
+			target={external ? '_blank' : undefined}
+			{...rest}
+		>
+			{icon && !iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
+			<span>
+				<slot />
+			</span>
+			{icon && iconTrailing && <Icon name={icon} class={`${iconSize} shrink-0`} />}
+		</a>
+	)
+}

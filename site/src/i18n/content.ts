@@ -87,6 +87,15 @@ interface Content {
 		quote: string;
 		quoteBody: string;
 	};
+	/** The measurement banner. Refusing is not a dead end: it falls back to
+	 *  cookieless measurement, so the copy must not promise "nothing at all". */
+	consent: {
+		label: string;
+		body: string;
+		accept: string;
+		reject: string;
+		more: string;
+	};
 	features: {
 		title: string;
 		body: string;
@@ -265,10 +274,21 @@ const fr: Content = {
 				title: 'Lecture seule',
 				body: 'Cette version ne peut rien écrire sur le portail. Pas de démarche administrative, pas de facturation, pas d’envoi de réponse.',
 			},
+			{
+				title: 'Mesure d’usage, si tu l’acceptes',
+				body: 'L’application demande au premier lancement si elle peut compter ses usages. Sans identifiant : chaque lancement envoie un numéro tiré au hasard et jamais enregistré, donc deux ouvertures ne peuvent pas être reliées à la même personne. Refuser n’envoie rien, pas même le refus. Ce site, lui, te demande son cookie : si tu le refuses, ta visite est comptée sans cookie, et la seule chose gardée sur ton appareil est ton refus.',
+			},
 		],
 		quote: 'On ne connaît pas ton mot de passe.',
 		quoteBody:
 			'Les cookies de session restent dans le cœur Rust et ne sont jamais exposés à l’interface. Aucune donnée d’élève ne quitte l’appareil, en dehors des requêtes vers le portail que tu as choisi.',
+	},
+	consent: {
+		label: 'Mesure d’audience',
+		body: 'Pas de pub, pas de revente, pas de partage : juste savoir combien de personnes passent ici. Le cookie sert à ne pas te recompter demain. Si tu le refuses, ta visite est comptée sans cookie, et la seule chose gardée sur ton appareil est ton refus.',
+		accept: 'Accepter',
+		reject: 'Refuser le cookie',
+		more: 'Ce qu’on mesure',
 	},
 	features: [
 		{
@@ -361,7 +381,8 @@ const fr: Content = {
 			},
 			{
 				question: 'Combien ça coûte ?',
-				answer: 'Rien. Le projet est publié sous licence GPL-3.0, sans compte à créer, sans publicité et sans pistage.',
+				answer:
+					'Rien. Le projet est publié sous licence GPL-3.0, sans compte à créer et sans publicité. Aucun traceur publicitaire non plus : ce site te demande son cookie de mesure et compte ta visite sans cookie si tu le refuses, et l’application ne compte ses usages que si tu l’acceptes au premier lancement — sans identifiant, et jamais tes données scolaires.',
 			},
 			{
 				question: 'J’ai trouvé un bug.',
@@ -602,10 +623,21 @@ const en: Content = {
 				title: 'Read-only',
 				body: 'This version cannot write anything to the portal. No administrative procedures, no billing, no submitted answers.',
 			},
+			{
+				title: 'Usage counting, if you agree to it',
+				body: 'On first launch the app asks whether it may count its own usage. With no identifier: each launch sends a number drawn at random and never saved, so two openings cannot be tied to the same person. Declining sends nothing, not even the refusal. This site asks for its cookie instead: decline it and your visit is still counted without one, and the only thing kept on your device is your refusal.',
+			},
 		],
 		quote: 'We do not know your password.',
 		quoteBody:
 			'Session cookies stay inside the Rust core and are never exposed to the interface. No student data leaves the device, apart from the requests to the portal you chose.',
+	},
+	consent: {
+		label: 'Audience measurement',
+		body: 'No ads, no resale, no sharing: just knowing how many people come through. The cookie is what keeps tomorrow from counting you twice. Decline it and your visit is counted without one, and the only thing kept on your device is your refusal.',
+		accept: 'Accept',
+		reject: 'Decline the cookie',
+		more: 'What we measure',
 	},
 	features: [
 		{
@@ -698,7 +730,8 @@ const en: Content = {
 			},
 			{
 				question: 'What does it cost?',
-				answer: 'Nothing. The project is released under GPL-3.0, with no account to create, no ads and no tracking.',
+				answer:
+					'Nothing. The project is released under GPL-3.0, with no account to create and no ads. No advertising trackers either: this site asks for its measurement cookie and counts your visit without one if you decline it, and the app only counts its own usage if you agree to it on first launch — with no identifier, and never your school data.',
 			},
 			{
 				question: 'I found a bug.',

@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import ConsentBanner from '../components/ConsentBanner.astro';
 import { localePath, type Lang, type PageId } from '../i18n/content';
 
 interface Props {
@@ -39,6 +40,73 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr';
 		<meta property="og:image" content={new URL('/media/screenshot-today.png', Astro.site).href} />
 		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="generator" content={Astro.generator} />
+		<!--
+		  Audience measurement, EU region, and a refusal that still counts.
+		  `cookieless_mode: 'on_reject'` with `opt_out_capturing_by_default` means
+		  the visit is measured from the first paint without a cookie or a byte of
+		  local storage; accepting upgrades that to cookies, which is the only way
+		  a return visit is recognised from one day to the next. So refusing costs
+		  the reader nothing and costs us only the returning-visitor figure — which
+		  is why the banner may state plainly what each answer does instead of
+		  herding anyone toward "accept".
+
+		  This needs the cookieless switch in the PostHog project settings; without
+		  it every event from a reader who has not accepted is dropped silently on
+		  ingestion. Replay stays off: the app this page advertises holds student
+		  data, and a site that films its readers would make a liar of the privacy
+		  section it links to.
+		-->
+		<script>
+			import posthog from 'posthog-js';
+
+			posthog.init('phc_yqsbM9R5Ur7yZM5zxWF8dxRRLkQ8KeCwCRPaMowKGv5T', {
+				api_host: 'https://eu.i.posthog.com',
+				ui_host: 'https://eu.posthog.com',
+				defaults: '2026-05-30',
+				cookieless_mode: 'on_reject',
+				opt_out_capturing_by_default: true,
+				person_profiles: 'identified_only',
+				disable_session_recording: true,
+			});
+
+			// The release script rewrites every `data-asset` anchor to a real asset
+			// URL, which makes them the one honest definition of "went to download it".
+			document.addEventListener('click', (event) => {
+				const anchor =
+					event.target instanceof Element ? event.target.closest('[data-asset]') : null;
+				if (anchor instanceof HTMLElement) {
+					posthog.capture('download_clicked', { asset: anchor.dataset.asset });
+				}
+			});
+
+			const banner = document.querySelector<HTMLElement>('[data-consent-banner]');
+			if (banner) {
+				// Revealed only for a reader who has not answered, so nobody who
+				// already chose sees it flash on every page they open.
+				if (posthog.get_explicit_consent_status() === 'pending') {
+					banner.classList.remove('hidden');
+				}
+
+				const answer = (accepted: boolean) => {
+					if (accepted) {
+						// The default `$opt_in` event is kept on purpose: a refusal is
+						// still measured cookieless, so the two together give an accept
+						// rate without anyone having to report their own refusal.
+						posthog.opt_in_capturing();
+					} else {
+						posthog.opt_out_capturing();
+					}
+					banner.classList.add('hidden');
+				};
+
+				banner
+					.querySelector('[data-consent-accept]')
+					?.addEventListener('click', () => answer(true));
+				banner
+					.querySelector('[data-consent-reject]')
+					?.addEventListener('click', () => answer(false));
+			}
+		</script>
 	</head>
 	<body>
 		<!--
@@ -67,5 +135,6 @@ const other: Lang = lang === 'fr' ? 'en' : 'fr';
 			<slot />
 		</main>
 		<Footer lang={lang} />
+		<ConsentBanner lang={lang} />
 	</body>
 </html>
