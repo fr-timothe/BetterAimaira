@@ -637,8 +637,16 @@
     </nav>
 
     <PullToRefresh onRefresh={handleGlobalRefresh} scrollElement={viewportElement}>
+      <!-- `min-h-0` only where a view sizes itself to the window: it caps this
+           column at the viewport so the calendar can hand its leftover height to
+           the time grid. Every other view is taller than the window and grows
+           this box instead, which is what keeps the dock clearance below its
+           last row rather than mid-scroll. -->
       <div
-        class="main-viewport flex w-full flex-1 flex-col focus-visible:outline-none"
+        class={cn(
+          'main-viewport flex w-full flex-1 flex-col focus-visible:outline-none',
+          activeView === "schedule" && 'min-h-0'
+        )}
         id="app-main-content"
         tabindex="-1"
       >
@@ -703,7 +711,10 @@
             />
           </div>
         {:else if activeView === "schedule"}
-          <div class={viewEnter}>
+          <!-- `min-h-0` is what lets the calendar cap itself at the height left
+               over: without it the auto minimum of a flex item is its content,
+               and the time grid would grow the page instead of scrolling. -->
+          <div class={cn(viewEnter, 'min-h-0')}>
             {#if schedule.kind === "error"}
               <!-- A dead network on this machine is not the portal being down, and
                    the recovery differs, so the two are never merged. -->

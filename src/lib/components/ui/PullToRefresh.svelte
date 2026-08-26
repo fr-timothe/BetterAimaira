@@ -60,6 +60,32 @@
     return null;
   }
 
+  /**
+   * A view can nest its own vertical scroller — the calendar's time grid is one.
+   * A drag that starts inside one belongs to that scroller: the viewport behind
+   * it stays at the top the whole time, so without this test every swipe down
+   * over the grid refreshed the page instead of scrolling the hours.
+   */
+  function startsInsideNestedScroller(target: EventTarget | null): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const outer = getEffectiveScrollElement();
+    let node: Element | null = target instanceof Element ? target : null;
+
+    while (node && node !== outer && node !== document.body) {
+      const overflowY = window.getComputedStyle(node).overflowY;
+      if (
+        (overflowY === 'auto' || overflowY === 'scroll') &&
+        node.scrollHeight > node.clientHeight + 1
+      ) {
+        return true;
+      }
+      node = node.parentElement;
+    }
+
+    return false;
+  }
+
   function getScrollTop(elem: HTMLElement | null): number {
     if (elem) return elem.scrollTop;
     if (typeof window !== 'undefined') return window.scrollY || document.documentElement.scrollTop || 0;
@@ -70,6 +96,11 @@
     if (disabled || isRefreshing || e.touches.length !== 1) return;
 
     if (isOverlayOpen()) {
+      isAtTopAtStart = false;
+      return;
+    }
+
+    if (startsInsideNestedScroller(e.target)) {
       isAtTopAtStart = false;
       return;
     }

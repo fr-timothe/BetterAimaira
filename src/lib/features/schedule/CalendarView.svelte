@@ -514,6 +514,13 @@
     movePeriod(deltaX < 0 ? 1 : -1);
   }
 
+  /**
+   * Day and week hand the leftover height to the time grid. Month keeps its
+   * natural size: its cells are a fixed grid, and squeezing them into whatever
+   * is left is how a month view starts clipping its last week.
+   */
+  const fillsHeight = $derived(currentScope !== 'month');
+
   const container =
     'flex w-full flex-col gap-3 px-3 pt-3 pb-6' +
     ' md:gap-4 md:px-8 md:pt-6 md:pb-8' +
@@ -619,129 +626,155 @@
        third copy over a single column is noise. -->
   {@const showHeaders = days.length > 1}
   {@const bodyRow = showHeaders ? 2 : 1}
+  <!-- One element scrolls both axes. Splitting them made the horizontal wrapper
+       a scrollport of its own, and the day headers then stuck to its top — that
+       is, to the top of the whole grid — instead of to the visible edge. -->
   <div
     class={cn(
       panel,
-      'relative overflow-y-auto px-2 pb-2 md:px-3 md:pb-3',
-      'max-h-[26rem] md:max-h-[38rem]',
+      // No inline padding on the scrollport: whatever sits in it is scrolled
+      // content, and a course would show through the strip of card to the left
+      // of the pinned hour scale. The trailing gap moves onto the grid, where
+      // it travels with the columns instead.
+      'relative overflow-auto pb-2 md:pb-3',
+      // The grid takes the height the header and the strip leave it, down to a
+      // floor below which the page scrolls instead of squeezing the hours.
+      'min-h-[18rem] flex-1',
+      // The gesture stays inside the grid: without this, reaching its end hands
+      // the swipe to the viewport, which reads it as a pull to refresh.
+      'overscroll-contain',
       'scrollbar-none [&::-webkit-scrollbar]:hidden'
     )}
     bind:this={gridScrollRef}
   >
     <div
-      class={cn(
-        scrolls && 'overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden md:overflow-x-visible'
-      )}
+      class="grid gap-x-1.5 pe-2 md:pe-3"
+      style:--hour-height={`${hourHeightRem}rem`}
+      style:--gutter-width="3.25rem"
+      style:grid-template-columns={`var(--gutter-width) repeat(${days.length}, minmax(${scrolls ? '8.5rem' : '0'}, 1fr))`}
+      style:grid-template-rows={
+        showHeaders
+          ? `auto calc(var(--hour-height) * ${gridSpanHours})`
+          : `calc(var(--hour-height) * ${gridSpanHours})`
+      }
+      role="group"
+      aria-label={m.calendar_grid_label({ period: periodLabel })}
     >
-      <div
-        class="grid gap-x-1.5"
-        style:--hour-height={`${hourHeightRem}rem`}
-        style:grid-template-columns={`3.25rem repeat(${days.length}, minmax(${scrolls ? '8.5rem' : '0'}, 1fr))`}
-        style:grid-template-rows={
-          showHeaders
-            ? `auto calc(var(--hour-height) * ${gridSpanHours})`
-            : `calc(var(--hour-height) * ${gridSpanHours})`
-        }
-        role="group"
-        aria-label={m.calendar_grid_label({ period: periodLabel })}
-      >
-        <!-- Row 1: the day headers, over one backdrop so nothing shows through
-             the column gaps while the band scrolls under them. -->
-        {#if showHeaders}
-          <div
-            class="sticky top-0 z-sticky col-start-1 col-end-[-1] row-start-1 bg-card"
-            aria-hidden="true"
-          ></div>
-        {/if}
-
-        {#each showHeaders ? days : [] as day, index (day.toISOString())}
-          {@const isDayToday = isSameDay(day, now)}
-          {@const isDayActive = isSameDay(day, activeDate)}
-          <button
-            type="button"
-            class={cn(
-              'sticky top-0 z-sticky mb-1 flex min-h-(--tap-min) flex-col items-center',
-              'justify-center gap-[0.1rem] rounded-md border px-1 py-1 transition-control',
-              'active:scale-(--press-scale) hover:border-primary-deep',
-              isDayToday
-                ? 'border-primary-deep bg-muted text-primary-deep'
-                : 'border-transparent bg-surface-sunken text-muted-foreground',
-              isDayActive && !isDayToday && 'border-border text-foreground'
-            )}
-            style:grid-column={index + 2}
-            style:grid-row="1"
-            aria-pressed={isDayActive}
-            onclick={() => selectDate(day)}
-          >
-            <span class="flex items-baseline gap-1">
-              <span class={uppercaseTiny}>{weekdayShortFormatter.format(day)}</span>
-              <span class="text-md font-extrabold tabular-nums">{day.getDate()}</span>
-            </span>
-            <span class="text-2xs font-semibold">{dayCountLabel(day)}</span>
-          </button>
-        {/each}
-
-        <!-- The hour scale, pinned while the columns scroll sideways. -->
-        <div class="sticky start-0 z-raised col-start-1 bg-card" style:grid-row={bodyRow}>
-          <div class="relative h-full">
-            {#each gridHours as hour, index (hour)}
-              <span
-                class={cn(
-                  'absolute end-1.5 text-2xs font-semibold tabular-nums text-muted-foreground',
-                  index === 0 ? 'translate-y-0' : '-translate-y-1/2'
-                )}
-                style:top={`${(index / gridSpanHours) * 100}%`}
-              >
-                {timeFormatter.format(new Date(2024, 0, 1, hour, 0))}
-              </span>
-            {/each}
-          </div>
-        </div>
-
-        <!-- The hour rules, drawn once across every column. -->
+      <!-- Row 1: the day headers, over one backdrop so nothing shows through
+           the column gaps while the band scrolls under them. -->
+      {#if showHeaders}
         <div
-          class="pointer-events-none relative col-start-2 col-end-[-1]"
-          style:grid-row={bodyRow}
+          class="sticky top-0 z-sticky col-start-1 col-end-[-1] row-start-1 bg-card"
+          aria-hidden="true"
+        ></div>
+      {/if}
+
+      {#each showHeaders ? days : [] as day, index (day.toISOString())}
+        {@const isDayToday = isSameDay(day, now)}
+        {@const isDayActive = isSameDay(day, activeDate)}
+        <button
+          type="button"
+          class={cn(
+            'sticky top-0 z-sticky mb-1 flex min-h-(--tap-min) flex-col items-center',
+            'justify-center gap-[0.1rem] rounded-md border px-1 py-1 transition-control',
+            'active:scale-(--press-scale) hover:border-primary-deep',
+            isDayToday
+              ? 'border-primary-deep bg-muted text-primary-deep'
+              : 'border-transparent bg-surface-sunken text-muted-foreground',
+            isDayActive && !isDayToday && 'border-border text-foreground'
+          )}
+          style:grid-column={index + 2}
+          style:grid-row="1"
+          aria-pressed={isDayActive}
+          onclick={() => selectDate(day)}
+        >
+          <span class="flex items-baseline gap-1">
+            <span class={uppercaseTiny}>{weekdayShortFormatter.format(day)}</span>
+            <span class="text-md font-extrabold tabular-nums">{day.getDate()}</span>
+          </span>
+          <span class="text-2xs font-semibold">{dayCountLabel(day)}</span>
+        </button>
+      {/each}
+
+      <!-- The corner above the hour scale, masked the same way: it comes after
+           the headers so it paints over the one scrolling underneath it. -->
+      {#if showHeaders}
+        <div
+          class="pointer-events-none sticky top-0 z-sticky col-start-1 col-end-[-1] row-start-1"
           aria-hidden="true"
         >
+          <div class="sticky start-0 h-full w-(--gutter-width) bg-card"></div>
+        </div>
+      {/if}
+
+      <!-- The hour scale, pinned while the columns scroll sideways. A sticky
+           grid item may only travel inside its own grid area, so pinning it
+           on the first column let it slide off after one gutter width; the
+           strip is instead a sticky child of a wrapper spanning every column,
+           which is the box it is allowed to travel across. The wrapper takes
+           no pointer events, so the columns it covers stay clickable. -->
+      <div
+        class="pointer-events-none relative z-sticky col-start-1 col-end-[-1]"
+        style:grid-row={bodyRow}
+      >
+        <div class="sticky start-0 h-full w-(--gutter-width) bg-card">
           {#each gridHours as hour, index (hour)}
             <span
-              class="absolute inset-x-0 border-t border-border-subtle"
+              class={cn(
+                'absolute end-1.5 text-2xs font-semibold tabular-nums text-muted-foreground',
+                index === 0 ? 'translate-y-0' : '-translate-y-1/2'
+              )}
               style:top={`${(index / gridSpanHours) * 100}%`}
-            ></span>
+            >
+              {timeFormatter.format(new Date(2024, 0, 1, hour, 0))}
+            </span>
           {/each}
         </div>
+      </div>
 
-        {#each days as day, index (day.toISOString())}
-          {@const dayEvents = eventsForDay(day)}
-          {@const isDayToday = isSameDay(day, now)}
-          {@const marker = isDayToday ? ratioInWindow(now, timeWindow) : null}
-          <div
-            class="relative rounded-md"
-            style:grid-column={index + 2}
-            style:grid-row={bodyRow}
-          >
-            {#each layoutDay(dayEvents) as block (block.event.id)}
-              {@render eventBlock(block)}
-            {/each}
-
-            {#if marker !== null}
-              <div
-                class="pointer-events-none absolute inset-x-0 z-raised border-t-2 border-primary-deep"
-                style:top={`${marker * 100}%`}
-              >
-                <span
-                  class="absolute end-0 -translate-y-1/2 rounded-pill bg-primary-deep px-1.5
-                         text-2xs font-bold tabular-nums text-card"
-                >
-                  {timeFormatter.format(now)}
-                </span>
-                <span class="sr-only">{m.calendar_now()}</span>
-              </div>
-            {/if}
-          </div>
+      <!-- The hour rules, drawn once across every column. -->
+      <div
+        class="pointer-events-none relative col-start-2 col-end-[-1]"
+        style:grid-row={bodyRow}
+        aria-hidden="true"
+      >
+        {#each gridHours as hour, index (hour)}
+          <span
+            class="absolute inset-x-0 border-t border-border-subtle"
+            style:top={`${(index / gridSpanHours) * 100}%`}
+          ></span>
         {/each}
       </div>
+
+      {#each days as day, index (day.toISOString())}
+        {@const dayEvents = eventsForDay(day)}
+        {@const isDayToday = isSameDay(day, now)}
+        {@const marker = isDayToday ? ratioInWindow(now, timeWindow) : null}
+        <div
+          class="relative rounded-md"
+          style:grid-column={index + 2}
+          style:grid-row={bodyRow}
+        >
+          {#each layoutDay(dayEvents) as block (block.event.id)}
+            {@render eventBlock(block)}
+          {/each}
+
+          {#if marker !== null}
+            <div
+              class="pointer-events-none absolute inset-x-0 z-raised border-t-2 border-primary-deep"
+              style:top={`${marker * 100}%`}
+            >
+              <span
+                class="absolute end-0 -translate-y-1/2 rounded-pill bg-primary-deep px-1.5
+                       text-2xs font-bold tabular-nums text-card"
+              >
+                {timeFormatter.format(now)}
+              </span>
+              <span class="sr-only">{m.calendar_now()}</span>
+            </div>
+          {/if}
+        </div>
+      {/each}
     </div>
   </div>
 {/snippet}
@@ -865,7 +898,7 @@
   </div>
 {/snippet}
 
-<div class={container}>
+<div class={cn(container, fillsHeight && 'min-h-0 flex-1')}>
   <!-- 1. One control bar: scope, period, navigation, freshness. -->
   <header
     class={cn(
@@ -937,7 +970,7 @@
 
   <!-- 2. Scope views. -->
   <main
-    class="relative flex min-h-96 flex-col gap-3"
+    class={cn('relative flex flex-col gap-3', fillsHeight ? 'min-h-0 flex-1' : 'min-h-96')}
     onpointerdown={handleSwipeStart}
     onpointerup={handleSwipeEnd}
     onpointercancel={() => (swipeTracking = false)}
