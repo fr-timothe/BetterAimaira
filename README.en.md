@@ -313,8 +313,16 @@ Do not enable this bridge in distributed builds.
 
 ## Privacy
 
-- **No cloud relay.** Requests go from the device to the portal the user configured, and nowhere else.
-- **No telemetry, no analytics, no push service.** Grade checks run only while the app is open.
+- **No cloud relay.** School data goes from the device to the portal the user configured, and nowhere
+  else.
+- **Usage counting on explicit consent, with no identifier.** Onboarding asks once whether the app
+  may count its own usage; declining is the default and sends nothing, not even the refusal. The
+  `distinct_id` is a UUID minted at launch and never persisted, so two runs cannot be correlated. The
+  exhaustive list of events and of what they carry is in `src-tauri/src/analytics.rs`, project key
+  included: it is a public write-only credential by design, it travels inside every client that
+  reports, and the project it points at holds no school data.
+- **No push service, no third-party analytics in the webview.** Grade checks run only while the app is
+  open, and usage capture leaves from the Rust core, never from a script loaded next to student data.
 - **Cookies stay in Rust.** The session jar is in memory and never crosses the IPC boundary.
 - **Passwords go to the OS vault.** No plaintext password in SQLite or frontend preferences, and
   explicit sign-out clears the stored entry.

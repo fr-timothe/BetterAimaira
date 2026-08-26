@@ -139,9 +139,20 @@ export const appStore = new AppStore();
 
 ## 5. Security and privacy
 
-- **Zero cloud relay.** Credentials and student data are transmitted directly between the user device and the configured Aimaira portal.
+- **Zero cloud relay.** Credentials and student data are transmitted directly between the user device and the configured Aimaira portal. The opt-in usage counter below is the only other network destination, and it carries none of that data.
 - **Encrypted storage.** User passwords are not stored in plaintext; they are saved in the operating system credential vault (`keyring` crate).
 - **CSRF and session integrity.** Anti-forgery tokens and session cookies are managed with an in-memory `reqwest::cookie::Jar` during runtime.
+
+### Implemented usage-counting boundary
+
+- `analytics.rs` owns every capture. The interface can name an event from a fixed allowlist and attach one short lowercase token; it can never hand the module a string read from the portal, which is what keeps a grade or a portal address out of the payload by construction rather than by review.
+- The `distinct_id` is a UUID minted at process start and never written to disk, and it doubles as `$session_id`. Two runs of the app cannot be correlated by anyone, so retention, returning-user counts and cross-run funnels are impossible here — deliberately. Growth is read from launch counts and release download counts instead.
+- `$process_person_profile: false` on every event, so no person profile accumulates server-side.
+- Consent lives in `analytics.json` under the app data directory and is checked on every capture. A missing or malformed file reads as "never asked", never as agreement.
+- Accepting is reported; declining reports nothing at all, since sending "this reader declined" would be the act being declined. Opt-in rate is therefore estimated against release download counts, not measured.
+- The project key is a constant in `analytics.rs`. A PostHog project key is a public credential by design — it ships inside every client that reports, so hiding it would buy nothing — and it grants writes only, to a project that holds no student data. The consequence to know: a fork that builds and distributes this app reports into the same project.
+- Captures are fire-and-forget with a 5 s timeout and no retry queue: a counter that cannot be reached is never surfaced to the reader, and their activity is never queued on disk waiting for a network.
+- Events go to the PostHog EU region from the Rust core, not from a script in the webview holding student data.
 
 ### Implemented authentication boundary
 

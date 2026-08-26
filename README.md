@@ -306,8 +306,9 @@ N'activez pas ce pont dans les versions distribuées.
 
 ## Confidentialité
 
-- **Aucun relais cloud.** Les requêtes transitent directement de l'appareil vers le portail configuré par l'étudiant, nulle part ailleurs.
-- **Ni télémétrie, ni analytique, ni service push.** La vérification des notes ne tourne que lorsque l'application est active.
+- **Aucun relais cloud.** Les données scolaires transitent directement de l'appareil vers le portail configuré par l'étudiant, nulle part ailleurs.
+- **Mesure d'usage sur accord explicite, sans identifiant.** L'onboarding demande une fois si l'application peut compter ses usages ; le refus est le comportement par défaut et n'envoie rien, pas même le refus. Le `distinct_id` est un UUID tiré au lancement et jamais persisté, donc deux exécutions ne peuvent pas être corrélées. La liste exhaustive des événements et du contenu envoyé est dans `src-tauri/src/analytics.rs`, clé de projet incluse : c'est une clé d'écriture publique par nature, elle voyage dans chaque client qui rapporte et le projet qu'elle vise ne contient aucune donnée scolaire.
+- **Ni service push, ni analytique tierce dans la webview.** La vérification des notes ne tourne que lorsque l'application est active, et la capture d'usage part du cœur Rust, jamais d'un script chargé à côté des données de l'élève.
 - **Les cookies restent dans Rust.** Le gestionnaire de cookies de session réside en mémoire et ne franchit jamais la frontière IPC.
 - **Mots de passe stockés dans le coffre-fort de l'OS.** Aucun mot de passe en clair dans SQLite ou les préférences frontend. La déconnexion explicite supprime l'entrée enregistrée.
 - **HTTPS obligatoire.** Tout portail en HTTP est immédiatement rejeté avant la transmission des identifiants.
