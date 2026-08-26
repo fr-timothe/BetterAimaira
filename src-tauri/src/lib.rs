@@ -1,6 +1,7 @@
 mod aimaira;
 #[cfg(target_os = "android")]
 mod android_bridge;
+mod analytics;
 mod commands;
 mod credentials;
 mod error;
@@ -40,6 +41,9 @@ pub fn run() {
             app.manage(grade_sync::GradeSyncStore::new(
                 data_directory.join("grades.sqlite"),
             ));
+            app.manage(analytics::AnalyticsStore::new(
+                data_directory.join("analytics.json"),
+            ));
             // The Android package installer answers on a broadcast that outlives
             // the command which started the install, so its verdict is forwarded
             // through a handle published here.
@@ -66,6 +70,9 @@ pub fn run() {
             updater::default_update_channel,
             permissions::permission_states,
             permissions::request_permission,
+            analytics::analytics_status,
+            analytics::set_analytics_consent,
+            analytics::capture_analytics_event,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

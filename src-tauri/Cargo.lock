@@ -308,6 +308,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-updater",
  "url",
+ "uuid",
  "windows-native-keyring-store",
  "zbus-secret-service-keyring-store",
  "zeroize",

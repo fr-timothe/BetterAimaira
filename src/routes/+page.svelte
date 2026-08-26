@@ -15,6 +15,7 @@
   import Logo from '$lib/assets/Logo.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
+  import { captureEvent } from '$lib/features/analytics/analytics-service';
   import { clearPortalResourceCache } from '$lib/features/schedule/portal-cache';
   import SessionRestoreScreen from '$lib/features/auth/SessionRestoreScreen.svelte';
   import SchoolPicker from '$lib/features/auth/SchoolPicker.svelte';
@@ -205,6 +206,10 @@
     // stays silent until the signed-in shell opens the notice surface, so
     // nothing about a release lands on the login or onboarding screens.
     void updates.checkOnStart();
+    // Reported at boot rather than after the introduction: a reader who agreed
+    // on a previous run is counted the same way on every start. The Rust side
+    // drops it outright when nobody agreed.
+    captureEvent('app_launched');
     if (isTauri()) {
       void startSession();
     } else {
@@ -322,8 +327,12 @@
       await openAuthenticatedApp(result);
       portalUrl = result.portalUrl;
       password = '';
+      captureEvent('login_succeeded');
     } catch (error) {
       errorCode = extractErrorCode(error);
+      // The stable error code, and nothing else: it names which of the portal's
+      // refusals happened, never who was refused or by which portal.
+      captureEvent('login_failed', errorCode);
     } finally {
       submitting = false;
     }

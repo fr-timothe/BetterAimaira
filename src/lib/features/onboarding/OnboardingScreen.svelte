@@ -17,6 +17,7 @@
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
   import { cn } from '$lib/utils';
+  import AnalyticsConsentPanel from './AnalyticsConsentPanel.svelte';
   import { onboarding } from './onboarding.svelte';
   import type { PermissionKind } from './permissions-service';
 
@@ -28,6 +29,9 @@
   };
 
   const { locale, onDone }: Props = $props();
+
+  /** Set when the reporting answer could not be written, so the panel stays. */
+  let consentFailed = $state(false);
 
   const copy = $derived.by(() => {
     locale;
@@ -85,6 +89,7 @@
   });
 
   const onPermissions = $derived(onboarding.step === 'permissions');
+  const onAnalytics = $derived(onboarding.step === 'analytics');
 
   onMount(() => {
     void onboarding.load();
@@ -99,17 +104,28 @@
   });
 
   function advance() {
-    if (onboarding.hasPermissions) {
-      onboarding.next();
+    if (onboarding.onLastStep) {
+      finish();
       return;
     }
-    finish();
+    onboarding.next();
   }
 
   // The state refuses to end while a right is still missing, so the reader is
   // only handed to the login form once it says the introduction is over.
   function finish() {
     if (onboarding.finish()) onDone();
+  }
+
+  // Either answer ends the introduction; only a failure to record one keeps the
+  // reader here, since carrying on would leave the question silently unanswered.
+  async function chooseAnalytics(enabled: boolean) {
+    consentFailed = false;
+    if (await onboarding.chooseAnalytics(enabled)) {
+      finish();
+      return;
+    }
+    consentFailed = true;
   }
 </script>
 
@@ -126,22 +142,30 @@
       <span>{copy.appName}</span>
     </div>
 
-    {#if onboarding.hasPermissions}
+    {#if onboarding.steps.length > 1}
+      {@const reached = onboarding.steps.indexOf(onboarding.step)}
       <ol class="flex items-center gap-2" aria-hidden="true">
-        <!-- The first bar stays lit on the second panel: it reads as progress
-             made, not as the panel currently open. -->
-        {#each ['welcome', 'permissions'] as step (step)}
+        <!-- Every bar behind the reader stays lit: it reads as progress made,
+             not as the panel currently open. -->
+        {#each onboarding.steps as step, index (step)}
           <li
             class={cn(
               'h-1 flex-1 rounded-full transition-control',
-              step === 'welcome' || onPermissions ? 'bg-primary-deep' : 'bg-muted'
+              index <= reached ? 'bg-primary-deep' : 'bg-muted'
             )}
           ></li>
         {/each}
       </ol>
     {/if}
 
-    {#if onPermissions}
+    {#if onAnalytics}
+      <AnalyticsConsentPanel
+        {locale}
+        saving={onboarding.savingConsent}
+        failed={consentFailed}
+        onChoose={chooseAnalytics}
+      />
+    {:else if onPermissions}
       <header class="grid gap-2">
         <h1 class="text-2xl leading-[1.2] font-extrabold tracking-[-0.01em] text-foreground">
           {copy.permissionsTitle}
@@ -223,8 +247,8 @@
 
       <div class="grid gap-2">
         <p class="text-sm leading-[1.5] text-muted-foreground">{copy.required}</p>
-        <Button variant="ink" size="lg" block disabled={!onboarding.allGranted} onclick={finish}>
-          {copy.start}
+        <Button variant="ink" size="lg" block disabled={!onboarding.allGranted} onclick={advance}>
+          {onboarding.onLastStep ? copy.start : copy.continueLabel}
           <ArrowRight size={18} aria-hidden="true" />
         </Button>
         <Button variant="ghost" block onclick={() => onboarding.back()}>
@@ -261,7 +285,7 @@
       </ul>
 
       <Button variant="ink" size="lg" block onclick={advance} loading={onboarding.loading}>
-        {onboarding.hasPermissions ? copy.continueLabel : copy.start}
+        {onboarding.onLastStep ? copy.start : copy.continueLabel}
         <ArrowRight size={18} aria-hidden="true" />
       </Button>
     {/if}

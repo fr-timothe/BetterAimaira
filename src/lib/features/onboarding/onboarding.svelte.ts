@@ -1,4 +1,9 @@
 import {
+  analyticsStatus,
+  setAnalyticsConsent,
+  type AnalyticsStatus,
+} from '$lib/features/analytics/analytics-service';
+import {
   parsePermissionError,
   permissionStates,
   requestPermission,
@@ -7,8 +12,14 @@ import {
   type PermissionState,
 } from './permissions-service';
 
-/** Which panel the reader is on. `permissions` is skipped where none exist. */
-export type OnboardingStep = 'welcome' | 'permissions';
+/**
+ * Which panel the reader is on. `permissions` is skipped where none exist, and
+ * `analytics` where the build cannot report or the question was already
+ * answered — so the introduction is one, two or three panels long.
+ */
+export type OnboardingStep = 'welcome' | 'permissions' | 'analytics';
+
+const STEPS: OnboardingStep[] = ['welcome', 'permissions', 'analytics'];
 
 const SEEN_KEY = 'betteraimaira.onboarding.seen';
 const STEP_KEY = 'betteraimaira.onboarding.step';
@@ -41,7 +52,8 @@ function markSeen(): void {
  */
 function storedStep(): OnboardingStep {
   if (typeof localStorage === 'undefined') return 'welcome';
-  return localStorage.getItem(STEP_KEY) === 'permissions' ? 'permissions' : 'welcome';
+  const stored = localStorage.getItem(STEP_KEY);
+  return STEPS.find((step) => step === stored) ?? 'welcome';
 }
 
 function rememberStep(step: OnboardingStep): void {
@@ -65,9 +77,37 @@ class Onboarding {
   errorCode = $state<PermissionErrorCode | null>(null);
   /** The right whose settings screen was opened last, awaiting the reader. */
   pending = $state<PermissionKind | null>(null);
+  /** Null until read; a build with no reporting destination reads unavailable. */
+  analytics = $state<AnalyticsStatus | null>(null);
+  /** True while the answer to the reporting question is being written. */
+  savingConsent = $state(false);
 
   get hasPermissions(): boolean {
     return this.permissions.length > 0;
+  }
+
+  /**
+   * Whether the reporting question still has to be put to the reader. Already
+   * answered once is enough: the choice lives on the Rust side and is not
+   * re-asked on every start.
+   */
+  get needsAnalytics(): boolean {
+    return Boolean(this.analytics?.available) && !this.analytics?.decided;
+  }
+
+  /** The panels this run actually has, in order. */
+  get steps(): OnboardingStep[] {
+    return STEPS.filter(
+      (step) =>
+        step === 'welcome' ||
+        (step === 'permissions' && this.hasPermissions) ||
+        (step === 'analytics' && this.needsAnalytics)
+    );
+  }
+
+  /** Whether the panel on screen is the one that ends the introduction. */
+  get onLastStep(): boolean {
+    return this.steps.at(-1) === this.step;
   }
 
   /**
@@ -84,11 +124,12 @@ class Onboarding {
   }
 
   async load(): Promise<void> {
+    // A reporting question that cannot be read is treated as absent rather than
+    // as unanswered: failing to reach the store must never end with the reader
+    // being asked to agree to something the app then cannot record.
+    this.analytics = await analyticsStatus().catch(() => null);
     try {
       this.permissions = await permissionStates();
-      // A step restored from a previous run must not outlive the list it was
-      // showing: an empty list has no second panel to open.
-      if (!this.hasPermissions) this.step = 'welcome';
       this.errorCode = null;
     } catch (error) {
       // A list that cannot be read is reported as empty: the introduction still
@@ -96,6 +137,10 @@ class Onboarding {
       this.permissions = [];
       this.errorCode = parsePermissionError(error);
     } finally {
+      // A step restored from a previous run must not outlive the panels it was
+      // walking: a right that no longer exists, or a question already answered,
+      // leaves nothing there to show.
+      if (!this.steps.includes(this.step)) this.step = 'welcome';
       this.loading = false;
     }
   }
@@ -128,13 +173,34 @@ class Onboarding {
   }
 
   next(): void {
-    this.step = this.hasPermissions ? 'permissions' : 'welcome';
+    const panels = this.steps;
+    this.step = panels[Math.min(panels.indexOf(this.step) + 1, panels.length - 1)]!;
     rememberStep(this.step);
   }
 
   back(): void {
-    this.step = 'welcome';
+    const panels = this.steps;
+    this.step = panels[Math.max(panels.indexOf(this.step) - 1, 0)]!;
     rememberStep(this.step);
+  }
+
+  /**
+   * Records the answer to the reporting question and moves on either way.
+   *
+   * A choice that cannot be written leaves the panel where it is: continuing
+   * would drop the reader into the app with the question silently unanswered,
+   * and it would be asked again on the next start anyway.
+   */
+  async chooseAnalytics(enabled: boolean): Promise<boolean> {
+    this.savingConsent = true;
+    try {
+      this.analytics = await setAnalyticsConsent(enabled);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      this.savingConsent = false;
+    }
   }
 
   /**
