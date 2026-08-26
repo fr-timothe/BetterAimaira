@@ -161,6 +161,13 @@ interface Content {
 		searchLabel: string;
 		searchPlaceholder: string;
 		clear: string;
+		/** The home page check: its heading, its lead, and what it does not do. */
+		checkTitle: string;
+		checkLead: string;
+		checkHint: string;
+		/** `{count}` is the number of schools in the directory. */
+		checkSeeAll: string;
+		checkSheet: string;
 		countOne: string;
 		countOther: string;
 		filterLabel: string;
@@ -387,6 +394,12 @@ const fr: Content = {
 		searchLabel: 'Chercher ton établissement',
 		searchPlaceholder: 'Nom, sigle ou groupe — ESGI, Eduservices, Nantes…',
 		clear: 'Effacer',
+		checkTitle: 'Vérifie ton école avant de télécharger',
+		checkLead:
+			'Tape le nom de ton établissement : tu sauras tout de suite si BetterAimaira sait lire son portail. La recherche se fait dans cette page, aucun portail n’est interrogé.',
+		checkHint: 'Liste tenue à la main, complétée à chaque école confirmée.',
+		checkSeeAll: 'Voir les {count} établissements',
+		checkSheet: 'Ouvrir la fiche complète',
 		countOne: 'établissement',
 		countOther: 'établissements',
 		filterLabel: 'Filtrer par domaine',
@@ -718,6 +731,12 @@ const en: Content = {
 		searchLabel: 'Find your school',
 		searchPlaceholder: 'Name, initials or group — ESGI, Eduservices, Nantes…',
 		clear: 'Clear',
+		checkTitle: 'Check your school before you download',
+		checkLead:
+			'Type your school’s name and you will know straight away whether BetterAimaira can read its portal. The search runs inside this page; no portal is queried.',
+		checkHint: 'Maintained by hand, extended as each school is confirmed.',
+		checkSeeAll: 'See all {count} schools',
+		checkSheet: 'Open the full entry',
 		countOne: 'school',
 		countOther: 'schools',
 		filterLabel: 'Filter by field',

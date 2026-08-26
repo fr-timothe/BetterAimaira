@@ -55,7 +55,7 @@ site/
     │   ├── release.ts      résolution de la release GitHub, détection d'OS, formats
     │   └── icons.ts        géométrie Lucide intégrée + marque GitHub
     ├── layouts/Base.astro  head, contrat de direction, en-tête, pied de page
-    ├── components/         sections de la page d'accueil et de la page téléchargement
+    ├── components/         sections de l'accueil, du téléchargement et de la compatibilité
     └── pages/
         ├── index.astro     accueil FR        → /
         ├── download.astro  téléchargement FR → /download
@@ -105,6 +105,15 @@ Chaque fiche porte un des quatre statuts, dérivés de `portalUrl` et `portalLog
 | Adresse inconnue | — | l'école est cliente d'Aimaira, mais l'adresse n'a pas été confirmée |
 
 Le statut est écrit en toutes lettres sur la fiche **et** dans une légende placée avant la liste : la couleur du badge ne porte jamais l'information seule.
+
+### Le raccourci depuis l'accueil
+
+La même question se pose avant le téléchargement, pas après. [`src/components/SchoolCheck.astro`](src/components/SchoolCheck.astro) pose donc un champ de recherche sur l'accueil des deux langues, entre `Platforms` et `Faq`, et rend un verdict sur place : le statut en toutes lettres, l'adresse du portail, le groupe éventuel.
+
+- **Le même annuaire, la même correspondance.** Le composant importe `schools.json` au build et sérialise une ligne compacte par école — nom, hôte du portail, groupe, statut, chaîne repliée sans accents. Aucun appel réseau, aucune duplication de texte : les phrases de statut viennent de `content.ts` par un `<script type="application/json">`.
+- **C'est une combobox, pas un champ nu.** Flèches pour parcourir les huit suggestions, `Entrée` pour choisir, `Échap` pour fermer, `aria-activedescendant` sur l'entrée. Le formulaire reste un `GET` vers `/ecoles` : sans JavaScript, `Entrée` mène à l'annuaire complet au lieu de ne rien faire.
+- **Le bouton de téléchargement disparaît quand il mentirait.** Pour une école en SSO ou sans adresse confirmée, seule la fiche complète est proposée.
+- **`?q=` est lu par la page de compatibilité.** C'est ainsi que « Ouvrir la fiche complète » arrive sur la bonne école, et cela rend une liste filtrée partageable. Le paramètre n'est lu qu'au chargement : le réécrire à chaque frappe remplirait l'historique de noms à moitié tapés.
 
 ---
 

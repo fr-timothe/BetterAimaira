@@ -288,6 +288,12 @@ const categories = [...new Set(directory.map((school) => school.category))]
 
 		let category = '';
 
+		// `?q=` is how the home page check hands a school over, and how a filtered
+		// list can be linked to at all. Only read on load: rewriting it on every
+		// keystroke would fill the back button with half-typed names.
+		const requested = new URLSearchParams(location.search).get('q');
+		if (search && requested) search.value = requested;
+
 		const fold = (text: string) =>
 			text
 				.normalize('NFD')
