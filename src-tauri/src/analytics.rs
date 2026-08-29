@@ -117,14 +117,27 @@ impl AnalyticsStore {
         Ok(stored)
     }
 
-    fn write_consent(&self, enabled: bool) -> Result<(), CommandError> {
-        if let Some(parent) = self.consent_path.parent() {
-            fs::create_dir_all(parent).map_err(|_| CommandError::new("analytics_store_failed"))?;
-        }
+    async fn write_consent(&self, enabled: bool) -> Result<(), CommandError> {
         let body = serde_json::to_string(&StoredConsent { enabled })
             .map_err(|_| CommandError::new("analytics_store_failed"))?;
-        fs::write(&self.consent_path, body)
-            .map_err(|_| CommandError::new("analytics_store_failed"))?;
+        let path = self.consent_path.clone();
+        // Creating the directory and writing the file are blocking calls, and
+        // the async executor they used to run on is the one serving every other
+        // command. Withdrawing consent must not stall a schedule refresh.
+        tauri::async_runtime::spawn_blocking(move || {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&path, body)
+        })
+        .await
+        .map_err(|_| CommandError::new("analytics_store_failed"))?
+        .map_err(|_| CommandError::new("analytics_store_failed"))?;
+
+        // The memo is updated only once the file is on disk, and the guard is
+        // taken after the await rather than around it: a `std` guard held across
+        // an await point would make this future non-`Send`, and would also keep
+        // every reader of the answer waiting on the filesystem.
         let mut cache = self
             .consent
             .lock()
@@ -203,7 +216,8 @@ pub fn analytics_status(store: State<'_, AnalyticsStore>) -> Result<AnalyticsSta
     store.status()
 }
 
-/// Records the answer given on the onboarding step.
+/// Records the answer, whether it is given on the onboarding step or changed
+/// later from the settings.
 ///
 /// Accepting is itself reported, because that is the one moment consent is
 /// certain. Refusing reports nothing — sending "this reader said no" would be
@@ -214,17 +228,41 @@ pub async fn set_analytics_consent(
     store: State<'_, AnalyticsStore>,
     enabled: bool,
 ) -> Result<AnalyticsStatus, CommandError> {
-    store.write_consent(enabled)?;
+    store.write_consent(enabled).await?;
     if enabled {
-        send(
-            POSTHOG_KEY,
-            store.run_id.clone(),
-            "consent_accepted".into(),
-            None,
-        )
-        .await;
+        // The interface never waits on a usage counter. Awaiting the capture
+        // here used to hold the answer back for as long as `CAPTURE_TIMEOUT`,
+        // which turns a settings switch into a five second freeze on a bad
+        // network — for the one control a reader uses to say stop.
+        let run_id = store.run_id.clone();
+        tauri::async_runtime::spawn(async move {
+            send(POSTHOG_KEY, run_id, "consent_accepted".into(), None).await
+        });
     }
     store.status()
+}
+
+/// Whether a capture reaches the network, refusing outright the ones that must
+/// never leave the machine.
+///
+/// Split out of the command so the guarantee can be asserted on its own: the
+/// command needs a Tauri `State`, which a unit test has no way to build, and
+/// "emits nothing without consent" is the one property of this module worth
+/// more than the plumbing around it. The command below is the only caller.
+fn capture_decision(
+    store: &AnalyticsStore,
+    event: &str,
+    variant: Option<&str>,
+) -> Result<bool, CommandError> {
+    if !ALLOWED_EVENTS.contains(&event) {
+        return Err(CommandError::new("analytics_event_unknown"));
+    }
+    if let Some(variant) = variant {
+        if !variant_is_safe(variant) {
+            return Err(CommandError::new("analytics_variant_rejected"));
+        }
+    }
+    Ok(store.read_consent()? == Some(true))
 }
 
 /// Reports `event`, if this build can report and the reader agreed to it.
@@ -234,19 +272,131 @@ pub fn capture_analytics_event(
     event: String,
     variant: Option<String>,
 ) -> Result<(), CommandError> {
-    if !ALLOWED_EVENTS.contains(&event.as_str()) {
-        return Err(CommandError::new("analytics_event_unknown"));
-    }
-    if let Some(variant) = variant.as_deref() {
-        if !variant_is_safe(variant) {
-            return Err(CommandError::new("analytics_variant_rejected"));
-        }
-    }
-    if store.read_consent()? != Some(true) {
+    if !capture_decision(&store, &event, variant.as_deref())? {
         return Ok(());
     }
     // The interface never waits on a usage counter.
     let run_id = store.run_id.clone();
     tauri::async_runtime::spawn(async move { send(POSTHOG_KEY, run_id, event, variant).await });
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use super::{
+        capture_decision, variant_is_safe, AnalyticsStore, StoredConsent, MAX_VARIANT_LEN,
+    };
+
+    /// A path of its own per test: the store memoises the answer it reads, so
+    /// two tests sharing a file would also share whichever one wrote first.
+    fn temporary_consent_path(label: &str) -> PathBuf {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("betteraimaira-{label}-{nonce}.json"))
+    }
+
+    fn store_answering(label: &str, stored: Option<bool>) -> AnalyticsStore {
+        let path = temporary_consent_path(label);
+        if let Some(enabled) = stored {
+            fs::write(
+                &path,
+                serde_json::to_string(&StoredConsent { enabled }).unwrap(),
+            )
+            .unwrap();
+        }
+        AnalyticsStore::new(path)
+    }
+
+    #[test]
+    fn a_reader_who_was_never_asked_is_never_reported_on() {
+        let store = store_answering("analytics-unasked", None);
+
+        // Not an error: an interface that forgot the consent step still gets a
+        // working command, it just reports nothing.
+        assert!(!capture_decision(&store, "app_launched", None).unwrap());
+    }
+
+    #[test]
+    fn a_refusal_keeps_every_allowed_event_off_the_wire() {
+        let store = store_answering("analytics-refused", Some(false));
+
+        for event in ["consent_accepted", "app_launched", "login_succeeded"] {
+            assert!(!capture_decision(&store, event, None).unwrap(), "{event}");
+        }
+    }
+
+    #[test]
+    fn only_a_stored_yes_lets_an_event_through() {
+        let store = store_answering("analytics-accepted", Some(true));
+
+        assert!(capture_decision(&store, "app_launched", None).unwrap());
+        assert!(capture_decision(&store, "login_failed", Some("bad_credentials")).unwrap());
+    }
+
+    #[test]
+    fn a_consent_file_that_cannot_be_understood_reads_as_never_asked() {
+        let path = temporary_consent_path("analytics-corrupt");
+        fs::write(&path, "{ this is not the file we wrote }").unwrap();
+        let store = AnalyticsStore::new(path);
+
+        // Silence, not a guess: a damaged file must never be read as a yes.
+        assert!(!capture_decision(&store, "app_launched", None).unwrap());
+    }
+
+    #[test]
+    fn an_event_the_build_cannot_emit_is_refused_before_consent_is_even_read() {
+        // Consent is granted, so a refusal here can only come from the name.
+        let store = store_answering("analytics-unknown-event", Some(true));
+
+        let refusal = capture_decision(&store, "grade_viewed", None).unwrap_err();
+        assert_eq!(refusal.code, "analytics_event_unknown");
+    }
+
+    #[test]
+    fn a_variant_wide_enough_to_carry_portal_content_is_refused() {
+        let store = store_answering("analytics-variant", Some(true));
+
+        // A grade, a name, an address, a portal URL: none of these survive the
+        // shape the variant is allowed to have.
+        let too_long = "a".repeat(MAX_VARIANT_LEN + 1);
+        for smuggled in [
+            "16/20",
+            "DUCHEMIN Loïc",
+            "https://portal.example.test/",
+            "student@example.test",
+            "bad credentials",
+            "Bad_Credentials",
+            "",
+            too_long.as_str(),
+        ] {
+            let refusal = capture_decision(&store, "login_failed", Some(smuggled))
+                .expect_err(&format!("{smuggled:?} must not be reportable"));
+            assert_eq!(refusal.code, "analytics_variant_rejected", "{smuggled:?}");
+        }
+    }
+
+    #[test]
+    fn a_variant_is_a_short_lowercase_token_and_nothing_else() {
+        assert!(variant_is_safe("portal_unreachable"));
+        assert!(variant_is_safe("http_502"));
+        assert!(variant_is_safe(&"a".repeat(MAX_VARIANT_LEN)));
+
+        assert!(!variant_is_safe(&"a".repeat(MAX_VARIANT_LEN + 1)));
+        assert!(!variant_is_safe(
+            "
+"
+        ));
+        assert!(!variant_is_safe(""));
+        assert!(!variant_is_safe("has space"));
+        assert!(!variant_is_safe("UPPER"));
+        assert!(!variant_is_safe("dashed-token"));
+        assert!(!variant_is_safe("é"));
+    }
 }
