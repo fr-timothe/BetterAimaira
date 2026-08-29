@@ -78,8 +78,8 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 <details>
   <summary>Session et portail</summary>
 
-- `Sélecteur d'école` avant le formulaire (129 établissements clients d'Aimaira, recherche par nom, sigle ou groupe, l'adresse du portail est remplie à la sélection)
-- `Saisie manuelle de l'adresse` toujours disponible, pour un portail absent de la liste
+- `Sélecteur d'école` avant le formulaire (129 établissements clients d'Aimaira, recherche par nom, sigle ou groupe, l'adresse du portail est remplie à la sélection ; le formulaire de connexion ne demande donc plus que l'e-mail et le mot de passe)
+- `Saisie manuelle de l'adresse` dans le sélecteur, en modale (école absente de la liste, ou établissement dont l'adresse n'est pas connue) : l'adresse y est normalisée avant d'ouvrir le formulaire
 - `Normalisation de l'URL du portail` (tout lien profond collé est réduit à son origine HTTPS)
 - `HTTPS uniquement` (un portail en HTTP est rejeté avant tout envoi d'identifiants)
 - `Authentification par formulaire en Rust` (jeton anti-falsification, gestionnaire privé de cookies)

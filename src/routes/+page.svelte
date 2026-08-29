@@ -143,8 +143,7 @@
       heading: m.login_heading(),
       description: m.login_description(),
       portalLabel: m.portal_label(),
-      portalPlaceholder: m.portal_placeholder(),
-      portalHint: m.portal_hint(),
+      portalMissing: m.portal_missing(),
       emailLabel: m.email_label(),
       emailPlaceholder: m.email_placeholder(),
       passwordLabel: m.password_label(),
@@ -160,7 +159,6 @@
       successHeading: m.success_heading(),
       successDescription: m.success_description(),
       credentialsNotSaved: m.credentials_not_saved(),
-      schoolSelected: m.school_selected(),
       schoolChange: m.school_change(),
       schoolChoose: m.school_choose(),
     };
@@ -168,25 +166,20 @@
 
   /**
    * What the form has to say about the school the picker handed it: nothing at
-   * all when its portal answers the ordinary sign-in form, a reason when the
-   * address is missing, and a warning when the portal signs in elsewhere.
+   * all when its portal answers the ordinary sign-in form, and a warning when
+   * the portal signs in elsewhere. A school whose address nobody knows never
+   * reaches the form without one — the picker's sheet asks for it there.
    */
   const schoolNotice = $derived.by(() => {
     locale;
     const school = selectedSchool;
-    if (!school) return null;
-    if (!school.portalUrl) {
-      return { tone: 'info' as const, text: m.school_portal_unknown_hint({ school: school.name }) };
-    }
-    if (school.portalLogin === 'sso') {
-      return { tone: 'warning' as const, text: m.school_login_sso_hint({ school: school.name }) };
-    }
-    return null;
+    if (!school || school.portalLogin !== 'sso') return null;
+    return { tone: 'warning' as const, text: m.school_login_sso_hint({ school: school.name }) };
   });
 
-  const errorMessage = $derived.by(() => {
-    locale;
-    switch (errorCode) {
+  /** Shared by the form's own error and by the picker's address sheet. */
+  function messageForError(code: ErrorCode | null): string {
+    switch (code) {
       case 'invalid_portal_url': return m.error_invalid_portal_url();
       case 'insecure_portal_url': return m.error_insecure_portal_url();
       case 'portal_unreachable': return m.error_portal_unreachable();
@@ -199,6 +192,11 @@
       case 'desktop_required': return m.error_desktop_required();
       default: return '';
     }
+  }
+
+  const errorMessage = $derived.by(() => {
+    locale;
+    return messageForError(errorCode);
   });
 
   const restoreErrorMessage = $derived.by(() => {
@@ -305,9 +303,31 @@
     phase = 'manual';
   }
 
-  /** Leaves the list behind for a hand-typed address. */
-  function enterAddressManually() {
-    selectedSchool = null;
+  /**
+   * A hand-typed address, cleaned before the form opens on it. The cleaning
+   * used to run on the form's own field; the field is gone, so a refusal has to
+   * be answered where the address was typed — the picker's sheet keeps it and
+   * shows what came back.
+   */
+  async function submitManualPortal(rawUrl: string, school: School | null): Promise<string | null> {
+    if (!isTauri()) {
+      // No backend to clean the address outside Tauri, and the form will refuse
+      // the sign-in anyway. Take it as typed rather than blocking the step.
+      openManualPortal(rawUrl.trim(), school);
+      return null;
+    }
+    try {
+      const result = await invoke<PortalInfo>('normalize_portal_url', { portalUrl: rawUrl });
+      openManualPortal(result.portalUrl, school);
+      return null;
+    } catch (error) {
+      return messageForError(extractErrorCode(error));
+    }
+  }
+
+  function openManualPortal(cleanUrl: string, school: School | null) {
+    selectedSchool = school;
+    portalUrl = cleanUrl;
     errorCode = null;
     phase = 'manual';
   }
@@ -320,22 +340,15 @@
     return 'internal_error';
   }
 
-  async function cleanPortalUrl() {
-    if (!portalUrl.trim() || !isTauri()) return;
-
-    try {
-      const result = await invoke<PortalInfo>('normalize_portal_url', { portalUrl });
-      portalUrl = result.portalUrl;
-      errorCode = null;
-    } catch (error) {
-      errorCode = extractErrorCode(error);
-    }
-  }
-
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     errorCode = null;
     loginResult = null;
+
+    if (!portalUrl.trim()) {
+      errorCode = 'invalid_portal_url';
+      return;
+    }
 
     if (!isTauri()) {
       errorCode = 'desktop_required';
@@ -533,10 +546,11 @@
     onManualLogin={() => openLoginForm()}
   />
 {:else if phase === 'school'}
-  <SchoolPicker {locale} onSelect={chooseSchool} onManual={enterAddressManually} />
+  <SchoolPicker {locale} onSelect={chooseSchool} onSubmitAddress={submitManualPortal} />
 {:else}
 <main
-  class="login-shell grid min-h-full grow grid-cols-[minmax(360px,0.84fr)_minmax(460px,1.16fr)] lte-820:block"
+  class="login-shell grid min-h-full grow overflow-y-auto
+         grid-cols-[minmax(360px,0.84fr)_minmax(460px,1.16fr)] lte-820:block"
 >
   <!-- The signal panel is abstract geometry plus the real clock. It states no
        course, room or name it does not have. -->
@@ -649,41 +663,30 @@
         action="/login"
         novalidate
       >
+        <!-- The address is settled a step earlier, in the picker, so the form
+             states it rather than asking for it: one less field between a
+             reader and the two things only they can supply. -->
         <div class="grid gap-2">
-          <label class="text-sm font-bold" for="portal">{copy.portalLabel}</label>
+          <span class="text-sm font-bold">{copy.portalLabel}</span>
           <div
-            class={cn(fieldFrame, 'flex items-center pl-[0.85rem] text-muted-foreground', fieldFocus)}
+            class={cn(
+              fieldFrame,
+              'flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-[0.85rem] py-[0.6rem]'
+            )}
           >
-            <Link2 size={19} aria-hidden="true" />
-            <input
-              class="min-w-0 flex-1 self-stretch bg-transparent px-[0.8rem] py-3 text-foreground
-                     outline-0 placeholder:text-muted-foreground"
-              id="portal"
-              name="portal"
-              type="url"
-              placeholder={copy.portalPlaceholder}
-              autocomplete="off"
-              enterkeyhint="next"
-              bind:value={portalUrl}
-              onblur={cleanPortalUrl}
-              aria-describedby="portal-hint"
-              required
-            />
-          </div>
-          <p id="portal-hint" class="text-xs leading-[1.45] text-muted-foreground">
-            {copy.portalHint}
-          </p>
-
-          <!-- The picker is one tap away from the field it fills, in both
-               directions: a reader who typed the wrong address can go back to
-               the list, and one who skipped it can still open it. -->
-          <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-            {#if selectedSchool}
-              <span class="min-w-0 text-xs leading-[1.45] text-muted-foreground">
-                {copy.schoolSelected} :
-                <strong class="font-bold text-foreground">{selectedSchool.name}</strong>
+            <span class="flex min-w-0 items-center gap-[0.6rem] text-muted-foreground">
+              <Link2 class="flex-none" size={19} aria-hidden="true" />
+              <span class="grid min-w-0">
+                {#if selectedSchool}
+                  <strong class="truncate text-base font-bold text-foreground">
+                    {selectedSchool.name}
+                  </strong>
+                {/if}
+                <span class={cn('truncate', selectedSchool ? 'text-xs' : 'text-base text-foreground')}>
+                  {portalUrl || copy.portalMissing}
+                </span>
               </span>
-            {/if}
+            </span>
             <button
               class="min-h-(--tap-min) rounded-sm bg-transparent text-xs font-bold text-primary-deep
                      underline underline-offset-2 transition-control hover:text-secondary
@@ -691,7 +694,7 @@
               type="button"
               onclick={() => (phase = 'school')}
             >
-              {selectedSchool ? copy.schoolChange : copy.schoolChoose}
+              {portalUrl ? copy.schoolChange : copy.schoolChoose}
             </button>
           </div>
 

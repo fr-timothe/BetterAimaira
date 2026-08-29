@@ -79,8 +79,8 @@ strictly read-only: administrative, billing and remote write actions are out of 
 <details>
   <summary>Session and portal</summary>
 
-- `School picker` before the form (129 schools running Aimaira, searchable by name, initials or group, the portal address is filled in on selection)
-- `Manual address entry` always available, for a portal the list does not carry
+- `School picker` before the form (129 schools running Aimaira, searchable by name, initials or group, the portal address is filled in on selection, so the login form only asks for the email and the password)
+- `Manual address entry` in the picker, as a sheet (a school the list does not carry, or one whose address is not known): the address is normalized there before the form opens
 - `Portal URL Normalization` (any pasted deep link reduces to its HTTPS origin)
 - `HTTPS Only` (an HTTP portal is refused before credentials are sent)
 - `Form Authentication In Rust` (anti-forgery token, private cookie jar)
