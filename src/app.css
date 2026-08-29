@@ -1,7 +1,5 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:is(.dark *));
-
 /* The layout's hinges are max-width queries. `max-md:` is not their equivalent:
    it emits `(width < 48rem)`, which differs from `(max-width: 48rem)` at exactly
    48rem, where both blocks apply today. So the queries are written literally.
@@ -745,61 +743,6 @@ html.desktop-app .mobile-only {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-.dark {
-  --background: oklch(0.9680 0.0059 239.8195);
-  --foreground: oklch(0.3098 0.0748 248.9089);
-  --card: oklch(1.0000 0 0);
-  --card-foreground: oklch(0.3098 0.0748 248.9089);
-  --popover: oklch(1.0000 0 0);
-  --popover-foreground: oklch(0.3098 0.0748 248.9089);
-  --primary: oklch(0.7347 0.1447 228.9136);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.3098 0.0748 248.9089);
-  --secondary-foreground: oklch(1.0000 0 0);
-  --muted: oklch(0.9352 0.0412 217.6616);
-  --muted-foreground: oklch(0.4186 0.0765 246.7831);
-  --accent: oklch(0.9352 0.0412 217.6616);
-  --accent-foreground: oklch(0.3098 0.0748 248.9089);
-  --destructive: oklch(0.5014 0.2027 23.8197);
-  --destructive-foreground: oklch(0.9340 0.0315 5.5116);
-  --border: oklch(0.8761 0 0);
-  --input: oklch(1.0000 0 0);
-  --ring: oklch(0.3098 0.0748 248.9089);
-  --chart-1: oklch(0.3098 0.0748 248.9089);
-  --chart-2: oklch(0.7347 0.1447 228.9136);
-  --chart-3: oklch(0.8353 0.0553 213.7694);
-  --chart-4: oklch(0.9630 0.0296 94.3436);
-  --chart-5: oklch(0.4694 0.0568 228.3984);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.3098 0.0748 248.9089);
-  --sidebar-foreground: oklch(1.0000 0 0);
-  --sidebar-primary: oklch(0.7347 0.1447 228.9136);
-  --sidebar-primary-foreground: oklch(1.0000 0 0);
-  --sidebar-accent: oklch(0.9352 0.0412 217.6616);
-  --sidebar-accent-foreground: oklch(0.3098 0.0748 248.9089);
-  --sidebar-border: oklch(0.2750 0 0);
-  --sidebar-ring: oklch(0.5560 0 0);
-  --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-  --font-serif: Inter, ui-sans-serif, sans-serif, system-ui;
-  --font-mono: Inter, ui-sans-serif, sans-serif, system-ui;
-  --shadow-color: oklch(0 0 0);
-  --shadow-opacity: 0;
-  --shadow-blur: 0px;
-  --shadow-spread: -50px;
-  --shadow-offset-x: -50px;
-  --shadow-offset-y: -50px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: -50px -50px 0px -50px hsl(0 0% 0% / 0.00);
-  --shadow-xs: -50px -50px 0px -50px hsl(0 0% 0% / 0.00);
-  --shadow-sm: -50px -50px 0px -50px hsl(0 0% 0% / 0.00), -50px 1px 2px -51px hsl(0 0% 0% / 0.00);
-  --shadow: -50px -50px 0px -50px hsl(0 0% 0% / 0.00), -50px 1px 2px -51px hsl(0 0% 0% / 0.00);
-  --shadow-md: -50px -50px 0px -50px hsl(0 0% 0% / 0.00), -50px 2px 4px -51px hsl(0 0% 0% / 0.00);
-  --shadow-lg: -50px -50px 0px -50px hsl(0 0% 0% / 0.00), -50px 4px 6px -51px hsl(0 0% 0% / 0.00);
-  --shadow-xl: -50px -50px 0px -50px hsl(0 0% 0% / 0.00), -50px 8px 10px -51px hsl(0 0% 0% / 0.00);
-  --shadow-2xl: -50px -50px 0px -50px hsl(0 0% 0% / 0.00);
 }
 
 @layer base {
