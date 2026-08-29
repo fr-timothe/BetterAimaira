@@ -283,7 +283,8 @@ const mockPortalGradesPage: PortalPage = {
   ],
   absencePeriods: [],
   questionnaires: [],
-  markupRecognized: true
+  markupRecognized: true,
+  stale: false
 };
 
 const mockAbsencesPage: PortalPage = {
@@ -327,7 +328,8 @@ const mockAbsencesPage: PortalPage = {
     }
   ],
   questionnaires: [],
-  markupRecognized: true
+  markupRecognized: true,
+  stale: false
 };
 
 export function getDemoResponse(cmd: string, args?: Record<string, unknown>): unknown {
@@ -341,7 +343,11 @@ export function getDemoResponse(cmd: string, args?: Record<string, unknown>): un
     sundaysVisible: false
   };
   if (cmd === 'saved_identity') {
-    return { portalUrl: demoSession.portalUrl, username: demoSession.username };
+    return {
+      portalUrl: demoSession.portalUrl,
+      username: demoSession.username,
+      hasSnapshots: false
+    };
   }
   if (cmd === 'login') {
     return demoSession;
@@ -350,7 +356,11 @@ export function getDemoResponse(cmd: string, args?: Record<string, unknown>): un
     return {
       status: 'restored',
       session: demoSession,
-      identity: { portalUrl: demoSession.portalUrl, username: demoSession.username }
+      identity: {
+        portalUrl: demoSession.portalUrl,
+        username: demoSession.username,
+        hasSnapshots: false
+      }
     };
   }
   // The update flow, so the notice and the card can be driven in a browser.
@@ -379,14 +389,14 @@ export function getDemoResponse(cmd: string, args?: Record<string, unknown>): un
   if (cmd === 'get_schedule') {
     return {
       events: getWeekEvents(),
-      fetchedAt: Date.now()
+      fetchedAt: Date.now(),
+      stale: false
     };
   }
   if (cmd === 'sync_grades') {
     return {
       grades: mockGrades,
-      unreadAlerts: [],
-      initialized: true
+      stale: false
     };
   }
   if (cmd === 'get_portal_resource') {
@@ -404,11 +414,9 @@ export function getDemoResponse(cmd: string, args?: Record<string, unknown>): un
       gradePeriods: [],
       absencePeriods: [],
       questionnaires: [],
-      markupRecognized: true
+      markupRecognized: true,
+      stale: false
     };
-  }
-  if (cmd === 'mark_grade_alerts_read') {
-    return null;
   }
   return undefined;
 }

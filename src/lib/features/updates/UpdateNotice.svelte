@@ -22,7 +22,6 @@
   const visible = $derived(updates.noticeVisible && updates.available);
 
   const body = $derived.by(() => {
-    locale;
     const version = updates.info?.latestVersion;
     return version ? m.update_notice_body({ version }) : m.update_notice_body_unnamed();
   });
