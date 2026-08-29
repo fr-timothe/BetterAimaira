@@ -1,13 +1,15 @@
 mod aimaira;
+mod analytics;
 #[cfg(target_os = "android")]
 mod android_bridge;
-mod analytics;
 mod commands;
 mod credentials;
 mod error;
 mod grade_sync;
 mod permissions;
+mod portal_store;
 mod state;
+mod storage;
 mod updater;
 
 use state::SessionState;
@@ -38,9 +40,11 @@ pub fn run() {
     builder
         .setup(|app| {
             let data_directory = app.path().app_data_dir()?;
-            app.manage(grade_sync::GradeSyncStore::new(
-                data_directory.join("grades.sqlite"),
-            ));
+            // The grade fingerprints and the offline snapshots share one file,
+            // so they also share one migration and one busy timeout.
+            let storage = storage::Storage::new(data_directory.join("grades.sqlite"));
+            app.manage(grade_sync::GradeSyncStore::new(storage.clone()));
+            app.manage(portal_store::PortalStore::new(storage));
             app.manage(analytics::AnalyticsStore::new(
                 data_directory.join("analytics.json"),
             ));
@@ -61,7 +65,6 @@ pub fn run() {
             commands::get_planning_settings,
             commands::get_portal_resource,
             commands::sync_grades,
-            commands::mark_grade_alerts_read,
             commands::download_portal_document,
             commands::get_questionnaire_detail,
             commands::normalize_portal_url,
