@@ -132,7 +132,7 @@
 <!-- The introduction owns the whole frame, exactly like the restore screen: the
      login form is never painted underneath a reader who has not started yet. -->
 <main
-  class="grid min-h-full grow place-items-center bg-background
+  class="grid min-h-full grow place-items-center overflow-y-auto bg-background
          px-[max(1.5rem,7vw)] pt-[max(2rem,var(--safe-top))]
          pb-[max(2rem,var(--safe-bottom))]"
 >

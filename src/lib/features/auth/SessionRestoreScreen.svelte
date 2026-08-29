@@ -89,7 +89,7 @@
      that is about to be restored, and a failed restore keeps the reader here
      with both ways out rather than dropping them on an empty form. -->
 <main
-  class="grid min-h-full grow place-items-center bg-background
+  class="grid min-h-full grow place-items-center overflow-y-auto bg-background
          px-[max(1.5rem,7vw)] pt-[max(2rem,var(--safe-top))]
          pb-[max(2rem,var(--safe-bottom))]"
 >
