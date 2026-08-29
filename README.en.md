@@ -107,8 +107,7 @@ strictly read-only: administrative, billing and remote write actions are out of 
   <summary>Grades, attendance and documents</summary>
 
 - `Grades` (read-only `/Note`, semantic Rust adapter)
-- `Launch Grade Sync` (SQLite fingerprints, silent first baseline)
-- `In-App Grade Alerts` (home banner and notification drawer, no push service)
+- `Launch Grade Sync` (the current school year stored in SQLite and replayed offline)
 - `Attendance` (read-only `/Absence`)
 - `Profile` (read-only `/Profil`)
 - `Documents` (read-only `/Document`)
@@ -147,7 +146,6 @@ strictly read-only: administrative, billing and remote write actions are out of 
 - `Attendance Analytics` (radial quota and ECTS indicators)
 - `Campus Directory` (faculty and student lists)
 - `iCal Export` (`.ics` generation and local subscription server)
-- `Webhook Alerts` (Discord, Telegram)
 - `Widgets And Tray` (Android/iOS home screen, Windows tray, macOS menu bar)
 - `Biometric Unlock` (Face ID, Touch ID, Windows Hello)
 </details>
@@ -183,7 +181,7 @@ the device, resolves the newest published release and carries the install steps 
 | [Backend API](docs/BACKEND_API.md) | Tauri commands, serialized contracts, document downloads, error codes |
 | [Design system](docs/DESIGN_SYSTEM.md) | Tokens, breakpoints, responsive layouts |
 | [Design guidelines](DESIGN.md) | How the tokens are applied, shared primitives, honest state |
-| [Integrations](docs/INTEGRATIONS.md) | iCal feeds, webhooks, widgets, in-app alerts |
+| [Integrations](docs/INTEGRATIONS.md) | iCal feeds, desktop and mobile widgets |
 | [Performance](docs/PERFORMANCE.md) | Baseline commands, profiling tools, bundle budgets |
 | [Product](PRODUCT.md) | Users, scope, constraints, product principles |
 | [Brand assets](assets/README.md) | Logo files, geometry, palette, Svelte component |
@@ -321,13 +319,13 @@ Do not enable this bridge in distributed builds.
   exhaustive list of events and of what they carry is in `src-tauri/src/analytics.rs`, project key
   included: it is a public write-only credential by design, it travels inside every client that
   reports, and the project it points at holds no school data.
-- **No push service, no third-party analytics in the webview.** Grade checks run only while the app is
+- **No push service, no third-party analytics in the webview.** Grade sync runs only while the app is
   open, and usage capture leaves from the Rust core, never from a script loaded next to student data.
 - **Cookies stay in Rust.** The session jar is in memory and never crosses the IPC boundary.
 - **Passwords go to the OS vault.** No plaintext password in SQLite or frontend preferences, and
   explicit sign-out clears the stored entry.
 - **HTTPS is mandatory.** An HTTP portal is refused before credentials are sent.
-- **Local cache only.** SQLite holds grade fingerprints, display data and unread alert state.
+- **Local cache only.** SQLite holds the offline copies of grades, schedule and portal pages.
 - **Read-only.** The client never writes to the portal.
 - **Portal strings are untrusted.** They are rendered as plain text.
 

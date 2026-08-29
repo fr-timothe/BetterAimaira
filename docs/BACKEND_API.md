@@ -18,7 +18,6 @@ This document describes the client-facing contract exposed by the Tauri backend.
 | `get_portal_resource` | `{ resource: PortalResource, force?: boolean }` | `PortalPage` |
 | `get_questionnaire_detail` | `{ request: { responsePath: string } }` | `QuestionnaireDetail` |
 | `sync_grades` | `{ force?: boolean }` | `GradeSyncResult` |
-| `mark_grade_alerts_read` | none | `null` |
 | `download_portal_document` | `{ request: { requestPath: string } }` | binary PDF response |
 | `check_for_update` | none | `UpdateInfo` |
 | `install_update` | none | `InstallOutcome` |
@@ -53,12 +52,17 @@ type PlanningSettingsResult = {
 ```
 
 `get_planning_settings` always re-reads the settings from the portal and refreshes
-the copy cached on the session, so there is no separate refresh command.
+the copy cached on the session, so there is no separate refresh command. It is
+also the only command that reads them: `sundaysVisible` on a `LoginResult` is the
+default and never the portal's value, because neither `login` nor
+`restore_session` loads `/Calendar`. A client that honours the setting has to ask
+for it after every session it opens, a replayed one included.
 
 ```ts
 type SavedIdentity = {
   portalUrl: string;
   username: string;
+  hasSnapshots: boolean; // something is stored for this account, see Offline snapshots
 };
 
 type RestoreResult = {
@@ -72,17 +76,73 @@ type RestoreResult = {
 entry or the network, so the client can decide between a startup wait and the
 login form before the slow work begins. It answers `null` when no account is
 saved and fails with `credential_store` when the platform store is unavailable.
+`hasSnapshots` says whether the account has anything on disk to show before the
+portal has been reached; it only ever widens what the client may offer, so a
+storage failure reports `false` rather than failing the call.
 
 `restore_session` reads the last saved identity and password from the operating
 system credential store, then performs a normal portal login to create a fresh
-in-memory cookie jar. `status` separates the two outcomes that are not a
-restored session: `no_credentials` when nothing is saved, and
-`credentials_rejected` when Aimaira refused the saved password — in that case
-the saved entry is discarded and `identity` still carries the account, so the
-client can offer a pre-filled login form. Every other failure is a normal
-command error, for example `portal_unreachable`, which the client retries.
-Cookies remain private to Rust. `logout` drops the in-memory cookie jar and
-removes the saved credentials.
+in-memory cookie jar. It is not a startup-only command: the client also calls it
+in the middle of a session, to replay the saved password behind a read that came
+back `session_expired`, which
+[Architecture](ARCHITECTURE.md#replaying-the-password-behind-a-failed-read)
+describes. Either way the call is a real sign-in, made with a stored password and
+no gesture from the reader — the same sign-in the "remember me" checkbox buys at
+every cold start — so at a school that counts concurrent sessions or emails a
+notice on each login, one expiry now costs one extra portal login.
+
+`status` separates the two outcomes that are not a restored session:
+`no_credentials` when nothing is saved, and `credentials_rejected` when Aimaira
+refused the saved password. A rejection removes the password entry and keeps the
+identity, so `identity` still carries the account and the client can open a
+pre-filled login form. Keeping it is what also keeps the stored snapshots
+reachable: the identity is what names them while no session is open, so dropping
+it over a wrong password would orphan every page and range already on disk. The
+consequence to expect is that a rejection does not survive a restart — the next
+cold start finds an identity and no password, so `restore_session` answers
+`no_credentials`, and the form opens pre-filled with nothing to report. Every
+other failure is a normal command error, for example `portal_unreachable`, which
+the client retries. Cookies remain private to Rust. `logout` is the deliberate
+sign-out and the only path that forgets the account: it drops the in-memory
+cookie jar and removes both the password and the identity.
+
+## Offline snapshots
+
+A read the portal cannot answer falls back to the copy on disk written by the last
+successful fetch. `PortalPage`, `ScheduleResult` and `GradeSyncResult` each carry
+`stale`, raised only on that path. A stale payload keeps the `fetchedAt` of the
+fetch it came from and never the moment it was read back, so the client can state
+the real age of what is on screen instead of presenting old content as current.
+
+That makes three tiers in front of a portal resource: a five-minute in-session
+memory copy, which `force` skips, then the portal, then the snapshot.
+`get_schedule` has no memory tier of its own and always asks the portal first.
+Rust never memoises a stale answer, and the client should not either: the next
+read is what reaches the portal again once it is back.
+
+Snapshots are filed under an account key derived from the portal address and the
+username. The key comes from the live session when one is open and from the saved
+identity otherwise — that fallback is what lets a cold start with no session at
+all find its own rows. The saved identity therefore outlives a password the portal
+rejected, and only `logout` removes it; see Authentication above.
+
+One failure is never answered from disk. `session_expired` covers two situations:
+no session is open, which is the cold offline start this exists for, and the
+portal redirected a live session to its login page. Only the first falls back.
+Replaying a snapshot for the second would hide the expiry behind data that can no
+longer change, leaving the reader on frozen content with nothing offering the
+sign-in that [DESIGN.md](../DESIGN.md) makes the required action for an expired
+session. It would also suppress the recovery: the error surfacing is what lets
+the client replay the saved password through `restore_session` and retry the read
+before the reader is asked for anything. Every other code, `portal_unreachable`
+and the per-resource failures included, falls back either way.
+
+Writing a snapshot never fails a call: a result the caller already holds is
+returned whether or not it reached disk.
+
+The snapshots live in one application-data SQLite database, the stored grades
+included. It holds no password and no cookie, it is not encrypted, and `logout`
+clears the credentials and the session without deleting the stored rows.
 
 ## Schedule
 
@@ -106,14 +166,26 @@ type CalendarEvent = {
 type ScheduleResult = {
   events: CalendarEvent[];
   fetchedAt: number; // Unix epoch milliseconds
+  stale: boolean; // replayed from disk, see Offline snapshots
 };
 ```
 
 Portal HTML fragments are converted to plain text before serialization. Date strings preserve the portal value because Aimaira returns local ISO datetimes without a timezone.
 
+Each requested range is snapshotted on its own, under the start instant and
+duration it was asked with. A range that was never fetched has nothing to replay,
+so an unreachable portal still fails for it.
+
 ## Grade synchronization
 
-`sync_grades` fetches the authenticated `/Note` resource and accepts only tables with a recognized grade column. The first successful call for an account stores the current result set silently. Later calls return grades whose deterministic fingerprint was not present before as `unreadAlerts`. The local SQLite database is scoped to the device application data directory; it contains no portal password or cookie.
+`sync_grades` fetches the authenticated `/Note` resource, accepts only tables with
+a recognized grade column, and answers with the current school year flattened into
+one list. That same list is what goes to disk, replacing the rows held for the
+account, so the online answer and the one replayed offline are the same list
+rather than two that disagree. Older school years are read through
+`get_portal_resource`, which returns all of them in `gradePeriods`. The local
+SQLite database is scoped to the device application data directory; it contains no
+portal password or cookie.
 
 ```ts
 type Grade = {
@@ -128,12 +200,16 @@ type Grade = {
 
 type GradeSyncResult = {
   grades: Grade[];
-  unreadAlerts: Grade[];
-  initialized: boolean;
+  stale: boolean; // replayed from disk, see Offline snapshots
 };
 ```
 
-Call `mark_grade_alerts_read` after displaying the notification drawer. BetterAimaira never polls grades in the background and does not send system push notifications.
+When the grades page itself came from a snapshot, `sync_grades` answers `stale`
+with the stored grades and writes nothing back: a page the app could not refresh
+is no evidence of what the portal holds now, so the copy on disk stays as the last
+successful fetch left it.
+
+BetterAimaira never polls grades in the background and does not send system push notifications.
 
 ## Read-only portal resources
 
@@ -145,6 +221,7 @@ type PortalResource = "grades" | "absences" | "profile" | "documents" | "questio
 type PortalPage = {
   resource: PortalResource;
   fetchedAt: number; // Unix epoch milliseconds
+  stale: boolean; // replayed from disk, see Offline snapshots
   title: string;
   headings: string[];
   tables: PortalTable[];
@@ -234,8 +311,8 @@ Averages are not returned: the portal publishes none, and a course average is on
 as meaningful as the weightings it comes from. The client computes them and labels
 them as indicative.
 
-`sync_grades` flattens the same structure, sub-evaluations included, so a new mark
-raises an alert wherever the portal placed it.
+`sync_grades` flattens the same structure for the current school year,
+sub-evaluations included, so a mark is carried wherever the portal placed it.
 
 ### Absences
 
