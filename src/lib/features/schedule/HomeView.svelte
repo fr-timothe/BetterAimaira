@@ -9,6 +9,7 @@
     ChevronRight,
     Clock,
     Clock3,
+    CloudOff,
     ExternalLink,
     Info,
     MapPin,
@@ -20,12 +21,15 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
+  import FreshnessLabel from '$lib/components/ui/FreshnessLabel.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import KindBadge from '$lib/components/ui/KindBadge.svelte';
   import PageShell from '$lib/components/ui/PageShell.svelte';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+  import SessionExpiredCard from '$lib/components/ui/SessionExpiredCard.svelte';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import StateCard from '$lib/components/ui/StateCard.svelte';
+  import { connectivity } from '$lib/state/connectivity.svelte';
   import { isSameDay } from './date-utils';
   import {
     eventDurationMinutes,
@@ -184,7 +188,6 @@
   /* Paraglide message functions are not reactive on their own, so every read of
      the catalogue is wrapped in a derived that touches `locale` first. */
   const copy = $derived.by(() => {
-    locale;
     return {
       greeting: m.greetings(),
       refresh: m.sync_refresh(),
@@ -202,7 +205,8 @@
       planningLoading: m.planning_loading(),
       planningErrorHeading: m.planning_error_heading(),
       planningUnavailable: m.planning_unavailable(),
-      planningSessionExpired: m.planning_session_expired(),
+      offlineHeading: m.sync_offline(),
+      offlineDescription: m.sync_offline_description(),
       retry: m.planning_retry(),
       viewCalendar: m.home_view_calendar(),
       statusLive: m.schedule_status_live(),
@@ -214,44 +218,36 @@
   });
 
   const endsInLabel = $derived.by(() => {
-    locale;
     return m.home_ends_in({ duration: formatDuration(remainingMinutesInCurrent, locale) });
   });
 
   const startsInLabel = $derived.by(() => {
-    locale;
     return m.home_starts_in({ duration: formatDuration(minutesUntilNext, locale) });
   });
 
   const gradesRecordedLabel = $derived.by(() => {
-    locale;
     return m.home_grades_recorded({ count: grades.length });
   });
 
   const endsAtLabel = $derived.by(() => {
-    locale;
     return m.home_ends_at({ time: endOfDayTime });
   });
 
   const dayCourseCountLabel = $derived.by(() => {
-    locale;
     return m.day_course_count({ count: todayEvents.length });
   });
 
   const dayFinishedDescription = $derived.by(() => {
-    locale;
     return m.home_day_finished_description({ count: todayEvents.length });
   });
 
   /* Per-row labels need the parameter at render time, so the derived hands back a
      formatter that is rebuilt whenever the locale changes. */
   const classAverageLabel = $derived.by(() => {
-    locale;
     return (value: string) => m.home_class_average({ value });
   });
 
   const coefficientLabel = $derived.by(() => {
-    locale;
     return (value: string) => m.grade_alert_coefficient({ value });
   });
 
@@ -288,6 +284,9 @@
       <h1
         class="text-xl leading-[1.2] font-extrabold tracking-[-0.02em] wrap-anywhere md:text-2xl"
       >{copy.greeting} {displayName}</h1>
+      <!-- The day on this page is the cached schedule, so it says when it was
+           read rather than letting the greeting imply it is current. -->
+      <FreshnessLabel {fetchedAt} {locale} {refreshing} class="mt-[0.15rem]" />
     </div>
 
     <!-- `desktop-only` owns the display here; a display utility would lose to
@@ -314,13 +313,25 @@
         </div>
       </Card>
 
-    {:else if isSessionExpired}
+    {:else if isScheduleError && !connectivity.online}
+      <!-- A dead network on this machine is not the portal being down, and the
+           recovery differs, so the two are never merged. -->
       <StateCard
         class={inkPanel}
-        kind="expired"
-        icon={AlertCircle}
-        title={copy.planningErrorHeading}
-        description={copy.planningSessionExpired}
+        kind="offline"
+        icon={CloudOff}
+        title={copy.offlineHeading}
+        description={copy.offlineDescription}
+        actionLabel={copy.retry}
+        onAction={() => void onRefresh()}
+      />
+    {:else if isSessionExpired}
+      <!-- No destructive action here, deliberately: this surface has never
+           offered sign-out, and reconnecting is not one. -->
+      <SessionExpiredCard
+        class={inkPanel}
+        onRetry={() => void onRefresh()}
+        {locale}
       />
     {:else if isScheduleError}
       <StateCard

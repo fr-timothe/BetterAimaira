@@ -4,8 +4,6 @@ import {
   absenceStatus,
   absenceTotals,
   calculatePresenceRate,
-  presenceColorStyle,
-  presenceHue,
   type AbsenceTotals,
 } from './absence-utils';
 import type { AbsenceEntry } from './types';
@@ -73,34 +71,6 @@ describe('absence-utils presence calculation', () => {
     const rate = calculatePresenceRate(totals, 1);
     expect(rate).toBeGreaterThanOrEqual(0);
     expect(rate).toBeLessThanOrEqual(100);
-  });
-});
-
-describe('absence-utils presence hues and styles', () => {
-  it('maps 100% presence to green hue (~142)', () => {
-    expect(presenceHue(100)).toBe(142);
-    const style = presenceColorStyle(100);
-    expect(style).toContain('--presence-hue: 142');
-    expect(style).toContain('--presence-rate: 100%');
-  });
-
-  it('maps 50% presence to golden yellow hue (~48)', () => {
-    expect(presenceHue(50)).toBe(48);
-    const style = presenceColorStyle(50);
-    expect(style).toContain('--presence-hue: 48');
-    expect(style).toContain('--presence-rate: 50%');
-  });
-
-  it('maps 0% presence to red hue (0)', () => {
-    expect(presenceHue(0)).toBe(0);
-    const style = presenceColorStyle(0);
-    expect(style).toContain('--presence-hue: 0');
-    expect(style).toContain('--presence-rate: 0%');
-  });
-
-  it('clamps values below 0 and above 100', () => {
-    expect(presenceHue(-10)).toBe(0);
-    expect(presenceHue(120)).toBe(142);
   });
 });
 

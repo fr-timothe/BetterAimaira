@@ -2,7 +2,6 @@
   import { invoke } from '$lib/invoke';
   import { onMount } from 'svelte';
   import {
-    AlertCircle,
     ArrowLeft,
     CalendarClock,
     Check,
@@ -10,7 +9,6 @@
     ChevronRight,
     ClipboardList,
     Clock,
-    CloudOff,
     GraduationCap,
     RefreshCw,
     UserRound,
@@ -18,19 +16,19 @@
   import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import Card from '$lib/components/ui/Card.svelte';
+  import FreshnessLabel from '$lib/components/ui/FreshnessLabel.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import StateCard from '$lib/components/ui/StateCard.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
-  import { connectivity } from '$lib/state/connectivity.svelte';
-  import { loadPortalResource } from './portal-cache';
-  import { parseResourceError, resourceErrorMessage } from './portal-utils';
+  import PortalResourceError from './PortalResourceError.svelte';
+  import { createPortalResource } from './portal-resource.svelte';
+  import { parseResourceError } from './portal-utils';
   import { cn } from '$lib/utils';
   import type {
     PortalResourceErrorCode,
-    PortalResourceState,
     QuestionnaireDetail,
     QuestionnaireQuestion,
     QuestionnaireSummary,
@@ -49,24 +47,15 @@
   };
 
   let { locale, onLogout, refresh = $bindable() }: Props = $props();
-  let listState = $state<PortalResourceState>({ kind: 'loading' });
   let detailState = $state<DetailState>({ kind: 'idle' });
   let selected = $state<QuestionnaireSummary | null>(null);
-  let refreshing = $state(false);
-  let listSequence = 0;
   let detailSequence = 0;
 
   const copy = $derived.by(() => {
-    locale;
     return {
       heading: m.questionnaires_heading(),
       loading: m.resource_loading(),
       refresh: m.resource_refresh(),
-      retry: m.resource_retry(),
-      backToLogin: m.back_to_login(),
-      errorHeading: m.resource_error_heading(),
-      offline: m.sync_offline(),
-      offlineDescription: m.sync_offline_description(),
       emptyHeading: m.questionnaires_empty_heading(),
       emptyDescription: m.questionnaires_empty_description(),
       completed: m.questionnaire_status_completed(),
@@ -81,39 +70,31 @@
     };
   });
 
+  // An expired session gives way to the sign-in card instead of being flagged
+  // on top of a stale list: this surface offers no other way back in.
+  const questionnaires = createPortalResource({
+    resource: 'questionnaires',
+    fallbackErrorCode: 'questionnaires_unavailable',
+    heading: () => copy.heading,
+    locale: () => locale,
+    expiredReplacesData: true,
+  });
+
+  const summaries = $derived(questionnaires.page?.questionnaires ?? []);
+
   $effect(() => {
     refresh = async () => {
       if (selected) {
         await loadDetail(selected);
       } else {
-        await loadList(true);
+        await questionnaires.load(true);
       }
     };
   });
 
   onMount(() => {
-    void loadList();
+    void questionnaires.load();
   });
-
-  async function loadList(force = false) {
-    const sequence = ++listSequence;
-    const hasData = listState.kind === 'ready';
-    if (hasData) refreshing = true;
-
-    try {
-      const page = await loadPortalResource('questionnaires', force);
-      if (sequence !== listSequence) return;
-      listState = { kind: 'ready', page };
-    } catch (error) {
-      if (sequence !== listSequence) return;
-      const code = parseResourceError(error, 'questionnaires_unavailable');
-      if (!hasData || code === 'session_expired') {
-        listState = { kind: 'error', code };
-      }
-    } finally {
-      if (sequence === listSequence) refreshing = false;
-    }
-  }
 
   async function loadDetail(questionnaire: QuestionnaireSummary) {
     const sequence = ++detailSequence;
@@ -198,26 +179,10 @@
   const indent = 'ml-[calc(1.5rem+var(--space-2))]';
 </script>
 
+<!-- The offline / expired / failed trio is told apart in one place, so the two
+     surfaces below cannot disagree about which card a code deserves. -->
 {#snippet errorState(code: PortalResourceErrorCode, retry: () => void)}
-  <StateCard
-    kind={code === 'session_expired' ? 'expired' : 'error'}
-    icon={AlertCircle}
-    title={code === 'session_expired' ? m.account_disconnected() : copy.errorHeading}
-    description={resourceErrorMessage(code)}
-    actionLabel={code === 'session_expired' ? copy.backToLogin : copy.retry}
-    onAction={code === 'session_expired' ? () => void onLogout() : retry}
-  />
-{/snippet}
-
-{#snippet offlineState(retry: () => void)}
-  <StateCard
-    kind="error"
-    icon={CloudOff}
-    title={copy.offline}
-    description={copy.offlineDescription}
-    actionLabel={copy.retry}
-    onAction={retry}
-  />
+  <PortalResourceError {code} onRetry={retry} {onLogout} {locale} />
 {/snippet}
 
 {#if selected}
@@ -260,8 +225,6 @@
           {/each}
         </Card>
       </div>
-    {:else if detailState.kind === 'error' && !connectivity.online}
-      {@render offlineState(() => void loadDetail(questionnaire))}
     {:else if detailState.kind === 'error'}
       {@render errorState(detailState.code, () => void loadDetail(questionnaire))}
     {:else if detailState.kind === 'ready'}
@@ -358,14 +321,34 @@
 
                   <div class={cn(indent, 'min-w-0 md:ml-0')} aria-label={copy.response}>
                     {#if question.kind === 'rating' && question.options.length > 0}
+                      <!-- The answer the student submitted, read back. As a plain
+                           group a reader heard "1 2 3 4 5" and never which one
+                           was chosen: the selection was carried by the fill
+                           colour and a hidden icon, which is the colour-only
+                           encoding the product forbids, and it lost the answer
+                           itself. `radiogroup` + `aria-checked` puts "3, checked,
+                           3 of 5" in the accessibility tree instead.
+
+                           No option takes a `tabindex`, not even `-1`. This is a
+                           display, not a control: nothing here can change the
+                           answer, so nothing should be reachable by Tab, and
+                           `-1` would still make each option a scripted focus
+                           target and suggest a composite widget with roving
+                           focus. Role and state alone are enough — browse mode
+                           and touch exploration read them without focus — and
+                           `aria-readonly` on the group says the answer is
+                           closed. -->
                       <div
                         class="grid max-w-96 grid-cols-5 gap-2"
-                        role="group"
+                        role="radiogroup"
+                        aria-readonly="true"
                         aria-label={question.title}
                       >
                         {#each question.options as option (`${question.id}:${option.value}`)}
                           {@const isSelected = isSelectedOption(question, option.value, option.label)}
                           <span
+                            role="radio"
+                            aria-checked={isSelected}
                             class={cn(
                               'flex min-h-(--tap-min) items-center justify-center gap-1 rounded-md',
                               'border text-sm font-bold tabular-nums',
@@ -408,7 +391,7 @@
       </Card>
     {/if}
   </div>
-{:else if listState.kind === 'loading'}
+{:else if questionnaires.state.kind === 'loading'}
   <div class={column} role="status" aria-live="polite" aria-label={copy.loading}>
     <Card padding="none">
       <header class={heading}>
@@ -431,10 +414,8 @@
       </div>
     </Card>
   </div>
-{:else if listState.kind === 'error' && !connectivity.online}
-  {@render offlineState(() => void loadList(true))}
-{:else if listState.kind === 'error'}
-  {@render errorState(listState.code, () => void loadList(true))}
+{:else if questionnaires.state.kind === 'error'}
+  {@render errorState(questionnaires.state.code, () => void questionnaires.load(true))}
 {:else}
   <Card padding="none">
     <header class={heading}>
@@ -442,12 +423,25 @@
         class="w-full"
         icon={ClipboardList}
         title={copy.heading}
-        subtitle={m.questionnaires_count({ count: listState.page.questionnaires.length })}
+        subtitle={m.questionnaires_count({ count: summaries.length })}
         level={3}
       >
         {#snippet actions()}
+          <!-- The failed refresh is stated here rather than swallowed: the list
+               stays on screen, and the label says when it was actually read. -->
+          <FreshnessLabel
+            fetchedAt={questionnaires.fetchedAt}
+            {locale}
+            refreshing={questionnaires.refreshing}
+            failed={questionnaires.refreshFailed}
+          />
+
           <div class="desktop-only">
-            <IconButton label={copy.refresh} loading={refreshing} onclick={() => void loadList(true)}>
+            <IconButton
+              label={copy.refresh}
+              loading={questionnaires.refreshing}
+              onclick={() => void questionnaires.load(true)}
+            >
               <RefreshCw size={18} aria-hidden="true" />
             </IconButton>
           </div>
@@ -455,7 +449,7 @@
       </SectionHeader>
     </header>
 
-    {#if listState.page.questionnaires.length === 0}
+    {#if summaries.length === 0}
       <div class="p-4">
         <StateCard
           kind="empty"
@@ -466,7 +460,7 @@
       </div>
     {:else}
       <div class={listBody}>
-        {#each listState.page.questionnaires as questionnaire (questionnaire.id)}
+        {#each summaries as questionnaire (questionnaire.id)}
           {@const info = parseQuestionnaireInfo(questionnaire.title, questionnaire.context)}
           <button
             type="button"

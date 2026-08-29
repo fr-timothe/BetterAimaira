@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import {
     AlertCircle,
+    BarChart3,
     CloudOff,
     Download,
     FileCheck,
@@ -15,6 +16,7 @@
     MapPin,
     RefreshCw,
     School,
+    ShieldCheck,
     Table2,
   } from 'lucide-svelte';
   import Badge from '$lib/components/ui/Badge.svelte';
@@ -24,13 +26,17 @@
   import PageShell from '$lib/components/ui/PageShell.svelte';
   import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
   import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
+  import SessionExpiredCard from '$lib/components/ui/SessionExpiredCard.svelte';
   import Sheet from '$lib/components/ui/Sheet.svelte';
   import Skeleton from '$lib/components/ui/Skeleton.svelte';
   import StateCard from '$lib/components/ui/StateCard.svelte';
+  import Switch from '$lib/components/ui/Switch.svelte';
   import type { IconComponent } from '$lib/components/ui/icon';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
   import { connectivity } from '$lib/state/connectivity.svelte';
+  import type { AnalyticsStatus } from '$lib/features/analytics/analytics-service';
+  import { analyticsStatus, setAnalyticsConsent } from '$lib/features/analytics/analytics-service';
   import UpdateCard from '$lib/features/updates/UpdateCard.svelte';
   import AccountViewSkeleton from './AccountViewSkeleton.svelte';
   import { loadPortalResource } from './portal-cache';
@@ -85,6 +91,14 @@
   let downloadingPath = $state<string | null>(null);
   let downloadError = $state(false);
   let changingLocale = $state(false);
+  /**
+   * Null until the Rust side answers. Consent is never mirrored optimistically:
+   * the switch shows what the store confirmed, so a write that fails cannot
+   * leave a reader believing reporting stopped when it did not.
+   */
+  let analytics = $state<AnalyticsStatus | null>(null);
+  let savingConsent = $state(false);
+  let consentFailed = $state(false);
   let isLoggingOut = $state(false);
   let logoutDialogOpen = $state(false);
   let questionnairesRefresh = $state<(() => Promise<void>) | undefined>();
@@ -103,7 +117,6 @@
   let documentsFailed = $state(false);
 
   const copy = $derived.by(() => {
-    locale;
     return {
       tabsLabel: m.more_heading(),
       profileTab: m.profile_tab(),
@@ -121,17 +134,20 @@
       refresh: m.resource_refresh(),
       errorHeading: m.resource_error_heading(),
       retry: m.resource_retry(),
-      backToLogin: m.back_to_login(),
       unknownHeading: m.resource_unknown_heading(),
       unknownDescription: m.resource_unknown_description(),
       emptyHeading: m.resource_empty_heading(),
       emptyDescription: m.resource_empty_description(),
-      sessionExpired: m.account_disconnected(),
       offline: m.sync_offline(),
       offlineDescription: m.sync_offline_description(),
       download: m.download_document(),
       downloading: m.downloading_document(),
       downloadError: m.document_download_error(),
+      privacyTitle: m.privacy_section_title(),
+      analyticsLabel: m.onboarding_analytics_accept(),
+      analyticsDescription: m.onboarding_analytics_description(),
+      analyticsFootnote: m.onboarding_analytics_footnote(),
+      analyticsError: m.onboarding_analytics_error(),
       aboutTitle: m.about_section_title(),
       versionLabel: m.about_version_label(),
     };
@@ -229,6 +245,36 @@
     }
   }
 
+  /**
+   * The reporting answer lives on the Rust side, so the row has nothing honest
+   * to show until it replies. A build that cannot report — the browser preview
+   * among them — answers `available: false` and the card never appears.
+   */
+  onMount(() => {
+    void analyticsStatus()
+      .then((status) => {
+        analytics = status;
+      })
+      .catch(() => {
+        // Unreadable consent is not a setting the reader can act on, so the
+        // row stays hidden rather than offering a switch that writes nowhere.
+        analytics = null;
+      });
+  });
+
+  async function handleConsentChange(enabled: boolean) {
+    if (savingConsent) return;
+    savingConsent = true;
+    consentFailed = false;
+    try {
+      analytics = await setAnalyticsConsent(enabled);
+    } catch {
+      consentFailed = true;
+    } finally {
+      savingConsent = false;
+    }
+  }
+
   async function handleLocaleSwitch(newLocale: Locale) {
     if (newLocale === locale || changingLocale) return;
     changingLocale = true;
@@ -261,7 +307,6 @@
   const studentProfile = $derived.by(() => {
     // The field category names below come from the message catalogue, and
     // Paraglide message functions are not reactive: this keeps the dependency.
-    locale;
     if (profileState.kind !== 'ready') {
       return {
         fullName: username,
@@ -365,7 +410,6 @@
   }
 
   const documentCountLabel = $derived.by(() => {
-    locale;
     return documentsState.kind === 'ready'
       ? m.documents_pdf_count({ count: documentsState.page.documents.length })
       : '';
@@ -389,14 +433,18 @@
 </script>
 
 {#snippet resourceError(code: PortalResourceErrorCode, retry: () => void)}
-  <StateCard
-    kind={code === 'session_expired' ? 'expired' : 'error'}
-    title={code === 'session_expired' ? copy.sessionExpired : copy.errorHeading}
-    description={resourceErrorMessage(code)}
-    icon={AlertCircle}
-    actionLabel={code === 'session_expired' ? copy.backToLogin : copy.retry}
-    onAction={code === 'session_expired' ? () => void onLogout() : retry}
-  />
+  {#if code === 'session_expired'}
+    <SessionExpiredCard onRetry={retry} {onLogout} {locale} />
+  {:else}
+    <StateCard
+      kind="error"
+      title={copy.errorHeading}
+      description={resourceErrorMessage(code)}
+      icon={AlertCircle}
+      actionLabel={copy.retry}
+      onAction={retry}
+    />
+  {/if}
 {/snippet}
 
 {#snippet offlineState(retry: () => void)}
@@ -575,6 +623,53 @@
           </select>
         </div>
       </Card>
+
+      {#if analytics?.available}
+        <Card>
+          <div class="flex min-w-0 flex-col gap-3">
+            <SectionHeader icon={ShieldCheck} title={copy.privacyTitle} level={3} />
+
+            <div
+              class="flex min-w-0 flex-col items-center justify-between gap-4 min-[30rem]:flex-row"
+            >
+              <div class="flex w-full min-w-0 items-center gap-2 min-[30rem]:w-auto">
+                <span
+                  class="grid size-8 flex-none place-items-center rounded-sm bg-muted text-primary-deep"
+                  aria-hidden="true"><BarChart3 size={18} /></span
+                >
+                <label class="text-base font-bold" for="profile-analytics"
+                  >{copy.analyticsLabel}</label
+                >
+              </div>
+
+              <Switch
+                id="profile-analytics"
+                checked={analytics.enabled}
+                busy={savingConsent}
+                onChange={(enabled) => void handleConsentChange(enabled)}
+              />
+            </div>
+
+            <p class="text-sm leading-[1.5] text-pretty text-muted-foreground">
+              {copy.analyticsDescription}
+            </p>
+            <p class="text-xs leading-[1.5] text-pretty text-muted-foreground">
+              {copy.analyticsFootnote}
+            </p>
+
+            {#if consentFailed}
+              <p
+                class="flex items-center gap-2 rounded-md bg-danger-surface px-3 py-2 text-sm
+                       font-semibold text-danger-strong"
+                role="alert"
+              >
+                <AlertCircle size={16} aria-hidden="true" />
+                <span>{copy.analyticsError}</span>
+              </p>
+            {/if}
+          </div>
+        </Card>
+      {/if}
 
       <UpdateCard {locale} />
 

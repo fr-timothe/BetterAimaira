@@ -36,11 +36,6 @@
     loadingMetricCount?: number;
     /** Announced while `loading` is true. */
     loadingLabel?: string;
-    /**
-     * Optional presence rate (0 to 100). When set, applies an adaptive background
-     * ranging from red (0%) to golden yellow (50%) to green (100%).
-     */
-    presenceRate?: number;
   };
 
   const {
@@ -56,18 +51,7 @@
     loading = false,
     loadingMetricCount = 3,
     loadingLabel,
-    presenceRate,
   }: Props = $props();
-
-  import { presenceColorStyle } from './absence-utils';
-
-  const isPresenceActive = $derived(
-    presenceRate !== undefined && Number.isFinite(presenceRate) && !loading
-  );
-
-  const presenceStyle = $derived(
-    isPresenceActive ? presenceColorStyle(presenceRate!) : undefined
-  );
 
   const VIEWBOX_WIDTH = 900;
   const VIEWBOX_HEIGHT = 260;
@@ -145,12 +129,6 @@
 
   const gradientId = $props.id();
 
-  const labelInk = $derived(
-    isPresenceActive ? 'text-[hsl(var(--presence-hue)_70%_28%)]' : 'text-primary-deep'
-  );
-  const unitInk = $derived(
-    isPresenceActive ? 'text-[hsl(var(--presence-hue)_70%_32%)]' : 'text-primary-deep'
-  );
   const heroMetrics =
     'mt-3 grid w-full max-w-[38rem] items-stretch justify-center gap-2' +
     ' grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))]';
@@ -164,12 +142,10 @@
      field alone — no border and no shadow under the same surface. -->
 <section
   class={cn(
-    'hero-stat relative overflow-hidden rounded-xl bg-muted px-4 py-5',
+    'relative overflow-hidden rounded-xl bg-muted px-4 py-5',
     'transition-[background,border-color,box-shadow] duration-normal ease-out',
     'md:px-5 md:pt-6 md:pb-5'
   )}
-  class:has-presence={isPresenceActive}
-  style={presenceStyle}
   aria-label={loading ? loadingLabel : ariaLabel}
   role={loading ? 'status' : undefined}
   aria-live={loading ? 'polite' : undefined}
@@ -239,13 +215,14 @@
     {:else}
       <div class="flex flex-col items-center gap-2">
         {#if badge}{@render badge()}{/if}
-        <span class={cn('text-base font-semibold', labelInk)}>{label}</span>
+        <span class="text-base font-semibold text-primary-deep">{label}</span>
       </div>
 
       <p
         class="text-[clamp(var(--text-3xl),6vw,var(--text-4xl))] leading-none font-extrabold
                tracking-[-0.02em] tabular-nums text-foreground"
-      >{value}{#if unit}<small class={cn('ml-[0.15rem] text-lg leading-[1] font-semibold', unitInk)}
+      >{value}{#if unit}<small
+          class="ml-[0.15rem] text-lg leading-[1] font-semibold text-primary-deep"
           >{unit}</small
         >{/if}</p>
 
@@ -257,46 +234,6 @@
 </section>
 
 <style>
-  /* Adaptive presence field: red at 0%, amber at 50%, green at 100%. Three
-     stacked gradients over one hue channel that `presenceColorStyle()` sets
-     inline — as an arbitrary value this would hide the --presence-hue contract. */
-  .hero-stat.has-presence {
-    background:
-      radial-gradient(
-        ellipse 90% 75% at 50% -15%,
-        hsl(var(--presence-hue) 85% 55% / 0.24) 0%,
-        transparent 70%
-      ),
-      radial-gradient(
-        ellipse 70% 50% at 100% 100%,
-        hsl(var(--presence-hue) 80% 50% / 0.12) 0%,
-        transparent 65%
-      ),
-      linear-gradient(
-        155deg,
-        hsl(var(--presence-hue) 55% 96% / 0.95) 0%,
-        hsl(var(--presence-hue) 45% 91% / 0.9) 100%
-      );
-    border: 1px solid hsl(var(--presence-hue) 60% 45% / 0.28);
-    box-shadow: 0 4px 20px -2px hsl(var(--presence-hue) 70% 40% / 0.12);
-  }
-
-  .hero-stat.has-presence .hero-curve path {
-    stroke: hsl(var(--presence-hue) 65% 36%);
-  }
-
-  .hero-stat.has-presence .hero-curve circle {
-    fill: hsl(var(--presence-hue) 65% 36%);
-    stroke: var(--card);
-  }
-
-  /* HeroMetric's own root, tinted to sit on the presence field. */
-  .hero-stat.has-presence :global(.hero-metric) {
-    background: color-mix(in oklch, var(--card) 82%, transparent);
-    backdrop-filter: blur(8px);
-    border: 1px solid hsl(var(--presence-hue) 50% 50% / 0.18);
-  }
-
   /* Decorative signal line. `--primary` is a fill token and never a stroke, so
      the curve takes `--primary-deep` and loses weight through opacity instead. */
   .hero-curve {
