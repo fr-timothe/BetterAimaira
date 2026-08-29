@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { CloudOff, RefreshCw, TriangleAlert } from 'lucide-svelte';
   import * as m from '$lib/paraglide/messages.js';
   import { connectivity } from '$lib/state/connectivity.svelte';
@@ -33,7 +34,42 @@
 
   /** Data older than the cache TTL is worth flagging, not just timestamping. */
   const STALE_AFTER_MS = 5 * 60 * 1000;
-  const stale = $derived(fetchedAt !== null && Date.now() - fetchedAt > STALE_AFTER_MS);
+
+  // Staleness is purely a function of elapsed time, and `Date.now()` is not a
+  // signal: read directly it would only be re-evaluated when a prop changed, so
+  // an app left open would keep claiming fresh data for hours. This clock is
+  // what makes the stale state actually arrive.
+  let now = $state(Date.now());
+
+  onMount(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    let timer: number | undefined;
+    const startClock = () => {
+      if (timer !== undefined || document.hidden) return;
+      // Re-read on resume: a backgrounded app must be right the instant it returns.
+      now = Date.now();
+      timer = window.setInterval(() => (now = Date.now()), 30_000);
+    };
+    const stopClock = () => {
+      if (timer === undefined) return;
+      window.clearInterval(timer);
+      timer = undefined;
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) stopClock();
+      else startClock();
+    };
+
+    startClock();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      stopClock();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  });
+
+  const stale = $derived(fetchedAt !== null && now - fetchedAt > STALE_AFTER_MS);
 
   type Tone = 'offline' | 'failed' | 'refreshing' | 'stale' | 'fresh' | 'never';
 
@@ -54,8 +90,11 @@
     offline: 'text-danger-strong'
   } as const satisfies Record<Tone, string>;
 
+  const freshnessLabel = $derived.by(() => {
+    return m.freshness_label();
+  });
+
   const text = $derived.by(() => {
-    locale;
     switch (tone) {
       case 'offline':
         return m.sync_offline();
@@ -81,8 +120,11 @@
     tones[tone],
     className
   )}
-  aria-label={m.freshness_label()}
 >
+  <!-- A visible prefix would be noise, but `aria-label` here would replace the
+       text instead of introducing it — a screen reader would hear "Fraîcheur des
+       données" and never the actual state. Hidden text is announced alongside. -->
+  <span class="sr-only">{freshnessLabel}</span>
   {#if tone === 'offline'}
     <CloudOff size={14} aria-hidden="true" />
   {:else if tone === 'failed'}

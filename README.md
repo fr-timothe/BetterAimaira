@@ -106,8 +106,7 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
   <summary>Notes, présences et documents</summary>
 
 - `Notes` (lecture seule `/Note`, adaptateur sémantique en Rust)
-- `Synchronisation des notes au lancement` (empreintes SQLite, premier état silencieux)
-- `Alertes de notes dans l'application` (bannière d'accueil et tiroir de notifications, sans service push)
+- `Synchronisation des notes au lancement` (l'année scolaire en cours est enregistrée en SQLite et rejouée hors ligne)
 - `Présences et absences` (lecture seule `/Absence`)
 - `Profil` (lecture seule `/Profil`)
 - `Documents` (lecture seule `/Document`)
@@ -147,7 +146,6 @@ L'application communique exclusivement avec le portail configuré et rien d'autr
 - `Analyses des présences` (jauge de quota et indicateurs ECTS)
 - `Annuaire du campus` (listes du corps enseignant et des étudiants)
 - `Export iCal` (génération `.ics` et serveur local d'abonnement)
-- `Alertes Webhook` (Discord, Telegram)
 - `Widgets et barre système` (écran d'accueil Android/iOS, zone de notification Windows, barre de menus macOS)
 - `Déverrouillage biométrique` (Face ID, Touch ID, Windows Hello)
 </details>
@@ -182,7 +180,7 @@ La page [betteraimaira.montfrond.work/ecoles](https://betteraimaira.montfrond.wo
 | [API Backend](docs/BACKEND_API.md) | Commandes Tauri, contrats sérialisés, téléchargement de documents, codes d'erreur |
 | [Système de design](docs/DESIGN_SYSTEM.md) | Tokens, points de rupture (breakpoints), mises en page responsives |
 | [Directives de design](DESIGN.md) | Application des tokens, primitives partagées, états honnêtes |
-| [Intégrations](docs/INTEGRATIONS.md) | Flux iCal, webhooks, widgets, alertes in-app |
+| [Intégrations](docs/INTEGRATIONS.md) | Flux iCal, widgets bureau et mobile |
 | [Performance](docs/PERFORMANCE.md) | Commandes de référence, outils de profilage, budgets de bundle |
 | [Produit](PRODUCT.md) | Utilisateurs, périmètre, contraintes, principes produit |
 | [Ressources de marque](assets/README.md) | Fichiers de logo, géométrie, palette, composant Svelte |
@@ -308,11 +306,11 @@ N'activez pas ce pont dans les versions distribuées.
 
 - **Aucun relais cloud.** Les données scolaires transitent directement de l'appareil vers le portail configuré par l'étudiant, nulle part ailleurs.
 - **Mesure d'usage sur accord explicite, sans identifiant.** L'onboarding demande une fois si l'application peut compter ses usages ; le refus est le comportement par défaut et n'envoie rien, pas même le refus. Le `distinct_id` est un UUID tiré au lancement et jamais persisté, donc deux exécutions ne peuvent pas être corrélées. La liste exhaustive des événements et du contenu envoyé est dans `src-tauri/src/analytics.rs`, clé de projet incluse : c'est une clé d'écriture publique par nature, elle voyage dans chaque client qui rapporte et le projet qu'elle vise ne contient aucune donnée scolaire.
-- **Ni service push, ni analytique tierce dans la webview.** La vérification des notes ne tourne que lorsque l'application est active, et la capture d'usage part du cœur Rust, jamais d'un script chargé à côté des données de l'élève.
+- **Ni service push, ni analytique tierce dans la webview.** La synchronisation des notes ne tourne que lorsque l'application est active, et la capture d'usage part du cœur Rust, jamais d'un script chargé à côté des données de l'élève.
 - **Les cookies restent dans Rust.** Le gestionnaire de cookies de session réside en mémoire et ne franchit jamais la frontière IPC.
 - **Mots de passe stockés dans le coffre-fort de l'OS.** Aucun mot de passe en clair dans SQLite ou les préférences frontend. La déconnexion explicite supprime l'entrée enregistrée.
 - **HTTPS obligatoire.** Tout portail en HTTP est immédiatement rejeté avant la transmission des identifiants.
-- **Cache local uniquement.** SQLite conserve les empreintes de notes, les données d'affichage et l'état des alertes non lues.
+- **Cache local uniquement.** SQLite conserve les copies hors ligne des notes, de l'emploi du temps et des pages du portail.
 - **Strictement en lecture seule.** Le client n'écrit jamais sur le portail distant.
 - **Données du portail non fiables.** Le contenu distant est rendu sous forme de texte brut sécurisé.
 

@@ -695,3 +695,45 @@ mod platform {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::UpdateChannel;
+
+    fn version(raw: &str) -> semver::Version {
+        semver::Version::parse(raw).expect("a valid version")
+    }
+
+    #[test]
+    fn a_prerelease_build_stays_on_the_stream_it_came_from() {
+        // Putting one of these on `stable` strands it: the newest stable
+        // release is older than the beta already installed, so the app would
+        // report itself up to date forever and never see another update.
+        for raw in ["0.1.1-beta.14", "1.0.0-rc.1", "2.3.4-alpha"] {
+            assert_eq!(
+                UpdateChannel::of_build(&version(raw)),
+                UpdateChannel::Beta,
+                "{raw}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_finished_release_follows_stable() {
+        for raw in ["0.1.1", "1.0.0", "2.3.4+build.7"] {
+            assert_eq!(
+                UpdateChannel::of_build(&version(raw)),
+                UpdateChannel::Stable,
+                "{raw}"
+            );
+        }
+    }
+
+    #[test]
+    fn each_channel_reads_its_own_directory_of_the_feed() {
+        // The two streams share a host, so a slug that collided would hand beta
+        // builds the stable manifest without any error to notice it by.
+        assert_eq!(UpdateChannel::Stable.slug(), "stable");
+        assert_eq!(UpdateChannel::Beta.slug(), "beta");
+    }
+}

@@ -10,6 +10,7 @@ use crate::aimaira;
 use crate::credentials;
 use crate::error::CommandError;
 use crate::grade_sync::{GradeSyncResult, GradeSyncStore};
+use crate::portal_store::{schedule_range_key, PortalStore};
 use crate::state::{AimairaSession, PortalCacheEntry, SessionState};
 
 const PORTAL_CACHE_TTL: Duration = Duration::from_secs(5 * 60);
@@ -44,6 +45,10 @@ pub struct PortalInfo {
 pub struct SavedIdentityInfo {
     portal_url: String,
     username: String,
+    /// Whether anything was ever stored for this account. The startup screen
+    /// reads it to decide between opening the app on last known content and
+    /// blocking on a portal it cannot reach.
+    has_snapshots: bool,
 }
 
 /// `restore_session` used to answer `null` for both "nothing was saved" and
@@ -78,6 +83,7 @@ pub struct ScheduleRequest {
 pub struct ScheduleResult {
     events: Vec<aimaira::CalendarEvent>,
     fetched_at: u64,
+    stale: bool,
 }
 
 #[derive(Serialize)]
@@ -98,8 +104,77 @@ pub struct QuestionnaireDetailRequest {
     response_path: String,
 }
 
+/// Where a portal page came from, so the caller knows whether it still has to
+/// be written to disk.
+enum PortalPageSource {
+    /// A still-valid copy from the session cache. It was persisted when it was
+    /// first fetched, so there is nothing left to write.
+    Memory(aimaira::PortalPage),
+    Portal(aimaira::PortalPage),
+}
+
 fn account_key(portal_url: &url::Url, username: &str) -> String {
     aimaira::stable_hash_hex(&[portal_url.as_str(), username])
+}
+
+/// The account a snapshot belongs to, from the session when one is open and
+/// from the saved identity otherwise. That fallback is the point of the whole
+/// feature: a cold start with no network has no session, and that is exactly
+/// when the stored snapshots have to be found.
+async fn resolve_account_key(state: &State<'_, SessionState>) -> Option<String> {
+    if let Some(key) = session_account_key(state) {
+        return Some(key);
+    }
+    let (portal_url, username) = tauri::async_runtime::spawn_blocking(credentials::load_identity)
+        .await
+        .ok()?
+        .ok()??;
+    Some(account_key(&portal_url, &username))
+}
+
+fn session_account_key(state: &State<'_, SessionState>) -> Option<String> {
+    let guard = state.0.lock().ok()?;
+    let session = guard.as_ref()?;
+    Some(account_key(&session.portal_url, &session.username))
+}
+
+fn has_session(state: &State<'_, SessionState>) -> bool {
+    state.0.lock().map(|guard| guard.is_some()).unwrap_or(false)
+}
+
+/// Whether a failed read may be answered from disk instead.
+///
+/// Everything may, except a session the portal itself rejected. Both cases
+/// arrive here as `session_expired` — one because no session is open at all,
+/// which is the cold offline start this feature exists for, the other because
+/// the portal redirected a live session to its login page. Only the first is a
+/// candidate for a snapshot: replaying one for the second would leave the
+/// reader on data frozen forever, with nothing on screen offering the sign-in
+/// that `DESIGN.md` makes the required action for an expired session.
+fn may_serve_snapshot(had_session: bool, error: &CommandError) -> bool {
+    !(had_session && error.code == "session_expired")
+}
+
+/// `has_snapshots` only ever widens what the startup screen may offer, so a
+/// storage failure answers "nothing stored" instead of failing the call that
+/// screen needs in order to paint itself.
+async fn describe_identity(
+    portal_store: &State<'_, PortalStore>,
+    portal_url: url::Url,
+    username: String,
+) -> SavedIdentityInfo {
+    let store = portal_store.inner().clone();
+    let key = account_key(&portal_url, &username);
+    let has_snapshots = tauri::async_runtime::spawn_blocking(move || store.has_snapshots(&key))
+        .await
+        .map(|stored| stored.unwrap_or(false))
+        .unwrap_or(false);
+
+    SavedIdentityInfo {
+        portal_url: portal_url.to_string(),
+        username,
+        has_snapshots,
+    }
 }
 
 #[tauri::command]
@@ -154,21 +229,26 @@ pub async fn login(
 /// screen can decide between a restore wait and the login form on its first
 /// paint instead of flashing the form.
 #[tauri::command]
-pub async fn saved_identity() -> Result<Option<SavedIdentityInfo>, CommandError> {
+pub async fn saved_identity(
+    portal_store: State<'_, PortalStore>,
+) -> Result<Option<SavedIdentityInfo>, CommandError> {
     let identity = tauri::async_runtime::spawn_blocking(credentials::load_identity)
         .await
         .map_err(|_| CommandError::new("credential_store"))?
         .map_err(|_| CommandError::new("credential_store"))?;
 
-    Ok(identity.map(|(portal_url, username)| SavedIdentityInfo {
-        portal_url: portal_url.to_string(),
-        username,
-    }))
+    let Some((portal_url, username)) = identity else {
+        return Ok(None);
+    };
+    Ok(Some(
+        describe_identity(&portal_store, portal_url, username).await,
+    ))
 }
 
 #[tauri::command]
 pub async fn restore_session(
     state: State<'_, SessionState>,
+    portal_store: State<'_, PortalStore>,
 ) -> Result<RestoreResult, CommandError> {
     let Some(saved) = tauri::async_runtime::spawn_blocking(credentials::load_credentials)
         .await
@@ -182,10 +262,12 @@ pub async fn restore_session(
         });
     };
 
-    let identity = SavedIdentityInfo {
-        portal_url: saved.portal_url.to_string(),
-        username: saved.username.clone(),
-    };
+    let identity = describe_identity(
+        &portal_store,
+        saved.portal_url.clone(),
+        saved.username.clone(),
+    )
+    .await;
     let mut password = saved.password;
     let authenticated =
         aimaira::authenticate(saved.portal_url, &saved.username, &password, true).await;
@@ -194,7 +276,10 @@ pub async fn restore_session(
     let authenticated = match authenticated {
         Ok(authenticated) => authenticated,
         Err(error) if error.code == "invalid_credentials" => {
-            let _ = tauri::async_runtime::spawn_blocking(credentials::clear_saved_credentials).await;
+            // Only the password: the portal disproved it, not the account. The
+            // identity below is handed back to pre-fill the login form, and it
+            // is also what names the snapshots already on disk.
+            let _ = tauri::async_runtime::spawn_blocking(credentials::clear_saved_password).await;
             return Ok(RestoreResult {
                 status: RestoreResult::CREDENTIALS_REJECTED,
                 session: None,
@@ -267,12 +352,35 @@ pub async fn get_planning_settings(
 #[tauri::command]
 pub async fn get_schedule(
     state: State<'_, SessionState>,
+    portal_store: State<'_, PortalStore>,
     request: ScheduleRequest,
 ) -> Result<ScheduleResult, CommandError> {
-    if request.start.trim().is_empty() || !(1..=42).contains(&request.duration) {
+    let start = request.start.trim();
+    if start.is_empty() || !(1..=42).contains(&request.duration) {
         return Err(CommandError::new("invalid_schedule_range"));
     }
+    let range_key = schedule_range_key(start, request.duration);
+    let had_session = has_session(&state);
 
+    match load_schedule_from_portal(&state, start, request.duration).await {
+        Ok(result) => {
+            persist_schedule(&state, &portal_store, &range_key, &result).await;
+            Ok(result)
+        }
+        Err(error) if may_serve_snapshot(had_session, &error) => {
+            stored_schedule(&state, &portal_store, &range_key)
+                .await
+                .ok_or(error)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+async fn load_schedule_from_portal(
+    state: &State<'_, SessionState>,
+    start: &str,
+    duration: u8,
+) -> Result<ScheduleResult, CommandError> {
     let (client, portal_url, tempo_base_url) = state.with_session(|s| {
         (
             s.client.clone(),
@@ -284,29 +392,163 @@ pub async fn get_schedule(
         &client,
         &portal_url,
         tempo_base_url.as_ref(),
-        request.start.trim(),
-        request.duration,
+        start,
+        duration,
     )
     .await?;
-    let fetched_at = aimaira::current_timestamp_millis()?;
 
-    Ok(ScheduleResult { events, fetched_at })
+    Ok(ScheduleResult {
+        events,
+        fetched_at: aimaira::current_timestamp_millis()?,
+        stale: false,
+    })
+}
+
+async fn persist_schedule(
+    state: &State<'_, SessionState>,
+    portal_store: &State<'_, PortalStore>,
+    range_key: &str,
+    result: &ScheduleResult,
+) {
+    let Some(account_key) = resolve_account_key(state).await else {
+        return;
+    };
+    let store = portal_store.inner().clone();
+    let range_key = range_key.to_owned();
+    let events = result.events.clone();
+    let fetched_at = result.fetched_at;
+    // A snapshot that fails to save is not worth failing a range the caller
+    // already holds, so the outcome is dropped rather than propagated.
+    let _ = tauri::async_runtime::spawn_blocking(move || {
+        store.save_schedule(&account_key, &range_key, &events, fetched_at)
+    })
+    .await;
+}
+
+async fn stored_schedule(
+    state: &State<'_, SessionState>,
+    portal_store: &State<'_, PortalStore>,
+    range_key: &str,
+) -> Option<ScheduleResult> {
+    let account_key = resolve_account_key(state).await?;
+    let store = portal_store.inner().clone();
+    let range_key = range_key.to_owned();
+    let stored =
+        tauri::async_runtime::spawn_blocking(move || store.load_schedule(&account_key, &range_key))
+            .await
+            .ok()?
+            .ok()??;
+
+    Some(ScheduleResult {
+        events: stored.events,
+        fetched_at: stored.fetched_at,
+        stale: true,
+    })
 }
 
 #[tauri::command]
 pub async fn get_portal_resource(
     state: State<'_, SessionState>,
+    portal_store: State<'_, PortalStore>,
     resource: aimaira::PortalResource,
     force: Option<bool>,
 ) -> Result<aimaira::PortalPage, CommandError> {
-    load_cached_portal_resource(&state, resource, force.unwrap_or(false)).await
+    load_cached_portal_resource(&state, &portal_store, resource, force.unwrap_or(false)).await
 }
 
+/// Three tiers, in order: the session cache, the portal, then the on-disk
+/// snapshot. The last one is what lets the app open with no network at all; it
+/// keeps the timestamp of the fetch it came from and is flagged `stale`.
 async fn load_cached_portal_resource(
     state: &State<'_, SessionState>,
+    portal_store: &State<'_, PortalStore>,
     resource: aimaira::PortalResource,
     force: bool,
 ) -> Result<aimaira::PortalPage, CommandError> {
+    let had_session = has_session(state);
+
+    match fetch_portal_resource(state, resource, force).await {
+        Ok(PortalPageSource::Memory(page)) => Ok(page),
+        Ok(PortalPageSource::Portal(page)) => {
+            persist_portal_page(state, portal_store, &page).await;
+            Ok(page)
+        }
+        Err(error) if may_serve_snapshot(had_session, &error) => {
+            stored_portal_page(state, portal_store, resource)
+                .await
+                .ok_or(error)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+async fn persist_portal_page(
+    state: &State<'_, SessionState>,
+    portal_store: &State<'_, PortalStore>,
+    page: &aimaira::PortalPage,
+) {
+    let Some(account_key) = resolve_account_key(state).await else {
+        return;
+    };
+    let store = portal_store.inner().clone();
+    let page = page.clone();
+    // A snapshot that fails to save is not worth failing a page the caller
+    // already holds, so the outcome is dropped rather than propagated.
+    let _ =
+        tauri::async_runtime::spawn_blocking(move || store.save_portal_page(&account_key, &page))
+            .await;
+}
+
+async fn stored_portal_page(
+    state: &State<'_, SessionState>,
+    portal_store: &State<'_, PortalStore>,
+    resource: aimaira::PortalResource,
+) -> Option<aimaira::PortalPage> {
+    let account_key = resolve_account_key(state).await?;
+    let store = portal_store.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || store.load_portal_page(&account_key, resource))
+        .await
+        .ok()?
+        .ok()?
+}
+
+/// Stamps the request that is about to leave, so the page it brings back can be
+/// matched to it rather than to whatever the session has done since.
+///
+/// Split out of `fetch_portal_resource`, together with the check below, because
+/// the command they serve needs a Tauri `State` no unit test can build — and
+/// what they enforce (a result never lands in a session that did not ask for
+/// it) is the one part worth pinning.
+fn issue_request_version(session: &mut AimairaSession, resource: aimaira::PortalResource) -> u64 {
+    session
+        .portal_cache_versions
+        .entry(resource)
+        .and_modify(|version| *version += 1)
+        .or_insert(1)
+        .to_owned()
+}
+
+/// Whether the page that just arrived is still the one the session is waiting
+/// for. A logout, a sign-in as somebody else, or a newer read of the same
+/// resource all make it stale, and caching a stale page would serve one
+/// account's portal to the session that replaced it.
+fn answers_the_pending_request(
+    session: &AimairaSession,
+    resource: aimaira::PortalResource,
+    session_id: u64,
+    portal_url: &url::Url,
+    request_version: u64,
+) -> bool {
+    session.id == session_id
+        && session.portal_url == *portal_url
+        && session.portal_cache_versions.get(&resource) == Some(&request_version)
+}
+
+async fn fetch_portal_resource(
+    state: &State<'_, SessionState>,
+    resource: aimaira::PortalResource,
+    force: bool,
+) -> Result<PortalPageSource, CommandError> {
     let (client, portal_url, session_id, request_version) = {
         let mut session = state
             .0
@@ -318,16 +560,11 @@ async fn load_cached_portal_resource(
         if !force {
             if let Some(cached) = session.portal_cache.get(&resource) {
                 if cached.expires_at > Instant::now() {
-                    return Ok(cached.page.clone());
+                    return Ok(PortalPageSource::Memory(cached.page.clone()));
                 }
             }
         }
-        let request_version = session
-            .portal_cache_versions
-            .entry(resource)
-            .and_modify(|version| *version += 1)
-            .or_insert(1)
-            .to_owned();
+        let request_version = issue_request_version(session, resource);
         (
             session.client.clone(),
             session.portal_url.clone(),
@@ -342,9 +579,7 @@ async fn load_cached_portal_resource(
         .lock()
         .map_err(|_| CommandError::new("internal_error"))?;
     if let Some(session) = session.as_mut() {
-        if session.id == session_id
-            && session.portal_url == portal_url
-            && session.portal_cache_versions.get(&resource) == Some(&request_version)
+        if answers_the_pending_request(session, resource, session_id, &portal_url, request_version)
         {
             session.portal_cache.insert(
                 resource,
@@ -355,45 +590,50 @@ async fn load_cached_portal_resource(
             );
         }
     }
-    Ok(page)
+    Ok(PortalPageSource::Portal(page))
 }
 
 #[tauri::command]
 pub async fn sync_grades(
     state: State<'_, SessionState>,
     grade_store: State<'_, GradeSyncStore>,
+    portal_store: State<'_, PortalStore>,
     force: Option<bool>,
 ) -> Result<GradeSyncResult, CommandError> {
-    let (portal_url, username) =
-        state.with_session(|s| (s.portal_url.clone(), s.username.clone()))?;
-    let page = load_cached_portal_resource(&state, aimaira::PortalResource::Grades, force.unwrap_or(false)).await?;
-    let grades = aimaira::extract_grades(&page);
-    let latest_grades = aimaira::extract_latest_grades(&page);
-    if page.markup_recognized && grades.is_empty() {
+    let account_key = resolve_account_key(&state)
+        .await
+        .ok_or_else(|| CommandError::new("session_expired"))?;
+    let page = load_cached_portal_resource(
+        &state,
+        &portal_store,
+        aimaira::PortalResource::Grades,
+        force.unwrap_or(false),
+    )
+    .await?;
+
+    // A page replayed from disk says nothing about what the portal holds now,
+    // so the stored rows are read back as they are. Running them through the
+    // diff would announce, as new, grades the reader has already been shown.
+    if page.stale {
+        let store = grade_store.inner().clone();
+        return run_grade_store(move || store.stored_snapshot(&account_key)).await;
+    }
+
+    // The whole history is what tells us the page parsed at all: the most
+    // recent school year is legitimately empty in the days after it opens.
+    if page.markup_recognized && aimaira::extract_grades(&page).is_empty() {
         return Err(CommandError::new("grades_invalid_response"));
     }
+    let latest_grades = aimaira::extract_latest_grades(&page);
     let store = grade_store.inner().clone();
-    let account_key = account_key(&portal_url, &username);
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut result = store.sync(&account_key, grades)?;
-        result.grades = latest_grades;
-        Ok::<GradeSyncResult, String>(result)
-    })
-        .await
-        .map_err(|_| CommandError::new("grade_storage_unavailable"))?
-        .map_err(|_| CommandError::new("grade_storage_unavailable"))
+    run_grade_store(move || store.persist(&account_key, latest_grades)).await
 }
 
-#[tauri::command]
-pub async fn mark_grade_alerts_read(
-    state: State<'_, SessionState>,
-    grade_store: State<'_, GradeSyncStore>,
-) -> Result<(), CommandError> {
-    let (portal_url, username) =
-        state.with_session(|s| (s.portal_url.clone(), s.username.clone()))?;
-    let store = grade_store.inner().clone();
-    let account_key = account_key(&portal_url, &username);
-    tauri::async_runtime::spawn_blocking(move || store.mark_alerts_read(&account_key))
+async fn run_grade_store<F>(operation: F) -> Result<GradeSyncResult, CommandError>
+where
+    F: FnOnce() -> Result<GradeSyncResult, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(operation)
         .await
         .map_err(|_| CommandError::new("grade_storage_unavailable"))?
         .map_err(|_| CommandError::new("grade_storage_unavailable"))
@@ -404,8 +644,7 @@ pub async fn download_portal_document(
     state: State<'_, SessionState>,
     request: DocumentRequest,
 ) -> Result<tauri::ipc::Response, CommandError> {
-    let (client, portal_url) =
-        state.with_session(|s| (s.client.clone(), s.portal_url.clone()))?;
+    let (client, portal_url) = state.with_session(|s| (s.client.clone(), s.portal_url.clone()))?;
     let body = aimaira::download_portal_document(&client, &portal_url, request.request_path.trim())
         .await?;
     Ok(tauri::ipc::Response::new(body))
@@ -432,4 +671,127 @@ pub async fn logout(state: State<'_, SessionState>) -> Result<(), CommandError> 
         .lock()
         .map_err(|_| CommandError::new("internal_error"))? = None;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::{answers_the_pending_request, issue_request_version, may_serve_snapshot};
+    use crate::aimaira::{PlanningSettings, PortalResource};
+    use crate::error::CommandError;
+    use crate::state::AimairaSession;
+
+    fn session(id: u64, portal: &str) -> AimairaSession {
+        AimairaSession {
+            id,
+            client: reqwest::Client::new(),
+            portal_url: url::Url::parse(portal).expect("a valid portal URL"),
+            username: "student".to_owned(),
+            planning: PlanningSettings::default(),
+            portal_cache: HashMap::new(),
+            portal_cache_versions: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn a_portal_that_rejects_a_live_session_is_never_answered_from_disk() {
+        let expired = CommandError::new("session_expired");
+
+        // No session open: the cold offline start this feature exists for.
+        assert!(may_serve_snapshot(false, &expired));
+        // A live session the portal just refused. Replaying a snapshot here
+        // would hide the expiry and strand the reader on frozen data.
+        assert!(!may_serve_snapshot(true, &expired));
+    }
+
+    #[test]
+    fn an_unreachable_portal_is_answered_from_disk_either_way() {
+        for code in ["portal_unreachable", "grades_unavailable", "internal_error"] {
+            let error = CommandError::new(code);
+            assert!(may_serve_snapshot(true, &error), "{code} with a session");
+            assert!(may_serve_snapshot(false, &error), "{code} without one");
+        }
+    }
+
+    #[test]
+    fn a_page_that_arrives_after_a_logout_is_never_cached_for_whoever_signed_in_next() {
+        let mut first = session(1, "https://portal.example.test/");
+        let version = issue_request_version(&mut first, PortalResource::Grades);
+        let portal_url = first.portal_url.clone();
+
+        // The reader logs out mid-flight and someone else signs in. Only the
+        // request is still in the air; the session it belonged to is gone.
+        let replacement = session(2, "https://portal.example.test/");
+
+        assert!(!answers_the_pending_request(
+            &replacement,
+            PortalResource::Grades,
+            first.id,
+            &portal_url,
+            version,
+        ));
+    }
+
+    #[test]
+    fn the_same_account_pointed_at_another_portal_does_not_inherit_the_answer() {
+        let mut session = session(1, "https://portal.example.test/");
+        let version = issue_request_version(&mut session, PortalResource::Profile);
+        let old_portal = session.portal_url.clone();
+        session.portal_url = url::Url::parse("https://other.example.test/").unwrap();
+
+        assert!(!answers_the_pending_request(
+            &session,
+            PortalResource::Profile,
+            session.id,
+            &old_portal,
+            version,
+        ));
+    }
+
+    #[test]
+    fn only_the_newest_read_of_a_resource_writes_itself_into_the_cache() {
+        let mut session = session(1, "https://portal.example.test/");
+        let portal_url = session.portal_url.clone();
+
+        let first = issue_request_version(&mut session, PortalResource::Absences);
+        let second = issue_request_version(&mut session, PortalResource::Absences);
+        assert_ne!(first, second);
+
+        // A forced refresh overtakes a slow read already in flight. The slow
+        // one coming back last must not put the older page back on top.
+        assert!(!answers_the_pending_request(
+            &session,
+            PortalResource::Absences,
+            session.id,
+            &portal_url,
+            first,
+        ));
+        assert!(answers_the_pending_request(
+            &session,
+            PortalResource::Absences,
+            session.id,
+            &portal_url,
+            second,
+        ));
+    }
+
+    #[test]
+    fn each_resource_is_versioned_on_its_own() {
+        let mut session = session(1, "https://portal.example.test/");
+        let portal_url = session.portal_url.clone();
+
+        let grades = issue_request_version(&mut session, PortalResource::Grades);
+        // Reading another resource must not invalidate the grades read that is
+        // still in flight — the shell loads all five at once.
+        issue_request_version(&mut session, PortalResource::Documents);
+
+        assert!(answers_the_pending_request(
+            &session,
+            PortalResource::Grades,
+            session.id,
+            &portal_url,
+            grades,
+        ));
+    }
 }

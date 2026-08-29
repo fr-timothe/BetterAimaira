@@ -1,5 +1,15 @@
+<script module lang="ts">
+  /**
+   * The view the reader was last on, carried across the shell's remounts. The
+   * shell is keyed on the language, and the language switch lives in More, so
+   * without this the reader is thrown back to Today the moment they use it.
+   * Scoped to the account so signing in as somebody else starts on Today.
+   */
+  let lastVisited: { account: string; view: ScheduleView } | null = null;
+</script>
+
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { invoke, isTauri } from "$lib/invoke";
   import {
     AlertCircle,
@@ -14,10 +24,12 @@
   import Logo from "$lib/assets/Logo.svelte";
   import PageShell from "$lib/components/ui/PageShell.svelte";
   import PullToRefresh from "$lib/components/ui/PullToRefresh.svelte";
+  import SessionExpiredCard from "$lib/components/ui/SessionExpiredCard.svelte";
   import StateCard from "$lib/components/ui/StateCard.svelte";
   import * as m from "$lib/paraglide/messages.js";
   import type { Locale } from "$lib/paraglide/runtime.js";
   import { connectivity } from "$lib/state/connectivity.svelte";
+  import { sessionRecovery } from "$lib/state/session-recovery.svelte";
   import { updates } from "$lib/features/updates/updates.svelte";
   import UpdateNotice from "$lib/features/updates/UpdateNotice.svelte";
   import HomeView from "./HomeView.svelte";
@@ -25,7 +37,6 @@
   import AbsencesViewSkeleton from "./AbsencesViewSkeleton.svelte";
   import AccountViewSkeleton from "./AccountViewSkeleton.svelte";
   import CalendarViewSkeleton from "./CalendarViewSkeleton.svelte";
-  import GradeAlertDrawer from "./GradeAlertDrawer.svelte";
   import { isSameWeek, startOfDay, startOfWeek } from "./date-utils";
   import { openExternalUrl } from "./course-utils";
   import { getDisplayName, getPortalHost } from "./portal-utils";
@@ -71,16 +82,18 @@
     onLogout,
   }: Props = $props();
 
-  let activeView = $state<ScheduleView>("today");
+  // Read once, at mount: which account this shell belongs to cannot change
+  // without a remount, so tracking `username` here would only invite the
+  // initialiser to be mistaken for a derived.
+  let activeView = $state<ScheduleView>(
+    untrack(() => (lastVisited?.account === username ? lastVisited.view : "today"))
+  );
   let weekStart = $state(startOfWeek(new Date()));
   let selectedDate = $state(startOfDay(new Date()));
   let now = $state(new Date());
   let schedule = $state<ScheduleState>({ kind: "loading" });
   let grades = $state<Grade[]>([]);
   let gradeSyncState = $state<GradeSyncState>({ kind: "loading" });
-  let unreadGradeAlerts = $state<Grade[]>([]);
-  let drawerAlerts = $state<Grade[]>([]);
-  let gradeAlertDrawerOpen = $state(false);
   let scheduleRefreshing = $state(false);
   let scheduleRefreshFailed = $state(false);
   /**
@@ -112,7 +125,6 @@
   const backendAvailable = isTauri();
 
   const copy = $derived.by(() => {
-    locale;
     return {
       appName: m.app_name(),
       navToday: m.nav_today(),
@@ -127,7 +139,6 @@
       accountLabel: m.account_label(),
       credentialsWarning: m.credentials_not_saved(),
       openTempo: m.open_tempo(),
-      backToLogin: m.back_to_login(),
       retry: m.planning_retry(),
       errorHeading: m.planning_error_heading(),
       offlineHeading: m.sync_offline(),
@@ -166,6 +177,9 @@
     };
     startClock();
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    // A remount can land on a lazily loaded view, so fetch that one first and
+    // let the rest arrive with the ordinary preload.
+    void loadViewComponent(activeView);
     const preloadTimer = window.setTimeout(() => void preloadViewComponents(), 0);
     // The signed-in shell is the only place the notice is allowed to speak, and
     // it is on screen now. The check itself started at boot and is throttled, so
@@ -180,6 +194,19 @@
       stopClock();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
+  });
+
+  /**
+   * A recovered session is built from scratch by the Rust side, with the
+   * planning preferences back at their defaults, so `sundaysVisible` would
+   * silently revert on every replay. Re-reading the settings is the whole of
+   * the repair — the counter is deliberately not a general "session changed"
+   * broadcast, and this is its only consumer. `untrack` keeps the effect
+   * depending on the counter alone.
+   */
+  $effect(() => {
+    if (sessionRecovery.recoveries === 0) return;
+    untrack(() => void loadPlanningSettings());
   });
 
   async function loadInitialSchedule() {
@@ -207,21 +234,39 @@
     schedule = nextState;
   }
 
-  async function syncGrades(force = false) {
+  /**
+   * `afterRecovery` marks the one retry a replayed session is allowed. It is
+   * internal: no caller passes it, and it is what stops a portal that keeps
+   * answering `session_expired` from recovering and re-fetching forever.
+   */
+  async function syncGrades(force = false, afterRecovery = false) {
     if (!backendAvailable) return;
 
     try {
       const result = await invoke<GradeSyncResult>("sync_grades", { force });
       grades = result.grades;
-      unreadGradeAlerts = result.unreadAlerts;
       gradeSyncState = { kind: "ready" };
     } catch (error) {
+      // Intercepted here, before the error state is committed: an expired
+      // session is a password replay away, and letting the failure land first
+      // would flash a state the reader never needed to see.
+      if (!afterRecovery && parseScheduleError(error) === "session_expired") {
+        if (await sessionRecovery.recover()) {
+          await syncGrades(true, true);
+          return;
+        }
+      }
       if (gradeSyncState.kind === "loading") gradeSyncState = { kind: "error" };
       console.error("Failed to sync grades", error);
     }
   }
 
-  async function loadSchedule(startDate: Date, durationDays = DEFAULT_WEEK_DURATION, force = false) {
+  async function loadSchedule(
+    startDate: Date,
+    durationDays = DEFAULT_WEEK_DURATION,
+    force = false,
+    afterRecovery = false
+  ) {
     if (!backendAvailable) return;
 
     const key = scheduleCacheKey(startDate, durationDays);
@@ -232,6 +277,7 @@
         events: cached.result.events,
         fetchedAt: cached.result.fetchedAt,
         cacheKey: key,
+        stale: cached.result.stale,
       });
       return;
     }
@@ -251,10 +297,15 @@
       }
       const result = await pending;
       pendingSchedules.delete(key);
-      scheduleCache.set(key, {
-        result,
-        expiresAt: Date.now() + SCHEDULE_CACHE_TTL_MS,
-      });
+      // A stale result is the Rust side answering from its local snapshot
+      // because the portal was unreachable. Caching it here would keep serving
+      // it after the network returns, so only a live answer is memoised.
+      if (!result.stale) {
+        scheduleCache.set(key, {
+          result,
+          expiresAt: Date.now() + SCHEDULE_CACHE_TTL_MS,
+        });
+      }
 
       if (currentSequence !== requestSequence) return;
 
@@ -264,11 +315,25 @@
         events: result.events,
         fetchedAt: result.fetchedAt,
         cacheKey: key,
+        stale: result.stale,
       });
     } catch (error) {
       pendingSchedules.delete(key);
       if (currentSequence !== requestSequence) return;
       const code = parseScheduleError(error);
+      // The expiry is caught here rather than watched from an effect: an effect
+      // would let `error` land first, mounting an assertive card that cuts a
+      // screen reader off mid-sentence and then disappears. `afterRecovery`
+      // makes this exactly one retry, so a session that dies again on the
+      // replayed read falls through to the error state below.
+      if (code === "session_expired" && !afterRecovery) {
+        const recovered = await sessionRecovery.recover();
+        if (currentSequence !== requestSequence) return;
+        if (recovered) {
+          await loadSchedule(startDate, durationDays, true, true);
+          return;
+        }
+      }
       // Data already on screen is kept and marked as failed rather than thrown
       // away: an expired session is the one failure a retry cannot fix, so it
       // still takes over the view.
@@ -294,25 +359,6 @@
     });
   }
 
-  function openGradeAlerts() {
-    drawerAlerts = [...unreadGradeAlerts];
-    gradeAlertDrawerOpen = true;
-  }
-
-  async function closeGradeAlerts() {
-    gradeAlertDrawerOpen = false;
-    if (drawerAlerts.length === 0 || !backendAvailable) return;
-    try {
-      await invoke("mark_grade_alerts_read");
-      unreadGradeAlerts = unreadGradeAlerts.filter(
-        (alert) => !drawerAlerts.some((dismissed) => dismissed.id === alert.id)
-      );
-      drawerAlerts = [];
-    } catch (error) {
-      console.error("Failed to dismiss grade alerts", error);
-    }
-  }
-
   function parseScheduleError(error: unknown): ScheduleErrorCode {
     if (typeof error === "object" && error !== null && "code" in error && typeof error.code === "string") {
       switch (error.code) {
@@ -328,7 +374,6 @@
   }
 
   function scheduleErrorMessage(code: ScheduleErrorCode) {
-    locale;
     switch (code) {
       case "session_expired": return m.planning_session_expired();
       case "planning_unavailable": return m.planning_unavailable();
@@ -350,6 +395,7 @@
   function setView(view: ScheduleView) {
     void loadViewComponent(view);
     activeView = view;
+    lastVisited = { account: username, view };
     if (view === "today" && !isSameWeek(weekStart, now)) {
       weekStart = startOfWeek(new Date());
       selectedDate = startOfDay(new Date());
@@ -445,12 +491,6 @@
   const tooltipTitle = 'text-xs leading-[1.3] font-bold';
   const tooltipSub = 'text-2xs leading-[1.3] font-semibold opacity-72';
 
-  // A count badge hangs off the icon's own box: the offsets are optical nudges,
-  // not spacing steps, and a hairline ring detaches it from the glyph beneath.
-  const countBadge =
-    'absolute grid place-items-center rounded-pill border-[1.5px] border-card bg-primary' +
-    ' px-1 text-2xs font-extrabold tabular-nums text-primary-foreground';
-
   const dockPill =
     'flex min-h-11 flex-col items-center justify-center gap-[0.15rem] rounded-lg' +
     ' bg-transparent px-[0.15rem] py-1 transition-control active:scale-(--press-scale)';
@@ -522,13 +562,8 @@
           aria-current={isActive ? "page" : undefined}
           aria-label={item.label}
         >
-          <div class="relative grid shrink-0 place-items-center">
+          <div class="grid shrink-0 place-items-center">
             <Icon size={19} aria-hidden="true" />
-            {#if item.id === "grades" && unreadGradeAlerts.length > 0}
-              <span class={cn(countBadge, '-top-[3px] -right-[6px] h-[0.85rem] min-w-[0.85rem]')}
-                >{unreadGradeAlerts.length}</span
-              >
-            {/if}
           </div>
           <span class={tooltip} aria-hidden="true">
             <span class={tooltipTitle}>{item.label}</span>
@@ -600,13 +635,8 @@
             aria-current={isActive ? "page" : undefined}
             onclick={() => setView(item.id)}
           >
-            <div class="relative flex items-center justify-center">
+            <div class="flex items-center justify-center">
               <Icon size={20} strokeWidth={isActive ? 2.4 : 1.9} aria-hidden="true" />
-              {#if item.id === "grades" && unreadGradeAlerts.length > 0}
-                <span class={cn(countBadge, '-top-[3px] -right-[7px] h-[0.95rem] min-w-[0.95rem]')}
-                  >{unreadGradeAlerts.length}</span
-                >
-              {/if}
             </div>
             <span class={cn(dockLabel, isActive && 'font-extrabold')}>{item.label}</span>
           </button>
@@ -663,22 +693,6 @@
           </div>
         {/if}
 
-        {#if unreadGradeAlerts.length > 0 && activeView === "today"}
-          <button
-            class={cn(
-              banner,
-              'min-h-(--tap-min) border border-muted-strong bg-muted text-left font-bold',
-              'text-primary-deep transition-control active:scale-(--press-scale)',
-              'fine-hover:bg-muted-strong'
-            )}
-            type="button"
-            onclick={openGradeAlerts}
-          >
-            <BookOpenCheck size={19} aria-hidden="true" />
-            <span>{m.new_grades_banner({ count: unreadGradeAlerts.length })}</span>
-          </button>
-        {/if}
-
         {#if !backendAvailable}
           <!-- No Rust side means no portal session and no data. Naming that is the
                only honest thing this shell can render. -->
@@ -721,7 +735,7 @@
               <div class="mx-5 my-8">
                 {#if !connectivity.online}
                   <StateCard
-                    kind="error"
+                    kind="offline"
                     icon={CloudOff}
                     title={copy.offlineHeading}
                     description={copy.offlineDescription}
@@ -729,13 +743,10 @@
                     onAction={() => refreshVisibleSchedule()}
                   />
                 {:else if schedule.code === "session_expired"}
-                  <StateCard
-                    kind="expired"
-                    icon={AlertCircle}
-                    title={copy.errorHeading}
-                    description={scheduleErrorMessage(schedule.code)}
-                    actionLabel={copy.backToLogin}
-                    onAction={onLogout}
+                  <SessionExpiredCard
+                    onRetry={() => refreshVisibleSchedule()}
+                    {onLogout}
+                    {locale}
                   />
                 {:else}
                   <StateCard
@@ -814,15 +825,6 @@
     <div class="update-notice-slot pointer-events-none absolute z-overlay flex">
       <UpdateNotice {locale} onOpen={openUpdateCard} />
     </div>
-
-    {#if gradeAlertDrawerOpen}
-      <GradeAlertDrawer
-        alerts={drawerAlerts}
-        {locale}
-        onClose={closeGradeAlerts}
-        onOpenGrades={() => setView("grades")}
-      />
-    {/if}
   </div>
 </div>
 

@@ -44,8 +44,11 @@
     md: 'gap-1 rounded-md p-1'
   } as const satisfies Record<NonNullable<Props['size']>, string>;
 
+  // `--tap-min` is a floor, and the design system names compact controls as
+  // covered by it, so `sm` differs from `md` in rounding, padding and type —
+  // never in height.
   const segmentSizes = {
-    sm: 'min-h-7 rounded-xs px-2 text-xs font-medium',
+    sm: 'min-h-(--tap-min) rounded-xs px-2 text-xs font-medium',
     md: 'min-h-(--tap-min) rounded-sm px-3 text-sm font-semibold'
   } as const satisfies Record<NonNullable<Props['size']>, string>;
 </script>

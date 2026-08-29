@@ -4,9 +4,8 @@
 
 BetterAimaira connects intranet data with external applications and operating system features.
 
-Only section 4 ships today. Sections 1 to 3 are specifications for work that has
-not started: no `.ics` endpoint, webhook sender, widget or tray surface exists in
-the codebase yet.
+Nothing here ships today. Both sections are specifications for work that has not
+started: no `.ics` endpoint, widget or tray surface exists in the codebase yet.
 
 ---
 
@@ -19,28 +18,10 @@ the codebase yet.
 
 ---
 
-## 2. Discord and Telegram webhooks — planned
-
-Automated alerts can be configured for Discord or Telegram channels:
-
-1. **New grade notifications.** Triggered when new grades appear during application grade checks, sending subject, grade, coefficient, and updated average.
-2. **Schedule change alerts.** Triggered when class times or rooms change, sending a formatted diff summary.
-
----
-
-## 3. Desktop and mobile widgets — planned
+## 2. Desktop and mobile widgets — planned
 
 | Platform | Widget Type | Features |
 |---|---|---|
 | **Android / iOS** | Home Screen Widget (`Glance` / `WidgetKit`) | Next class name, room, countdown, and attendance status |
 | **Windows** | System Tray and Taskbar badge | Current class, next room, attendance quick view |
 | **macOS** | Menu Bar Item | Compact countdown display (for example, `Next: B204 in 12m`) |
-
----
-
-## 4. In-app grade alerts — implemented
-
-- Triggered on authenticated application launch when `/Note` is fetched and compared with SQLite grade fingerprints.
-- The initial sync stores existing grades without alert popups.
-- Subsequent syncs display new grades in a Home banner and notification drawer.
-- Grade checks run only while the application is active; no background daemon, cloud relay, or push service is used.

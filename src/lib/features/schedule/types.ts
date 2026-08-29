@@ -12,6 +12,12 @@ export type CalendarEvent = {
 export type ScheduleResult = {
   events: CalendarEvent[];
   fetchedAt: number;
+  /**
+   * The portal could not be reached and this came off the local snapshot.
+   * `fetchedAt` is then the age of that snapshot, not the age of this call, so
+   * the freshness label states when the data was really read.
+   */
+  stale: boolean;
 };
 
 export type ScheduleErrorCode =
@@ -23,7 +29,7 @@ export type ScheduleErrorCode =
 
 export type ScheduleState =
   | { kind: 'loading' }
-  | { kind: 'ready'; events: CalendarEvent[]; fetchedAt: number; cacheKey: string }
+  | { kind: 'ready'; events: CalendarEvent[]; fetchedAt: number; cacheKey: string; stale: boolean }
   | { kind: 'error'; code: ScheduleErrorCode };
 
 export type Grade = {
@@ -38,8 +44,8 @@ export type Grade = {
 
 export type GradeSyncResult = {
   grades: Grade[];
-  unreadAlerts: Grade[];
-  initialized: boolean;
+  /** Served from the stored snapshot because the portal was unreachable. */
+  stale: boolean;
 };
 
 export type GradeSyncErrorCode =
@@ -193,6 +199,11 @@ export type PortalPage = {
   /** Only filled for the questionnaires page. */
   questionnaires: QuestionnaireSummary[];
   markupRecognized: boolean;
+  /**
+   * The portal could not be reached and this page came off the local snapshot.
+   * `fetchedAt` then dates the snapshot, which is what the freshness label states.
+   */
+  stale: boolean;
 };
 
 export type PortalResourceErrorCode =

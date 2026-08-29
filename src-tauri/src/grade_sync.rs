@@ -1,48 +1,49 @@
-use std::collections::HashSet;
-use std::fs;
-use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
-
 use rusqlite::{params, Connection};
 use serde::Serialize;
 
 use crate::aimaira::Grade;
+use crate::storage::Storage;
 
 #[derive(Clone)]
 pub struct GradeSyncStore {
-    database_path: PathBuf,
-    schema_status: Arc<OnceLock<Result<(), String>>>,
+    storage: Storage,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GradeSyncResult {
     pub grades: Vec<Grade>,
-    pub unread_alerts: Vec<Grade>,
-    pub initialized: bool,
+    /// Raised when the grades come from the stored snapshots because the portal
+    /// could not be reached.
+    pub stale: bool,
 }
 
 impl GradeSyncStore {
-    pub fn new(database_path: PathBuf) -> Self {
-        Self {
-            database_path,
-            schema_status: Arc::new(OnceLock::new()),
-        }
+    pub fn new(storage: Storage) -> Self {
+        Self { storage }
     }
 
-    pub fn sync(&self, account_key: &str, grades: Vec<Grade>) -> Result<GradeSyncResult, String> {
+    /// Records the grades the portal just returned and hands them straight
+    /// back, so the next offline read replays exactly what the reader saw
+    /// online. The stored rows are a mirror, not a history: everything the
+    /// account had is cleared first, otherwise grades the portal has stopped
+    /// listing — an older school year, a mark the school withdrew — would keep
+    /// surfacing offline long after they left the online view.
+    pub fn persist(
+        &self,
+        account_key: &str,
+        grades: Vec<Grade>,
+    ) -> Result<GradeSyncResult, String> {
         let mut connection = self.open_connection()?;
-        let initialized = connection
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM grade_sync_accounts WHERE account_key = ?1)",
-                [account_key],
-                |row| row.get::<_, bool>(0),
-            )
-            .map_err(|error| error.to_string())?;
         let transaction = connection
             .transaction()
             .map_err(|error| error.to_string())?;
-        let known_ids = known_grade_ids(&transaction, account_key)?;
+        transaction
+            .execute(
+                "DELETE FROM grade_snapshots WHERE account_key = ?1",
+                [account_key],
+            )
+            .map_err(|error| error.to_string())?;
 
         for grade in &grades {
             let grade_json = serde_json::to_string(grade).map_err(|error| error.to_string())?;
@@ -52,104 +53,35 @@ impl GradeSyncStore {
                     params![account_key, grade.id, grade_json],
                 )
                 .map_err(|error| error.to_string())?;
-            if initialized && !known_ids.contains(&grade.id) {
-                transaction
-                    .execute(
-                        "INSERT OR IGNORE INTO grade_alerts (account_key, grade_id) VALUES (?1, ?2)",
-                        params![account_key, grade.id],
-                    )
-                    .map_err(|error| error.to_string())?;
-            }
         }
 
-        transaction
-            .execute(
-                "INSERT OR IGNORE INTO grade_sync_accounts (account_key) VALUES (?1)",
-                [account_key],
-            )
-            .map_err(|error| error.to_string())?;
         transaction.commit().map_err(|error| error.to_string())?;
 
         Ok(GradeSyncResult {
-            unread_alerts: unread_alerts(&connection, account_key)?,
             grades,
-            initialized,
+            stale: false,
         })
     }
 
-    pub fn mark_alerts_read(&self, account_key: &str) -> Result<(), String> {
-        let connection = self.open_connection()?;
-        connection
-            .execute(
-                "UPDATE grade_alerts SET read_at = unixepoch() WHERE account_key = ?1 AND read_at IS NULL",
-                [account_key],
-            )
-            .map_err(|error| error.to_string())?;
-        Ok(())
+    /// The last grades stored for the account, for when the portal is out of
+    /// reach. Nothing is written here: a page the app could not refresh is no
+    /// evidence of what the portal holds now.
+    pub fn stored_snapshot(&self, account_key: &str) -> Result<GradeSyncResult, String> {
+        let connection = self.storage.open_connection()?;
+        Ok(GradeSyncResult {
+            grades: stored_grades(&connection, account_key)?,
+            stale: true,
+        })
     }
 
     fn open_connection(&self) -> Result<Connection, String> {
-        if let Some(parent) = self.database_path.parent() {
-            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        let connection = Connection::open(&self.database_path).map_err(|error| error.to_string())?;
-        self.ensure_schema(&connection)?;
-        Ok(connection)
-    }
-
-    fn ensure_schema(&self, connection: &Connection) -> Result<(), String> {
-        self.schema_status
-            .get_or_init(|| create_schema(connection))
-            .clone()
+        self.storage.open_connection()
     }
 }
 
-fn create_schema(connection: &Connection) -> Result<(), String> {
-    connection
-        .execute_batch(
-            "
-            CREATE TABLE IF NOT EXISTS grade_sync_accounts (
-                account_key TEXT PRIMARY KEY
-            );
-            CREATE TABLE IF NOT EXISTS grade_snapshots (
-                account_key TEXT NOT NULL,
-                grade_id TEXT NOT NULL,
-                grade_json TEXT NOT NULL,
-                PRIMARY KEY (account_key, grade_id)
-            );
-            CREATE TABLE IF NOT EXISTS grade_alerts (
-                account_key TEXT NOT NULL,
-                grade_id TEXT NOT NULL,
-                created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                read_at INTEGER,
-                PRIMARY KEY (account_key, grade_id)
-            );
-            ",
-        )
-        .map_err(|error| error.to_string())
-}
-
-fn known_grade_ids(connection: &Connection, account_key: &str) -> Result<HashSet<String>, String> {
+fn stored_grades(connection: &Connection, account_key: &str) -> Result<Vec<Grade>, String> {
     let mut statement = connection
-        .prepare("SELECT grade_id FROM grade_snapshots WHERE account_key = ?1")
-        .map_err(|error| error.to_string())?;
-    let rows = statement
-        .query_map([account_key], |row| row.get::<_, String>(0))
-        .map_err(|error| error.to_string())?;
-    rows.collect::<Result<HashSet<_>, _>>()
-        .map_err(|error| error.to_string())
-}
-
-fn unread_alerts(connection: &Connection, account_key: &str) -> Result<Vec<Grade>, String> {
-    let mut statement = connection
-        .prepare(
-            "SELECT snapshot.grade_json
-             FROM grade_alerts AS alert
-             INNER JOIN grade_snapshots AS snapshot
-               ON snapshot.account_key = alert.account_key AND snapshot.grade_id = alert.grade_id
-             WHERE alert.account_key = ?1 AND alert.read_at IS NULL
-             ORDER BY alert.created_at DESC",
-        )
+        .prepare("SELECT grade_json FROM grade_snapshots WHERE account_key = ?1 ORDER BY grade_id")
         .map_err(|error| error.to_string())?;
     let rows = statement
         .query_map([account_key], |row| row.get::<_, String>(0))
@@ -163,19 +95,12 @@ fn unread_alerts(connection: &Connection, account_key: &str) -> Result<Vec<Grade
 
 #[cfg(test)]
 mod tests {
-    use std::time::{SystemTime, UNIX_EPOCH};
-
     use super::GradeSyncStore;
     use crate::aimaira::Grade;
+    use crate::storage::{temporary_database_path, Storage};
 
     fn test_store() -> GradeSyncStore {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        GradeSyncStore::new(
-            std::env::temp_dir().join(format!("betteraimaira-grade-sync-{nonce}.sqlite")),
-        )
+        GradeSyncStore::new(Storage::new(temporary_database_path("grade-sync")))
     }
 
     fn grade(id: &str) -> Grade {
@@ -191,28 +116,26 @@ mod tests {
     }
 
     #[test]
-    fn first_sync_is_silent_and_later_grade_is_alerted_once() {
+    fn stored_snapshot_replays_the_grades() {
         let store = test_store();
-        let first = store.sync("account", vec![grade("first")]).unwrap();
-        assert!(!first.initialized);
-        assert!(first.unread_alerts.is_empty());
+        store.persist("account", vec![grade("first")]).unwrap();
 
-        let second = store
-            .sync("account", vec![grade("first"), grade("second")])
-            .unwrap();
-        assert!(second.initialized);
-        assert_eq!(second.unread_alerts.len(), 1);
-        assert_eq!(second.unread_alerts[0].id, "second");
+        let offline = store.stored_snapshot("account").unwrap();
+        assert!(offline.stale);
+        assert_eq!(offline.grades.len(), 1);
+        assert_eq!(offline.grades[0].id, "first");
+    }
 
-        let third = store
-            .sync("account", vec![grade("first"), grade("second")])
+    #[test]
+    fn a_grade_the_portal_stopped_listing_leaves_the_snapshot() {
+        let store = test_store();
+        store
+            .persist("account", vec![grade("first"), grade("second")])
             .unwrap();
-        assert_eq!(third.unread_alerts.len(), 1);
-        store.mark_alerts_read("account").unwrap();
-        assert!(store
-            .sync("account", vec![grade("first"), grade("second")])
-            .unwrap()
-            .unread_alerts
-            .is_empty());
+        store.persist("account", vec![grade("second")]).unwrap();
+
+        let offline = store.stored_snapshot("account").unwrap();
+        assert_eq!(offline.grades.len(), 1);
+        assert_eq!(offline.grades[0].id, "second");
     }
 }

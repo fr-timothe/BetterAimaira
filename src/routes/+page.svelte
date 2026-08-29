@@ -14,7 +14,7 @@
   } from 'lucide-svelte';
   import Logo from '$lib/assets/Logo.svelte';
   import * as m from '$lib/paraglide/messages.js';
-  import { getLocale, setLocale, type Locale } from '$lib/paraglide/runtime.js';
+  import type { Locale } from '$lib/paraglide/runtime.js';
   import { captureEvent } from '$lib/features/analytics/analytics-service';
   import { clearPortalResourceCache } from '$lib/features/schedule/portal-cache';
   import SessionRestoreScreen from '$lib/features/auth/SessionRestoreScreen.svelte';
@@ -24,6 +24,8 @@
   import type { SavedIdentity } from '$lib/features/auth/session';
   import type { School } from '$lib/data/schools';
   import { connectivity } from '$lib/state/connectivity.svelte';
+  import { appLocale } from '$lib/state/locale.svelte';
+  import { sessionRecovery } from '$lib/state/session-recovery.svelte';
   import { updates } from '$lib/features/updates/updates.svelte';
   import { cn } from '$lib/utils';
 
@@ -106,7 +108,19 @@
   let autoRetries = 0;
   let loginResult = $state<LoginResult | null>(null);
   let ScheduleApp = $state<ScheduleAppComponent | null>(null);
-  let locale = $state<Locale>(getLocale());
+  /**
+   * The shell is open on stored snapshots, with no live portal session behind
+   * it. Kept so the network coming back can quietly sign the account in rather
+   * than stranding the reader on data that can never refresh.
+   */
+  let offlineMode = $state(false);
+  /**
+   * Bumped only when an offline start is upgraded to a real session, so the
+   * authenticated shell remounts once and refills from the portal. Nothing else
+   * changes it, so ordinary use never remounts.
+   */
+  let sessionEpoch = $state(0);
+  const locale = $derived(appLocale.current);
   let now = $state(new Date());
   // Read once: the introduction is dismissed inside this session, and re-reading
   // storage on every render would put it back for the frame after the write.
@@ -233,6 +247,15 @@
     if (autoRetries >= MAX_AUTO_RETRIES) return;
     autoRetries += 1;
     void startSession();
+  });
+
+  // The other half of that idea: the app opened on snapshots alone, and the
+  // network has just come back. Sign the saved account in so the views can
+  // actually refresh. Unbounded on purpose — unlike the restore retry above,
+  // this costs nothing while it fails and the reader keeps a usable screen.
+  $effect(() => {
+    if (!connectivity.online || !offlineMode) return;
+    void upgradeOfflineSession();
   });
 
   function startSlowWatchdog() {
@@ -366,6 +389,23 @@
     }
 
     if (!connectivity.online) {
+      // Snapshots on disk are enough to open the app. Signing in is impossible
+      // without the portal, but the schedule, grades and absences last read are
+      // exactly what a reader between two classes came to check, and every
+      // surface states how old they are.
+      if (identity.hasSnapshots) {
+        await openAuthenticatedApp(
+          {
+            portalUrl: identity.portalUrl,
+            username: identity.username,
+            credentialsSaved: true,
+            sundaysVisible: false,
+          },
+          { offline: true }
+        );
+        portalUrl = identity.portalUrl;
+        return;
+      }
       failRestore('portal_unreachable', true);
       return;
     }
@@ -395,18 +435,39 @@
     }
   }
 
-  async function openAuthenticatedApp(result: LoginResult) {
+  async function openAuthenticatedApp(result: LoginResult, { offline = false } = {}) {
     ScheduleApp ??= (await import('$lib/features/schedule/ScheduleApp.svelte')).default;
     loginResult = result;
+    offlineMode = offline;
     autoRetries = 0;
+    // A real sign-in settles every question a past recovery answered, including
+    // the ones it gave up on, so the module starts this session from scratch.
+    sessionRecovery.reset();
     phase = 'ready';
   }
 
-  async function changeLocale(nextLocale: Locale) {
-    await setLocale(nextLocale, { reload: false });
-    locale = nextLocale;
-    document.documentElement.lang = nextLocale;
+  /**
+   * Turns an offline start into a real session once the network is back.
+   *
+   * The shell remounts on success rather than being patched in place: every
+   * view is holding snapshot data that only a live session can replace, and one
+   * remount at the moment connectivity returns is both simpler and more honest
+   * than leaving stale surfaces behind a session that is now live.
+   */
+  async function upgradeOfflineSession() {
+    // Both re-authentication paths now share the recovery module's own
+    // single-flight lock, so the connectivity effect firing twice is already
+    // handled there and no local guard is left to keep.
+    const restored = await sessionRecovery.recover();
+    // Still unreachable, or the portal refused. The shell keeps showing what it
+    // has; the next time connectivity flips, this runs again.
+    if (!restored) return;
+    clearPortalResourceCache();
+    offlineMode = false;
+    sessionEpoch += 1;
   }
+
+  const changeLocale = (nextLocale: Locale) => appLocale.set(nextLocale);
 
   async function logout() {
     try {
@@ -417,9 +478,13 @@
       errorCode = extractErrorCode(error);
     }
     clearPortalResourceCache();
+    // The account is gone from the keyring, so every outcome the module is
+    // holding is about a session that no longer has a password behind it.
+    sessionRecovery.reset();
     loginResult = null;
     ScheduleApp = null;
     savedIdentity = null;
+    offlineMode = false;
     autoRetries = 0;
     password = '';
     phase = 'manual';
@@ -431,15 +496,25 @@
 </svelte:head>
 
 {#if phase === 'ready' && loginResult && ScheduleApp}
-  <ScheduleApp
-    username={loginResult.username}
-    portalUrl={loginResult.portalUrl}
-    {locale}
-    credentialsWarning={remember && !loginResult.credentialsSaved}
-    sundaysVisible={loginResult.sundaysVisible}
-    onLocaleChange={changeLocale}
-    onLogout={logout}
-  />
+  <!-- One composite key, two reasons to rebuild the shell. An offline start
+       that reaches a real session has to refill every view instead of leaving
+       snapshot data behind a live session; and a language change has to re-run
+       every `m.*()` the shell renders, which Paraglide cannot do on its own
+       because its locale is a plain variable, not a signal. The pre-sign-in
+       screens are deliberately outside this: the language switch also sits on
+       the login form, and remounting there would wipe an address, a username
+       and a password the reader had already typed. -->
+  {#key `${sessionEpoch}:${locale}`}
+    <ScheduleApp
+      username={loginResult.username}
+      portalUrl={loginResult.portalUrl}
+      {locale}
+      credentialsWarning={remember && !loginResult.credentialsSaved}
+      sundaysVisible={loginResult.sundaysVisible}
+      onLocaleChange={changeLocale}
+      onLogout={logout}
+    />
+  {/key}
 {:else if introductionPending && atLogin && !savedIdentity}
   <!-- First start only: a device with a saved account has been through this. -->
   <OnboardingScreen {locale} onDone={() => (introductionPending = false)} />

@@ -79,6 +79,7 @@ Layer order is a scale, not a guess: `--z-raised` 10, `--z-sticky` 20, `--z-nav`
 | `PageShell` | the root padding recipe every view shares |
 | `SectionHeader` | icon plate + title + subtitle + actions |
 | `SegmentedControl` | tab bars, including arrow/Home/End keyboard support |
+| `Switch` | on/off preferences, `role="switch"` with `aria-checked`, 44px target, busy state while the answer is being written |
 | `Sheet` | modals and drawers, with focus trap, focus restore, Escape and scroll lock |
 | `Badge` | status tones with optional live dot |
 | `KindBadge` | course category tone, resolved from `courseCategory()` |

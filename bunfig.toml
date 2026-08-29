@@ -1,0 +1,4 @@
+# `.svelte.ts` modules are compiler input, not plain TypeScript. The preload
+# below teaches the test runner to compile them; see the file for why.
+[test]
+preload = ["./scripts/bun-test-svelte-modules.ts"]

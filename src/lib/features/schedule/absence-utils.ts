@@ -131,28 +131,3 @@ export function calculatePresenceRate(totals: AbsenceTotals, blockCount = 1): nu
   const rate = Math.max(0, Math.min(100, ((totalVolume - totals.hours) / totalVolume) * 100));
   return Math.round(rate * 10) / 10;
 }
-
-/**
- * Maps a presence rate (0% to 100%) to a color hue:
- * - 0% -> 0 (Red)
- * - 50% -> 48 (Golden Yellow / Amber)
- * - 100% -> 142 (Emerald Green)
- */
-export function presenceHue(rate: number): number {
-  const clamped = Math.max(0, Math.min(100, Number.isFinite(rate) ? rate : 100));
-  if (clamped <= 50) {
-    const t = clamped / 50;
-    return Math.round(0 + t * 48);
-  }
-  const t = (clamped - 50) / 50;
-  return Math.round(48 + t * (142 - 48));
-}
-
-/**
- * Returns inline CSS variables for adaptive styling on presence cards.
- */
-export function presenceColorStyle(rate: number): string {
-  const clamped = Math.max(0, Math.min(100, Number.isFinite(rate) ? rate : 100));
-  const hue = presenceHue(clamped);
-  return `--presence-hue: ${hue}; --presence-rate: ${clamped}%;`;
-}

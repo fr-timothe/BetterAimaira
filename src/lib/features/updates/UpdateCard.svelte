@@ -55,7 +55,6 @@
   });
 
   const lastChecked = $derived.by(() => {
-    locale;
     if (!updates.lastCheckedAt) return null;
     return new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(
       new Date(updates.lastCheckedAt)
@@ -64,7 +63,6 @@
 
   /** iOS never installs from inside the app: AltStore owns that step. */
   const installLabel = $derived.by(() => {
-    locale;
     switch (info?.delivery) {
       case 'androidPackage':
         return m.update_install_android();
@@ -76,7 +74,6 @@
   });
 
   const errorMessage = $derived.by(() => {
-    locale;
     switch (updates.errorCode) {
       case 'update_download_failed':
         return m.update_error_download();
@@ -92,12 +89,10 @@
   });
 
   const handedOffMessage = $derived.by(() => {
-    locale;
     return info?.delivery === 'altStore' ? m.update_handed_off_store() : m.update_handed_off_system();
   });
 
   const channelOptions = $derived.by(() => {
-    locale;
     return [
       { value: 'stable', label: m.update_channel_stable() },
       { value: 'beta', label: m.update_channel_beta() }

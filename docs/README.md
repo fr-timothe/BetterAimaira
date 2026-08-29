@@ -19,7 +19,7 @@
 | [APP_STRUCTURE_AND_PLATFORMS.md](APP_STRUCTURE_AND_PLATFORMS.md) | Adaptive layout decisions, per-platform expression, native boundaries, release matrix | mixed |
 | [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) | Tokens, palette, breakpoints, adaptive layout rules | implemented |
 | [PERFORMANCE.md](PERFORMANCE.md) | Baseline commands, platform profiling tools, budgets, current safeguards | implemented |
-| [INTEGRATIONS.md](INTEGRATIONS.md) | iCal export, webhooks, widgets, in-app grade alerts | mostly planned |
+| [INTEGRATIONS.md](INTEGRATIONS.md) | iCal export, desktop and mobile widgets | planned |
 
 Two more documents live at the repository root because they are not scoped to the backend:
 

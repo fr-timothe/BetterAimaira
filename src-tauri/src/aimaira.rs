@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use reqwest::{cookie::Jar, Client, Url};
@@ -46,7 +46,7 @@ struct AimairaCalendarEvent {
     commentaire_externe: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CalendarEvent {
     pub id: String,
@@ -243,28 +243,84 @@ pub async fn load_planning_settings(
 }
 
 fn parse_planning_settings(html: &str) -> PlanningSettings {
-    let tempo_link_visible = extract_inline_const(html, "tempoLinkVisible")
+    let document = Html::parse_document(html);
+    let tempo_link_visible = extract_inline_const(&document, "tempoLinkVisible")
         .is_some_and(|value| value.eq_ignore_ascii_case("true"));
     let tempo_base_url = tempo_link_visible
-        .then(|| extract_inline_const(html, "urlTempoSeance"))
+        .then(|| extract_inline_const(&document, "urlTempoSeance"))
         .flatten()
         .and_then(|value| Url::parse(&value).ok())
         .filter(|url| url.scheme() == "https");
 
     PlanningSettings {
         tempo_base_url,
-        sundays_visible: extract_inline_const(html, "sundaysVisible")
+        sundays_visible: extract_inline_const(&document, "sundaysVisible")
             .is_some_and(|value| value.eq_ignore_ascii_case("true")),
     }
 }
 
 /// Reads a `const <name> = '<value>'` literal out of the portal's inline planning script.
-fn extract_inline_const(html: &str, name: &str) -> Option<String> {
-    let declaration = format!("const {name} = '");
-    let start = html.find(&declaration)? + declaration.len();
-    let value = &html[start..];
-    let end = value.find('\'')?;
-    Some(value[..end].to_owned())
+///
+/// Built like `portal::html::extract_script_json`, and for the same reason: the declaration is
+/// hand-written server-side markup that the portal reformats between releases. Matching a
+/// single spelling of it loses the Tempo links and the Sunday column without a single error,
+/// so the keyword, the spacing around `=` and the quote style are all accepted. Scanning the
+/// `<script>` elements rather than the whole page also keeps a comment or an attribute that
+/// happens to contain the same words from answering in the script's place.
+fn extract_inline_const(document: &Html, name: &str) -> Option<String> {
+    let script_selector = Selector::parse("script").ok()?;
+    let declarations = [
+        format!("var {name}"),
+        format!("let {name}"),
+        format!("const {name}"),
+    ];
+
+    for script in document.select(&script_selector) {
+        let source = script.text().collect::<String>();
+        let Some(declaration_start) = declarations
+            .iter()
+            .filter_map(|declaration| source.find(declaration))
+            .min()
+        else {
+            continue;
+        };
+        let Some(assignment) = source[declaration_start..].find('=') else {
+            continue;
+        };
+        if let Some(value) = read_quoted_literal(&source[declaration_start + assignment + 1..]) {
+            return Some(value);
+        }
+    }
+
+    None
+}
+
+/// Reads the JavaScript string literal opening `source`, honouring backslash escapes so a
+/// value such as `'Aujourd\'hui'` is not cut in half at its own apostrophe. The portal only
+/// inlines URLs and booleans here, so an escape stands for the character that follows it
+/// rather than going through a full JavaScript unescape.
+fn read_quoted_literal(source: &str) -> Option<String> {
+    let mut characters = source.trim_start().chars();
+    let quote = characters
+        .next()
+        .filter(|character| matches!(character, '\'' | '"' | '`'))?;
+    let mut value = String::new();
+    let mut escaped = false;
+
+    for character in characters {
+        if escaped {
+            value.push(character);
+            escaped = false;
+        } else if character == '\\' {
+            escaped = true;
+        } else if character == quote {
+            return Some(value);
+        } else {
+            value.push(character);
+        }
+    }
+
+    None
 }
 
 pub fn current_timestamp_millis() -> Result<u64, CommandError> {
@@ -308,18 +364,19 @@ pub(crate) fn html_to_text(value: &str) -> String {
         .replace("</DIV>", "\n");
 
     let document = Html::parse_fragment(&with_newlines);
-    let raw_text = document.root_element().text().collect::<Vec<_>>().join("");
+    // html5ever already decoded every entity while parsing. Un-escaping the text a second
+    // time would eat the escapes a teacher typed on purpose: `&amp;lt;b&amp;gt;` is a
+    // literal `<b>` in a session comment, not markup we are allowed to re-interpret.
+    // The one substitution still worth making is the non-breaking space the portal uses as
+    // layout padding, which reaches us as U+00A0 and would otherwise survive into search
+    // and comparison as a character no keyboard produces.
+    let text = document
+        .root_element()
+        .text()
+        .collect::<String>()
+        .replace('\u{a0}', " ");
 
-    let unescaped = raw_text
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&#39;", "'")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">");
-
-    let lines: Vec<&str> = unescaped
+    let lines: Vec<&str> = text
         .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
@@ -356,16 +413,21 @@ fn is_login_page(url: &Url, html: &str) -> bool {
     is_login_document(&document)
 }
 
+/// Compiled once, and deliberately not through `Selector::parse(..).ok()`: a
+/// selector that failed to parse used to make the check below answer `false`,
+/// so the session guard would have failed open and read a redirect to the login
+/// page as if it were the data page the caller asked for.
+static LOGIN_FORM: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("form[action*='LoginPost']").expect("invalid selector"));
+static LOGIN_USERNAME_INPUT: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("input[name='UserName']").expect("invalid selector"));
+static LOGIN_PASSWORD_INPUT: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("input[name='Password']").expect("invalid selector"));
+
 fn is_login_document(document: &Html) -> bool {
-    let login_form = Selector::parse("form[action*='LoginPost']")
-        .ok()
-        .is_some_and(|selector| document.select(&selector).next().is_some());
-    let has_username = Selector::parse("input[name='UserName']")
-        .ok()
-        .is_some_and(|selector| document.select(&selector).next().is_some());
-    let has_password = Selector::parse("input[name='Password']")
-        .ok()
-        .is_some_and(|selector| document.select(&selector).next().is_some());
+    let login_form = document.select(&LOGIN_FORM).next().is_some();
+    let has_username = document.select(&LOGIN_USERNAME_INPUT).next().is_some();
+    let has_password = document.select(&LOGIN_PASSWORD_INPUT).next().is_some();
 
     login_form || (has_username && has_password)
 }
@@ -459,16 +521,16 @@ mod tests {
 
     #[test]
     fn reads_planning_settings_from_the_inline_portal_script() {
-        let visible = r#"
+        let visible = r#"<script>
             const urlTempoSeance = 'https://school.mytempo.online/user/login' ?? "";
             const tempoLinkVisible = 'True'.toLowerCase() === 'true';
             const sundaysVisible = 'True'.toLowerCase() === 'true';
-        "#;
-        let hidden = r#"
+        </script>"#;
+        let hidden = r#"<script>
             const urlTempoSeance = 'https://school.mytempo.online/user/login' ?? "";
             const tempoLinkVisible = 'False'.toLowerCase() === 'true';
             const sundaysVisible = 'False'.toLowerCase() === 'true';
-        "#;
+        </script>"#;
 
         let settings = parse_planning_settings(visible);
         assert_eq!(
@@ -487,6 +549,49 @@ mod tests {
     }
 
     #[test]
+    fn reads_inline_planning_constants_whatever_the_portal_formatting() {
+        // Every spelling the portal could ship the same declaration in. Missing one of them
+        // used to strip the Tempo links and the Sunday column while still answering `Ok`.
+        for script in [
+            r#"<script>const sundaysVisible = 'True'.toLowerCase() === 'true';</script>"#,
+            r#"<script>const sundaysVisible = "True";</script>"#,
+            r#"<script>let sundaysVisible = 'True';</script>"#,
+            r#"<script>var sundaysVisible = 'True';</script>"#,
+            r#"<script>const sundaysVisible='True';</script>"#,
+            r#"<script>const sundaysVisible    =    'True';</script>"#,
+            "<script>const sundaysVisible =\n    'True';</script>",
+            r#"<script>const sundaysVisible = `True`;</script>"#,
+        ] {
+            assert!(
+                parse_planning_settings(script).sundays_visible,
+                "unread declaration: {script}"
+            );
+        }
+    }
+
+    #[test]
+    fn stops_an_inline_constant_at_the_closing_quote_not_an_escaped_one() {
+        let script = r#"<script>
+            const urlTempoSeance = 'https://school.mytempo.online/aujourd\'hui/';
+            const tempoLinkVisible = 'True';
+        </script>"#;
+
+        let settings = parse_planning_settings(script);
+
+        assert_eq!(
+            settings.tempo_base_url.as_ref().map(Url::as_str),
+            Some("https://school.mytempo.online/aujourd'hui/")
+        );
+    }
+
+    #[test]
+    fn ignores_planning_constants_written_outside_a_script_element() {
+        let prose = r#"<p>const sundaysVisible = 'True';</p>"#;
+
+        assert!(!parse_planning_settings(prose).sundays_visible);
+    }
+
+    #[test]
     fn converts_calendar_html_to_plain_text() {
         assert_eq!(
             html_to_text("Développement Web<br>Campus Lyon &amp; salle B204"),
@@ -496,5 +601,26 @@ mod tests {
             html_to_text("Team Bulding (Cours)\r\n<br />\r\nDUCHEMIN Loïc <br />\r\nSalle Ada LOVELACE\r\n (Campus Nord) \r\n"),
             "Team Bulding (Cours)\nDUCHEMIN Loïc\nSalle Ada LOVELACE\n(Campus Nord)"
         );
+    }
+
+    #[test]
+    fn un_escapes_calendar_text_exactly_once() {
+        // The parser already decoded the entity; a second pass would read the result as an
+        // entity of its own and hand back `R&D` for a course actually named `R&amp;D`.
+        assert_eq!(html_to_text("R&amp;amp;D"), "R&amp;D");
+    }
+
+    #[test]
+    fn keeps_a_tag_a_teacher_typed_as_text() {
+        assert_eq!(
+            html_to_text("write &amp;lt;b&amp;gt; here"),
+            "write &lt;b&gt; here"
+        );
+    }
+
+    #[test]
+    fn folds_the_portal_padding_space_into_an_ordinary_one() {
+        assert_eq!(html_to_text("Salle&nbsp;B204"), "Salle B204");
+        assert!(!html_to_text("29/09/2025&nbsp;08:45").contains('\u{a0}'));
     }
 }
