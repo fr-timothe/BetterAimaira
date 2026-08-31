@@ -17,6 +17,7 @@
   import ScreenShell from '$lib/components/ui/ScreenShell.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
+  import { backGesture } from '$lib/state/back-gesture';
   import { cn } from '$lib/utils';
   import AnalyticsConsentPanel from './AnalyticsConsentPanel.svelte';
   import { onboarding } from './onboarding.svelte';
@@ -91,6 +92,16 @@
 
   const onPermissions = $derived(onboarding.step === 'permissions');
   const onAnalytics = $derived(onboarding.step === 'analytics');
+
+  /** The first panel has nothing behind it, so the gesture leaves the app there. */
+  const hasPanelBehind = $derived(onboarding.steps.indexOf(onboarding.step) > 0);
+
+  // The back button and the edge swipe walk the panels, exactly like the
+  // button under the permission list.
+  $effect(() => {
+    backGesture.claim('onboarding', hasPanelBehind ? () => onboarding.back() : null);
+    return () => backGesture.claim('onboarding', null);
+  });
 
   onMount(() => {
     void onboarding.load();

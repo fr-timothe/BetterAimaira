@@ -8,6 +8,7 @@
   import { searchSchools, type School } from '$lib/data/schools';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
+  import { backGesture } from '$lib/state/back-gesture';
   import { connectivity } from '$lib/state/connectivity.svelte';
   import { cn } from '$lib/utils';
 
@@ -38,6 +39,13 @@
   let checking = $state(false);
 
   const results = $derived(searchSchools(query));
+
+  // A back press closes the address sheet rather than the picker under it: the
+  // sheet is the innermost step on screen, so it is the one the gesture undoes.
+  $effect(() => {
+    backGesture.claim('school-address', addressOpen ? () => (addressOpen = false) : null);
+    return () => backGesture.claim('school-address', null);
+  });
 
   const copy = $derived.by(() => {
     locale;

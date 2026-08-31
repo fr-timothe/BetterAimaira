@@ -25,6 +25,7 @@
   import type { School } from '$lib/data/schools';
   import { connectivity } from '$lib/state/connectivity.svelte';
   import { appLocale } from '$lib/state/locale.svelte';
+  import { backGesture } from '$lib/state/back-gesture';
   import { sessionRecovery } from '$lib/state/session-recovery.svelte';
   import { updates } from '$lib/features/updates/updates.svelte';
   import { cn } from '$lib/utils';
@@ -94,6 +95,14 @@
   let passwordVisible = $state(false);
   let submitting = $state(false);
   let phase = $state<BootPhase>('checking');
+  /**
+   * The login steps behind the one on screen, oldest first.
+   *
+   * Kept so the platform's back gesture has somewhere to go: the picker and the
+   * form are one route, so nothing in the history says which of them the reader
+   * came through, and the picker can be reached from either side.
+   */
+  let loginTrail = $state<Extract<BootPhase, 'school' | 'manual'>[]>([]);
   let errorCode = $state<ErrorCode | null>(null);
   let restoreErrorCode = $state<ErrorCode | null>(null);
   let restoreOffline = $state(false);
@@ -131,6 +140,8 @@
   const restoring = $derived(phase === 'checking' || phase === 'restoring');
   /** Both steps a reader signs in through, picker and form. */
   const atLogin = $derived(phase === 'school' || phase === 'manual');
+  /** First start only: a device with a saved account has been through this. */
+  const introductionVisible = $derived(introductionPending && atLogin && !savedIdentity);
 
   const signalTime = $derived(
     new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }).format(now)
@@ -293,14 +304,32 @@
       username ||= savedIdentity.username;
     }
     errorCode = code;
-    phase = code === null && !portalUrl ? 'school' : 'manual';
+    enterLoginStep(code === null && !portalUrl ? 'school' : 'manual', { fresh: true });
+  }
+
+  /**
+   * Moves to a login step, remembering the one it came from. A step entered
+   * again — the picker reopened from the form — is a step forward like any
+   * other, so the trail only ever grows on a move the reader made.
+   */
+  function enterLoginStep(step: 'school' | 'manual', { fresh = false } = {}) {
+    loginTrail = fresh ? [step] : [...loginTrail, step];
+    phase = step;
+  }
+
+  /** Returns to the step behind the current one, for the back gesture. */
+  function leaveLoginStep() {
+    if (loginTrail.length < 2) return;
+    const trail = loginTrail.slice(0, -1);
+    loginTrail = trail;
+    phase = trail[trail.length - 1]!;
   }
 
   function chooseSchool(school: School) {
     selectedSchool = school;
     portalUrl = school.portalUrl ?? '';
     errorCode = null;
-    phase = 'manual';
+    enterLoginStep('manual');
   }
 
   /**
@@ -329,7 +358,7 @@
     selectedSchool = school;
     portalUrl = cleanUrl;
     errorCode = null;
-    phase = 'manual';
+    enterLoginStep('manual');
   }
 
   function extractErrorCode(error: unknown): ErrorCode {
@@ -480,6 +509,14 @@
     sessionEpoch += 1;
   }
 
+  // The back button and the edge swipe walk the login steps the reader came
+  // through. The introduction, which is painted over them, claims the gesture
+  // for its own panels while it is on screen.
+  $effect(() => {
+    const canLeave = atLogin && !introductionVisible && loginTrail.length > 1;
+    backGesture.claim('login', canLeave ? leaveLoginStep : null);
+  });
+
   const changeLocale = (nextLocale: Locale) => appLocale.set(nextLocale);
 
   async function logout() {
@@ -500,7 +537,7 @@
     offlineMode = false;
     autoRetries = 0;
     password = '';
-    phase = 'manual';
+    enterLoginStep('manual', { fresh: true });
   }
 </script>
 
@@ -528,8 +565,7 @@
       onLogout={logout}
     />
   {/key}
-{:else if introductionPending && atLogin && !savedIdentity}
-  <!-- First start only: a device with a saved account has been through this. -->
+{:else if introductionVisible}
   <OnboardingScreen {locale} onDone={() => (introductionPending = false)} />
 {:else if phase === 'checking' || phase === 'restoring' || phase === 'failed'}
   <SessionRestoreScreen
@@ -683,7 +719,7 @@
                      underline underline-offset-2 transition-control hover:text-secondary
                      active:scale-(--press-scale)"
               type="button"
-              onclick={() => (phase = 'school')}
+              onclick={() => enterLoginStep('school')}
             >
               {portalUrl ? copy.schoolChange : copy.schoolChoose}
             </button>

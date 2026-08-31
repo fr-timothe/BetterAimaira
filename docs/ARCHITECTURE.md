@@ -105,6 +105,7 @@ instance, all on the same shape: a class with `$state` fields.
 | `session-recovery.svelte.ts` | Replaying the saved password when the portal drops the session, single-flight, with the loop budget. |
 | `announcements.svelte.ts` | The message shown in the one polite live region the layout renders. |
 | `locale.svelte.ts` | The interface language, as a signal. |
+| `back-gesture.ts` | What the platform's back gesture — Android's button and the edge swipe — undoes, claimed by the screen on top. |
 
 `locale.svelte.ts` is worth explaining, because a reader will wonder why the
 language needs a rune when Paraglide already has one. Paraglide resolves every
