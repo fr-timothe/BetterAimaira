@@ -14,6 +14,7 @@
   } from 'lucide-svelte';
   import Logo from '$lib/assets/Logo.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import ScreenShell from '$lib/components/ui/ScreenShell.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
   import { cn } from '$lib/utils';
@@ -131,11 +132,7 @@
 
 <!-- The introduction owns the whole frame, exactly like the restore screen: the
      login form is never painted underneath a reader who has not started yet. -->
-<main
-  class="grid min-h-full grow place-items-center overflow-y-auto bg-background
-         px-[max(1.5rem,7vw)] pt-[max(2rem,var(--safe-top))]
-         pb-[max(2rem,var(--safe-bottom))]"
->
+<ScreenShell>
   <div class="grid w-[min(100%,30rem)] gap-6">
     <div class="flex items-center gap-3 text-lg font-bold text-foreground">
       <Logo size={34} variant="icon" />
@@ -290,4 +287,4 @@
       </Button>
     {/if}
   </div>
-</main>
+</ScreenShell>

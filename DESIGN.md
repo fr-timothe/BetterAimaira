@@ -14,6 +14,8 @@ Tailwind v4 is the styling layer. `@theme inline` in `src/app.css` republishes e
 
 Three families have no Tailwind namespace and are read straight from the token: `min-h-(--tap-min)`, `active:scale-(--press-scale)`, and `duration-fast` / `z-nav` through the `--transition-duration-*` and `--z-index-*` aliases.
 
+**Safe areas are spent through the `*-safe-*` utilities, never by hand.** `--safe-top` / `--safe-right` / `--safe-bottom` / `--safe-left` are what the platform takes — status bar, gesture pill, display cutout — and `app.css` fills them from the Android bridge or `env()`. What a layout writes is `pt-safe-8`, `pb-safe-2`, `mx-safe-3`, `top-safe-6`: each utility **adds** the inset of its edge to that step of the spacing scale. Padding, margin and the four inset properties all have one. The pattern they replaced, `pt-[max(2rem,var(--safe-top))]`, is a defect and not a shorthand: on any phone whose status bar is taller than the step, `max()` resolves to exactly the inset and the first line of text lands against the clock. Two gutters are tokens rather than steps — `px-screen` (`--gutter-screen`, the side margin of a full-frame screen) and `--dock-clearance` (the dock's height plus the strip under it, what a scroller owes the dock). Nothing outside `app.css` reads `env(safe-area-inset-*)`.
+
 **Utilities first.** Scoped `<style>` is for what a utility cannot say, and the file that keeps one says why at the top of the block. As of this pass that is: the three portal tables, whose display model switches between a card stack and real columns; the presence gradient and the SVG internals in `HeroStat`; the brand mark's own SVG paint in `Logo`; the shell's layout-mode block, where root classes must beat a width query on specificity; and the two states that paint a whole course row on Today. The calendar's time grid keeps none: its columns, hour rules and blocks are placed by inline `grid-row` / `top` / `height` values computed in `calendar-layout.ts`, because those numbers are data, not style.
 
 **Global CSS must be layered.** `@import "tailwindcss"` declares `@layer theme, base, components, utilities`, and unlayered CSS outranks every utility regardless of specificity. Anything global added to `app.css` goes inside `@layer base`, or it silently wins against the utility that was supposed to override it. The one deliberate exception is `.desktop-only` / `.mobile-only`, which needs to beat a co-located `display` and is commented as such.
@@ -76,7 +78,8 @@ Layer order is a scale, not a guess: `--z-raised` 10, `--z-sticky` 20, `--z-nav`
 | `Skeleton` | text / title / block / circle placeholders, one pulse grammar |
 | `StateCard` | loading, empty, error and expired states with their action |
 | `Card` | plain / sunken / ink surfaces, optional interactive hover |
-| `PageShell` | the root padding recipe every view shares |
+| `PageShell` | the root padding recipe every view shares inside the authenticated shell |
+| `ScreenShell` | the full-frame screens outside it — startup, school picker, introduction: own scroller, all four system insets |
 | `SectionHeader` | icon plate + title + subtitle + actions |
 | `SegmentedControl` | tab bars, including arrow/Home/End keyboard support |
 | `Switch` | on/off preferences, `role="switch"` with `aria-checked`, 44px target, busy state while the answer is being written |

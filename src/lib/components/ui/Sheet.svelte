@@ -23,8 +23,10 @@
     class: className
   }: Props = $props();
 
-  // The safe-area insets are the reason these margins are spelled out: a sheet
-  // that clears the home indicator on one platform must not float on another.
+  // A sheet is the one surface that sits directly on a system edge, so its
+  // margins are spelled out: `*-safe-*` adds the gesture pill, the status bar or
+  // a landscape cutout to the gap, and the panel clears both instead of resting
+  // on one of them.
   const roots = {
     center: 'items-end justify-items-center md:items-center',
     end: 'items-start justify-items-end'
@@ -32,8 +34,8 @@
 
   const panels = {
     center:
-      'w-[min(100%,34rem)] mt-0 mx-3 mb-[max(var(--space-3),var(--safe-bottom))] md:m-6 animate-slide-up-in',
-    end: 'w-[min(100%,24rem)] mt-[max(var(--space-3),var(--safe-top))] mx-[max(var(--space-3),var(--safe-right))] mb-3 animate-slide-up-drawer'
+      'w-[min(100%,34rem)] mt-0 mx-safe-3 mb-safe-3 md:m-6 animate-slide-up-in',
+    end: 'w-[min(100%,24rem)] mt-safe-3 mx-safe-3 mb-3 animate-slide-up-drawer'
   } as const satisfies Record<NonNullable<Props['placement']>, string>;
 
   let root: HTMLDivElement | undefined = $state();

@@ -2,6 +2,7 @@
   import { AlertCircle, Link2, Search, WifiOff, X } from 'lucide-svelte';
   import Logo from '$lib/assets/Logo.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import ScreenShell from '$lib/components/ui/ScreenShell.svelte';
   import Sheet from '$lib/components/ui/Sheet.svelte';
   import SchoolLogo from './SchoolLogo.svelte';
   import { searchSchools, type School } from '$lib/data/schools';
@@ -128,11 +129,7 @@
 <!-- The picker owns the whole frame like the introduction before it: the login
      form is never painted under a reader who has not named their school yet.
      It scrolls on its own, because the window shell above it does not. -->
-<main
-  class="flex min-h-full grow flex-col overflow-y-auto bg-background
-         px-[max(1.25rem,5vw)] pt-[max(2rem,var(--safe-top))]
-         pb-[max(2rem,var(--safe-bottom))]"
->
+<ScreenShell layout="stack">
   <div class="mx-auto flex w-[min(100%,54rem)] min-h-0 grow flex-col gap-5">
     <div class="flex items-center gap-3 text-lg font-bold text-foreground">
       <Logo size={34} variant="icon" />
@@ -269,7 +266,7 @@
       {copy.manual}
     </Button>
   </div>
-</main>
+</ScreenShell>
 
 {#if addressOpen}
   <Sheet title={copy.manualTitle} closeLabel={copy.close} onClose={() => (addressOpen = false)}>

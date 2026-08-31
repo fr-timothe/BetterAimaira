@@ -2,6 +2,7 @@
   import { AlertCircle, KeyRound, RefreshCw, WifiOff } from 'lucide-svelte';
   import Logo from '$lib/assets/Logo.svelte';
   import Button from '$lib/components/ui/Button.svelte';
+  import ScreenShell from '$lib/components/ui/ScreenShell.svelte';
   import Spinner from '$lib/components/ui/Spinner.svelte';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
@@ -88,11 +89,7 @@
 <!-- Startup owns the whole frame: the login form is never painted for an account
      that is about to be restored, and a failed restore keeps the reader here
      with both ways out rather than dropping them on an empty form. -->
-<main
-  class="grid min-h-full grow place-items-center overflow-y-auto bg-background
-         px-[max(1.5rem,7vw)] pt-[max(2rem,var(--safe-top))]
-         pb-[max(2rem,var(--safe-bottom))]"
->
+<ScreenShell>
   <div
     class="grid w-[min(100%,26rem)] justify-items-center gap-4 text-center"
     role={stage === 'failed' ? 'alert' : 'status'}
@@ -154,4 +151,4 @@
       </div>
     {/if}
   </div>
-</main>
+</ScreenShell>

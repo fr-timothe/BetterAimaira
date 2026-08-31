@@ -181,8 +181,7 @@
   const container =
     'flex w-full flex-col gap-3 px-3 pt-3 pb-6' +
     ' md:gap-4 md:px-8 md:pt-6 md:pb-8' +
-    ' lte-600:pr-[max(var(--space-2),var(--safe-right))]' +
-    ' lte-600:pl-[max(var(--space-2),var(--safe-left))]';
+    ' lte-600:px-safe-2';
 </script>
 
 <div class={cn(container, fillsHeight && 'min-h-0 flex-1')}>

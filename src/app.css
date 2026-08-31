@@ -256,15 +256,36 @@
   --shadow-2xl: -50px -50px 0px -50px hsl(0 0% 0% / 0.00);
   --tracking-normal: 0em;
 
-  /* Safe-area insets. Every layout reads these four, never `env()` directly:
-     an Android webview only reports `env(safe-area-inset-*)` for display
-     cutouts, so on an edge-to-edge window the status bar and the gesture pill
-     measure zero and the page draws underneath them. `html.native-insets`
-     below swaps in the real values the activity hands over. */
+  /* ==========================================================================
+     Safe areas — the strips the system owns, and what a layout pays on top.
+
+     These four are what the platform takes: status bar, gesture pill, display
+     cutout. Every layout reads them, never `env()` directly — an Android
+     webview only reports `env(safe-area-inset-*)` for cutouts, so on an
+     edge-to-edge window the status bar and the pill measure zero and the page
+     draws underneath them. `html.native-insets` below swaps in the real values
+     the activity hands over.
+
+     An inset is never spent as the layout's own gutter. `max(2rem,
+     var(--safe-top))` resolves to exactly the inset on any phone whose status
+     bar is taller than 2rem, which puts the first line of text against the
+     clock. The `*-safe-*` utilities further down add the two instead.
+     ========================================================================== */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+
+  /* The side gutter of a full-frame screen — sign-in, the school picker, the
+     introduction. One value for all three: they carried three different fluid
+     formulas with four width overrides between them, and an uncapped `7vw`
+     spent 57px of a tablet on margin. `px-screen` pays this plus the cutout. */
+  --gutter-screen: clamp(1.25rem, 5vw, 2rem);
+
+  /* What a scroller owes the floating dock: the dock's own height plus the strip
+     the gesture pill takes under it. Named once so the dock and the clearance
+     below its last row cannot drift apart. */
+  --dock-clearance: calc(4.5rem + var(--safe-bottom));
 
   /* One light palette, stated so the platform stops offering a dark one and
      Android draws the system bar glyphs dark over the shell. */
@@ -656,10 +677,6 @@ html.desktop-app .mobile-only {
   display: none !important;
 }
 
-/* The interaction recipe every control shares: colour and elevation on the fast
-   step, the press scale on the instant one. A utility cannot give one property
-   its own duration, so this is a utility rather than a class list. Note it
-   transitions `scale`, not `transform` — that is the property `scale-*` writes. */
 /* Tauri reads these to decide which parts of the window chrome move the window
    and which stay clickable. There is no utility for a vendor-only property. */
 @utility drag-region {
@@ -670,6 +687,10 @@ html.desktop-app .mobile-only {
   -webkit-app-region: no-drag;
 }
 
+/* The interaction recipe every control shares: colour and elevation on the fast
+   step, the press scale on the instant one. A utility cannot give one property
+   its own duration, so this is a utility rather than a class list. Note it
+   transitions `scale`, not `transform` — that is the property `scale-*` writes. */
 @utility transition-control {
   transition:
     color var(--duration-fast) var(--ease-out),
@@ -677,6 +698,89 @@ html.desktop-app .mobile-only {
     border-color var(--duration-fast) var(--ease-out),
     box-shadow var(--duration-fast) var(--ease-out),
     scale var(--duration-instant) var(--ease-out);
+}
+
+/* ==========================================================================
+   Safe-area utilities — the only way a layout spends a system inset.
+
+   Each one adds the inset of its edge to a step of the spacing scale, so
+   `pb-safe-2` reads as "half a rem of gutter, plus whatever the gesture pill
+   takes". The step is the design's space and the inset is the system's; the
+   `max()` these replace spent one on the other, so content landed against the
+   status bar on exactly the devices that have one. Where a platform reports no
+   inset the step is all that is left, so they are safe to use unconditionally
+   and need no `app-mobile:` variant.
+
+   `px-screen` is the same recipe for the one gutter that is a token rather than
+   a step: the side margin of a full-frame screen.
+   ========================================================================== */
+
+@utility pt-safe-* {
+  padding-top: calc(var(--safe-top) + --spacing(--value(integer)));
+}
+
+@utility pr-safe-* {
+  padding-right: calc(var(--safe-right) + --spacing(--value(integer)));
+}
+
+@utility pb-safe-* {
+  padding-bottom: calc(var(--safe-bottom) + --spacing(--value(integer)));
+}
+
+@utility pl-safe-* {
+  padding-left: calc(var(--safe-left) + --spacing(--value(integer)));
+}
+
+@utility px-safe-* {
+  padding-inline: calc(var(--safe-left) + --spacing(--value(integer)))
+    calc(var(--safe-right) + --spacing(--value(integer)));
+}
+
+@utility py-safe-* {
+  padding-block: calc(var(--safe-top) + --spacing(--value(integer)))
+    calc(var(--safe-bottom) + --spacing(--value(integer)));
+}
+
+@utility mt-safe-* {
+  margin-top: calc(var(--safe-top) + --spacing(--value(integer)));
+}
+
+@utility mr-safe-* {
+  margin-right: calc(var(--safe-right) + --spacing(--value(integer)));
+}
+
+@utility mb-safe-* {
+  margin-bottom: calc(var(--safe-bottom) + --spacing(--value(integer)));
+}
+
+@utility ml-safe-* {
+  margin-left: calc(var(--safe-left) + --spacing(--value(integer)));
+}
+
+@utility mx-safe-* {
+  margin-inline: calc(var(--safe-left) + --spacing(--value(integer)))
+    calc(var(--safe-right) + --spacing(--value(integer)));
+}
+
+@utility top-safe-* {
+  top: calc(var(--safe-top) + --spacing(--value(integer)));
+}
+
+@utility right-safe-* {
+  right: calc(var(--safe-right) + --spacing(--value(integer)));
+}
+
+@utility bottom-safe-* {
+  bottom: calc(var(--safe-bottom) + --spacing(--value(integer)));
+}
+
+@utility left-safe-* {
+  left: calc(var(--safe-left) + --spacing(--value(integer)));
+}
+
+@utility px-screen {
+  padding-inline: calc(var(--safe-left) + var(--gutter-screen))
+    calc(var(--safe-right) + var(--gutter-screen));
 }
 
 /* ==========================================================================

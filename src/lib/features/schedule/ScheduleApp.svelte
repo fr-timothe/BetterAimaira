@@ -614,7 +614,7 @@
          before the content it navigates rather than last in the tab order. -->
     <nav
       class="bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-nav justify-center
-             px-3 pt-1 pb-[max(var(--space-2),var(--safe-bottom))]"
+             px-3 pt-1 pb-safe-2"
       aria-label={copy.navLabel}
     >
       <!-- A dock that genuinely floats above the content, on frosted glass. -->
@@ -875,7 +875,7 @@
   }
 
   .main-viewport {
-    padding-bottom: calc(4.5rem + var(--safe-bottom));
+    padding-bottom: var(--dock-clearance);
   }
 
   /* A banner across the top, where a phone already puts its own notifications.
@@ -935,7 +935,7 @@
   }
 
   :global(html.mobile-app) .main-viewport {
-    padding-bottom: calc(4.5rem + var(--safe-bottom));
+    padding-bottom: var(--dock-clearance);
   }
 
   :global(html.mobile-app) .update-notice-slot {
