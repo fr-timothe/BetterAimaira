@@ -206,7 +206,11 @@
 
 <div
   bind:this={root}
-  class={cn('ui-sheet-root fixed inset-0 z-modal grid overscroll-contain', roots[placement], className)}
+  class={cn(
+    'ui-sheet-root fixed inset-0 z-modal grid overscroll-contain pb-(--keyboard-inset)',
+    roots[placement],
+    className
+  )}
   onkeydown={handleKeyDown}
   role="presentation"
 >
@@ -220,7 +224,10 @@
   <div
     bind:this={panel}
     class={cn(
-      'relative z-[1] flex max-h-[calc(100dvh-2*var(--space-6))] flex-col overflow-y-auto',
+      // The keyboard is taken off the ceiling as well as off the floor: a sheet
+      // tall enough to fill the window would otherwise keep its height and push
+      // its own footer, the confirm button included, back under the keyboard.
+      'relative z-[1] flex max-h-[calc(100dvh-var(--keyboard-inset)-2*var(--space-6))] flex-col overflow-y-auto',
       'overscroll-contain rounded-xl bg-card shadow-xl',
       'focus-visible:outline-3 focus-visible:-outline-offset-3 focus-visible:outline-ring',
       panels[placement]

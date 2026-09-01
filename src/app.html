@@ -4,7 +4,14 @@
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
     <link rel="alternate icon" href="%sveltekit.assets%/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- `interactive-widget=resizes-content` is what makes an Android webview
+         shrink the layout viewport for the on-screen keyboard, so `100dvh` keeps
+         describing what the reader can see. Webviews that ignore it — WKWebView,
+         and every Chromium before 108 — are covered by `--keyboard-inset`. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <meta name="theme-color" content="#243b64" />
     <!-- One light palette. Stated here as well as in the Android theme so a
          webview set to force dark leaves the surfaces alone. -->

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import "../app.css";
   import { initNativeInsets } from "$lib/native-insets";
+  import { initKeyboardInset } from "$lib/state/keyboard-inset";
   import TitleBar from "$lib/components/TitleBar.svelte";
   import { announcer } from "$lib/state/announcements.svelte";
   import { appLocale } from "$lib/state/locale.svelte";
@@ -11,6 +12,11 @@
   // The safe-area insets have to be in place before the shell paints, and the
   // platform bridge only exists once the document does.
   onMount(initNativeInsets);
+
+  // The keyboard inset is measured for the whole document, not per screen: a
+  // sheet opens over any of them, and the listener has to be in place before the
+  // field inside it takes focus.
+  onMount(initKeyboardInset);
 
   $effect(() => {
     document.documentElement.lang = appLocale.current;

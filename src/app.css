@@ -276,6 +276,13 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
 
+  /* The strip the on-screen keyboard covers, published by `initKeyboardInset`
+     and zero on every platform that has no keyboard over the page. Whatever
+     sits on the bottom edge pays it, because a webview that does not shrink its
+     layout viewport for the keyboard leaves `100dvh` describing a window the
+     reader can no longer see all of. */
+  --keyboard-inset: 0px;
+
   /* The side gutter of a full-frame screen — sign-in, the school picker, the
      introduction. One value for all three: they carried three different fluid
      formulas with four width overrides between them, and an uncapped `7vw`

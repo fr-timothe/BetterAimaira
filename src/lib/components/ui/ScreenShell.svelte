@@ -21,10 +21,15 @@
      introduction. Two things are declared once here rather than in each screen:
      it scrolls on its own, because the window shell above it does not, and it
      pays the system insets on all four edges, so a status bar, a gesture pill
-     or a landscape cutout never lands on the content. -->
+     or a landscape cutout never lands on the content.
+
+     The keyboard is spent as a margin rather than as padding: the scroller ends
+     where the keyboard begins, so its whole content can still be scrolled into
+     view instead of the last field sitting in a strip nobody can see. -->
 <main
   class={cn(
     'ui-screen-shell min-h-full grow overflow-y-auto bg-background px-screen py-safe-8',
+    'mb-(--keyboard-inset)',
     layouts[layout],
     className
   )}
