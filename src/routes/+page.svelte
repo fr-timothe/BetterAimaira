@@ -604,7 +604,7 @@
   <SchoolPicker {locale} onSelect={chooseSchool} onSubmitAddress={submitManualPortal} />
 {:else}
 <main
-  class="login-shell grid min-h-full grow overflow-y-auto
+  class="login-shell grid min-h-full grow overflow-y-auto mb-(--keyboard-inset)
          grid-cols-[minmax(360px,0.84fr)_minmax(460px,1.16fr)] lte-820:block"
 >
   <!-- The signal panel is abstract geometry plus the real clock. It states no
@@ -712,13 +712,17 @@
         <!-- The address belongs to the picker, sheet included, and stays there.
              The form only names who the sign-in is for, so a reader who opened
              the wrong school sees it without a portal field back on the form. -->
-        <div class="grid gap-2">
-          <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <!-- `min-w-0` twice over, and not for tidiness: the reminder never
+             wraps, so a grid or flex track left at its automatic minimum takes
+             the width of the longest school name in the list and pushes the
+             whole form past the window. -->
+        <div class="grid min-w-0 gap-2">
+          <div class="flex min-w-0 items-center justify-between gap-3">
             <p class="min-w-0 truncate text-sm leading-[1.45] text-muted-foreground">
               {schoolReminder}
             </p>
             <button
-              class="min-h-(--tap-min) rounded-sm bg-transparent text-xs font-bold text-primary-deep
+              class="min-h-(--tap-min) flex-none rounded-sm bg-transparent text-xs font-bold text-primary-deep
                      underline underline-offset-2 transition-control hover:text-secondary
                      active:scale-(--press-scale)"
               type="button"
