@@ -79,11 +79,11 @@ Layer order is a scale, not a guess: `--z-raised` 10, `--z-sticky` 20, `--z-nav`
 | `StateCard` | loading, empty, error and expired states with their action |
 | `Card` | plain / sunken / ink surfaces, optional interactive hover |
 | `PageShell` | the root padding recipe every view shares inside the authenticated shell |
-| `ScreenShell` | the full-frame screens outside it — startup, school picker, introduction: own scroller, all four system insets |
+| `ScreenShell` | the full-frame screens outside it — startup, school picker, introduction: own scroller, all four system insets, and the keyboard strip |
 | `SectionHeader` | icon plate + title + subtitle + actions |
 | `SegmentedControl` | tab bars, including arrow/Home/End keyboard support |
 | `Switch` | on/off preferences, `role="switch"` with `aria-checked`, 44px target, busy state while the answer is being written |
-| `Sheet` | modals and drawers, with focus trap, focus restore, Escape and scroll lock |
+| `Sheet` | modals and drawers, with focus trap, focus restore, Escape, scroll lock and a panel that rises above the on-screen keyboard |
 | `Badge` | status tones with optional live dot |
 | `KindBadge` | course category tone, resolved from `courseCategory()` |
 | `FreshnessLabel` | sync state: fresh, stale, refreshing, failed, offline, never |

@@ -106,6 +106,7 @@ instance, all on the same shape: a class with `$state` fields.
 | `announcements.svelte.ts` | The message shown in the one polite live region the layout renders. |
 | `locale.svelte.ts` | The interface language, as a signal. |
 | `back-gesture.ts` | What the platform's back gesture — Android's button and the edge swipe — undoes, claimed by the screen on top. |
+| `keyboard-inset.ts` | The strip the on-screen keyboard covers, published as `--keyboard-inset` for the bottom edge to pay. No mobile webview shrinks its layout viewport for the keyboard on its own, so `100dvh` alone puts a sheet underneath it. |
 
 `locale.svelte.ts` is worth explaining, because a reader will wonder why the
 language needs a rune when Paraglide already has one. Paraglide resolves every

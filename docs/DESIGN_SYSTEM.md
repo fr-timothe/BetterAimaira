@@ -73,6 +73,7 @@ for the two compact steps that pre-date the hinge.
 - Media queries for the app shell, expressed as Tailwind variants at the element rather than as a block at the end of a file.
 - Independent detection of `hover`, `pointer`, keyboard focus, and reduced motion.
 - Respect the safe-area insets across mobile and desktop windows, through the `*-safe-*` utilities (`pt-safe-8`, `pb-safe-2`, `mx-safe-3`, …) rather than the `--safe-*` tokens by hand, and never through `env(safe-area-inset-*)` directly (see `src/lib/native-insets.ts` and the utility block in `src/app.css`). Each utility adds the inset to a step of the spacing scale; `max(step, inset)` is a defect, because it spends the design's gutter on the system's strip.
+- Pay the on-screen keyboard with `--keyboard-inset` (published by `src/lib/state/keyboard-inset.ts`), never by trusting `100dvh`: no mobile webview shrinks the layout viewport for the keyboard on its own, so a bottom sheet or a scroller pinned to that edge is painted under it. A scroller spends the inset as a bottom margin, so its whole content can still be scrolled clear; a sheet spends it as padding on its backdrop and takes it off the panel's own ceiling.
 - Present identical core features across all window widths through reflow rather than removal.
 
 ### Authentication surface
