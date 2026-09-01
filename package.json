@@ -1,6 +1,6 @@
 {
 	"name": "betteraimaira",
-	"version": "0.1.1-beta.18",
+	"version": "0.1.1-beta.19",
 	"description": "Alternative Tauri client for Aimaira student intranets.",
 	"type": "module",
 	"scripts": {
