@@ -8,8 +8,10 @@ adaptive
 
 ## Users
 
-The first version targets students of a school that runs the Aimaira portal. Each user enters their
-own portal address on the login screen; nothing assumes they paste the exact home page.
+The first version targets students of a school that runs the Aimaira portal. Each user picks their
+school in the picker that opens first, or types a portal address there when the school is not
+listed; the login screen only names the school it is signing in to. Nothing assumes they paste the
+exact home page.
 
 ## Product purpose
 
