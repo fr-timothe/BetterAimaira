@@ -8,7 +8,6 @@
     Eye,
     EyeOff,
     Globe2,
-    Link2,
     LoaderCircle,
     LockKeyhole,
   } from 'lucide-svelte';
@@ -153,8 +152,6 @@
       appName: m.app_name(),
       heading: m.login_heading(),
       description: m.login_description(),
-      portalLabel: m.portal_label(),
-      portalMissing: m.portal_missing(),
       emailLabel: m.email_label(),
       emailPlaceholder: m.email_placeholder(),
       passwordLabel: m.password_label(),
@@ -174,6 +171,28 @@
       schoolChoose: m.school_choose(),
     };
   });
+
+  /**
+   * Who the form is signing in to. The school when the picker named one, and
+   * the portal's host when the address was hand-typed for a school nobody has
+   * a name for — the only identity there is in that case, and shorter than the
+   * address the picker keeps.
+   */
+  const signedInSchool = $derived(selectedSchool?.name ?? (portalUrl ? portalHost(portalUrl) : null));
+
+  const schoolReminder = $derived.by(() => {
+    locale;
+    const school = signedInSchool;
+    return school ? m.login_school_reminder({ school }) : m.login_school_none();
+  });
+
+  function portalHost(url: string): string {
+    try {
+      return new URL(url).host;
+    } catch {
+      return url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    }
+  }
 
   /**
    * What the form has to say about the school the picker handed it: nothing at
@@ -690,30 +709,14 @@
         action="/login"
         novalidate
       >
-        <!-- The address is settled a step earlier, in the picker, so the form
-             states it rather than asking for it: one less field between a
-             reader and the two things only they can supply. -->
+        <!-- The address belongs to the picker, sheet included, and stays there.
+             The form only names who the sign-in is for, so a reader who opened
+             the wrong school sees it without a portal field back on the form. -->
         <div class="grid gap-2">
-          <span class="text-sm font-bold">{copy.portalLabel}</span>
-          <div
-            class={cn(
-              fieldFrame,
-              'flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-[0.85rem] py-[0.6rem]'
-            )}
-          >
-            <span class="flex min-w-0 items-center gap-[0.6rem] text-muted-foreground">
-              <Link2 class="flex-none" size={19} aria-hidden="true" />
-              <span class="grid min-w-0">
-                {#if selectedSchool}
-                  <strong class="truncate text-base font-bold text-foreground">
-                    {selectedSchool.name}
-                  </strong>
-                {/if}
-                <span class={cn('truncate', selectedSchool ? 'text-xs' : 'text-base text-foreground')}>
-                  {portalUrl || copy.portalMissing}
-                </span>
-              </span>
-            </span>
+          <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <p class="min-w-0 truncate text-sm leading-[1.45] text-muted-foreground">
+              {schoolReminder}
+            </p>
             <button
               class="min-h-(--tap-min) rounded-sm bg-transparent text-xs font-bold text-primary-deep
                      underline underline-offset-2 transition-control hover:text-secondary
@@ -721,7 +724,7 @@
               type="button"
               onclick={() => enterLoginStep('school')}
             >
-              {portalUrl ? copy.schoolChange : copy.schoolChoose}
+              {signedInSchool ? copy.schoolChange : copy.schoolChoose}
             </button>
           </div>
 
