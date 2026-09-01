@@ -1,16 +1,16 @@
 {
-  "version": "0.1.1-beta.18",
-  "notes": "BetterAimaira 0.1.1-beta.18",
-  "pub_date": "2026-09-01T11:24:25.195Z",
+  "version": "0.1.1-beta.19",
+  "notes": "BetterAimaira 0.1.1-beta.19",
+  "pub_date": "2026-09-01T12:09:14.502Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTYUxwN3MwWUZ4QlRsaHQxOStoUW9IZkE3bFNRTmdjVHRCM3RXSnVrckRzbVdHZkFMK09rWmM1Um1XNVIwMVJVa0tRMkhaOGJyTGlaNytkbmNoRE1iWGRDMGI0cHM2ZEE0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg4MjYxNzcxCWZpbGU6QmV0dGVyQWltYWlyYV8wLjEuMS1iZXRhLjE4X3g2NC1zZXR1cC5leGUKRkZxRkhMcTQwekJvYXhNaVN6ZnVsUVArVGdOd3o4TEgrelcrS2Ywa3ZjZFJrck9JakN1bEs0cHNsRk0zMjZIMTBxb1N1OG9TVDBSclVZdUswYW9hQ3c9PQo=",
-      "url": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.18/BetterAimaira-v0.1.1-beta.18-x86_64.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTYUxwN3MwWUZ4QmFHZWIzWXA0ejhyUERiZnhsekVDeXJzbWVTcGc0bFZkSmpSZ0ZpTUNLVnpvR2thVmZlbHBYSHRnQWVnM0l2S01rUHBSTVlUYmVDbW9NazhGbjB2YkFvPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg4MjY0NDY0CWZpbGU6QmV0dGVyQWltYWlyYV8wLjEuMS1iZXRhLjE5X3g2NC1zZXR1cC5leGUKUkhhSjNUbHpjaEZJT1JvUDVuME1PY1BWTWxBY1gxTzV2aDBrZ1lHbTJLaTFZdHZQTFNvcjc4NWdRVlkrUHEzYTlvV3pkMHk1RFRxWHFJU0tUY3FOQVE9PQo=",
+      "url": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.19/BetterAimaira-v0.1.1-beta.19-x86_64.exe"
     },
     "android-universal": {
       "signature": "",
-      "url": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.18/BetterAimaira-v0.1.1-beta.18-universal.apk",
-      "size": 33408407
+      "url": "https://github.com/fr-timothe/BetterAimaira/releases/download/v0.1.1-beta.19/BetterAimaira-v0.1.1-beta.19-universal.apk",
+      "size": 33408411
     }
   }
 }
