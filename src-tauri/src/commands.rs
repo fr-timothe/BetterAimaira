@@ -3,11 +3,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{AppHandle, State};
+use tauri_plugin_opener::OpenerExt;
 use zeroize::Zeroize;
 
 use crate::aimaira;
 use crate::credentials;
+use crate::downloads;
 use crate::error::CommandError;
 use crate::grade_sync::{GradeSyncResult, GradeSyncStore};
 use crate::portal_store::{schedule_range_key, PortalStore};
@@ -96,6 +98,17 @@ pub struct PlanningSettingsResult {
 #[serde(rename_all = "camelCase")]
 pub struct DocumentRequest {
     request_path: String,
+    /// The name the view proposes. Sanitised before it reaches the filesystem.
+    filename: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentDownloadResult {
+    /// Absolute path of the saved file, so the view can say where it went.
+    path: String,
+    /// False when the file is on disk but the system refused to display it.
+    opened: bool,
 }
 
 #[derive(Deserialize)]
@@ -639,15 +652,31 @@ where
         .map_err(|_| CommandError::new("grade_storage_unavailable"))
 }
 
+/// Saves the PDF from Rust rather than handing the bytes to the webview: no
+/// engine the app ships on downloads a `blob:` URL reliably, so the button used
+/// to finish loading and leave nothing behind. See `crate::downloads`.
 #[tauri::command]
 pub async fn download_portal_document(
+    app: AppHandle,
     state: State<'_, SessionState>,
     request: DocumentRequest,
-) -> Result<tauri::ipc::Response, CommandError> {
+) -> Result<DocumentDownloadResult, CommandError> {
     let (client, portal_url) = state.with_session(|s| (s.client.clone(), s.portal_url.clone()))?;
     let body = aimaira::download_portal_document(&client, &portal_url, request.request_path.trim())
         .await?;
-    Ok(tauri::ipc::Response::new(body))
+    let saved = downloads::save_document(&app, &request.filename, &body)?;
+
+    // The document is already safe on disk; failing to display it is worth
+    // reporting but must not read as a failed download.
+    let opened = app
+        .opener()
+        .open_path(saved.to_string_lossy(), None::<&str>)
+        .is_ok();
+
+    Ok(DocumentDownloadResult {
+        path: saved.to_string_lossy().into_owned(),
+        opened,
+    })
 }
 
 #[tauri::command]

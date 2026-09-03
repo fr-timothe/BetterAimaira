@@ -76,6 +76,7 @@
       reasonLabel: m.absence_reason_label(),
       report: m.document_kind_absence_report(),
       downloadFailed: m.absence_download_failed(),
+      downloadSaved: (path: string) => m.document_saved_to({ path }),
       emptyTitle: m.absence_empty_title(),
       emptyYearDescription: m.absence_empty_description(),
       tableBlock: m.absence_table_block(),
@@ -273,6 +274,11 @@
           class="rounded-md bg-danger-surface px-3 py-2 text-sm font-semibold text-danger-strong"
           role="alert"
         >{copy.downloadFailed}</p>
+      {:else if downloads.savedPath}
+        <p
+          class="rounded-md bg-surface-sunken px-3 py-2 text-sm font-semibold break-all text-muted-foreground"
+          role="status"
+        >{copy.downloadSaved(downloads.savedPath)}</p>
       {/if}
 
       {@render toolbar()}

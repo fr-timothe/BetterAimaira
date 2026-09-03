@@ -1,6 +1,7 @@
 import { invoke } from '$lib/invoke';
 import * as m from '$lib/paraglide/messages.js';
 import type {
+  DocumentDownloadResult,
   PortalDocument,
   PortalDocumentKind,
   PortalResourceErrorCode,
@@ -110,17 +111,18 @@ export function documentFilename(document: PortalDocument, fallback = 'document'
   return safeName.toLowerCase().endsWith('.pdf') ? safeName : `${safeName}.pdf`;
 }
 
-export async function downloadPortalDocument(document: PortalDocument): Promise<void> {
-  const bytes = await invoke<ArrayBuffer>('download_portal_document', {
-    request: { requestPath: document.requestPath },
+/**
+ * The backend writes the file and opens it. Saving from here instead — an
+ * `<a download>` on a `blob:` URL — is silently ignored by the WebKit and
+ * Android webviews and cancelled by WebView2, which is why the button used to
+ * finish loading and leave nothing behind.
+ */
+export async function downloadPortalDocument(
+  document: PortalDocument
+): Promise<DocumentDownloadResult> {
+  return invoke<DocumentDownloadResult>('download_portal_document', {
+    request: { requestPath: document.requestPath, filename: documentFilename(document) },
   });
-  const blob = new Blob([bytes], { type: 'application/pdf' });
-  const objectUrl = URL.createObjectURL(blob);
-  const anchor = window.document.createElement('a');
-  anchor.href = objectUrl;
-  anchor.download = documentFilename(document);
-  anchor.click();
-  URL.revokeObjectURL(objectUrl);
 }
 
 export function parseResourceError(

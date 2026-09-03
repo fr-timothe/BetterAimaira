@@ -151,6 +151,7 @@
   "download_document": "Télécharger le document",
   "downloading_document": "Téléchargement…",
   "document_download_error": "Le document n'a pas pu être téléchargé. Réessayez.",
+  "document_saved_to": "Enregistré dans {path}",
   "document_kind_absence_report": "Relevé d'absences",
   "document_kind_grade_bulletin": "Bulletin de notes",
   "document_kind_grade_transcript": "Relevé de notes",

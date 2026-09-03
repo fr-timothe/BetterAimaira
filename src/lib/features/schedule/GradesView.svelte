@@ -78,6 +78,7 @@
       bulletin: m.document_kind_grade_bulletin(),
       transcript: m.document_kind_grade_transcript(),
       downloadFailed: m.grade_download_failed(),
+      downloadSaved: (path: string) => m.document_saved_to({ path }),
       tableBlock: m.grade_table_block(),
       tableCourse: m.grade_table_course(),
       tableEvaluation: m.grade_table_evaluation(),
@@ -282,6 +283,11 @@
           class="rounded-md bg-danger-surface px-3 py-2 text-sm font-semibold text-danger-strong"
           role="alert"
         >{copy.downloadFailed}</p>
+      {:else if downloads.savedPath}
+        <p
+          class="rounded-md bg-surface-sunken px-3 py-2 text-sm font-semibold break-all text-muted-foreground"
+          role="status"
+        >{copy.downloadSaved(downloads.savedPath)}</p>
       {/if}
 
       {@render toolbar()}

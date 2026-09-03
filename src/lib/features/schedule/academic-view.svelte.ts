@@ -56,18 +56,26 @@ export type DocumentDownload = {
   readonly requestPath: string | null;
   /** The last download failed; the view states it rather than swallowing it. */
   readonly failed: boolean;
+  /**
+   * Where the last document landed. The file is saved even when the system
+   * declines to open it, so the view has to name the path either way.
+   */
+  readonly savedPath: string | null;
   download: (document: PortalDocument) => Promise<void>;
 };
 
 export function createDocumentDownload(): DocumentDownload {
   let requestPath = $state<string | null>(null);
   let failed = $state(false);
+  let savedPath = $state<string | null>(null);
 
   async function download(document: PortalDocument) {
     requestPath = document.requestPath;
     failed = false;
+    savedPath = null;
     try {
-      await downloadPortalDocument(document);
+      const result = await downloadPortalDocument(document);
+      savedPath = result.path;
     } catch {
       failed = true;
     } finally {
@@ -81,6 +89,9 @@ export function createDocumentDownload(): DocumentDownload {
     },
     get failed() {
       return failed;
+    },
+    get savedPath() {
+      return savedPath;
     },
     download,
   };

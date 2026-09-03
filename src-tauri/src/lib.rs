@@ -4,6 +4,7 @@ mod analytics;
 mod android_bridge;
 mod commands;
 mod credentials;
+mod downloads;
 mod error;
 mod grade_sync;
 mod permissions;

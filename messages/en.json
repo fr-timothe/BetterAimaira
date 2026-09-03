@@ -151,6 +151,7 @@
   "download_document": "Download document",
   "downloading_document": "Downloading…",
   "document_download_error": "The document could not be downloaded. Try again.",
+  "document_saved_to": "Saved to {path}",
   "document_kind_absence_report": "Absence report",
   "document_kind_grade_bulletin": "Report card",
   "document_kind_grade_transcript": "Transcript",

@@ -85,6 +85,13 @@ export type PortalDocument = {
   suggestedFilename: string | null;
 };
 
+export type DocumentDownloadResult = {
+  /** Absolute path of the saved file, so the view can say where it went. */
+  path: string;
+  /** False when the file is on disk but the system refused to display it. */
+  opened: boolean;
+};
+
 export type GradeEvaluation = {
   label: string;
   score: string | null;

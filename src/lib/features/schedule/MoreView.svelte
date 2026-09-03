@@ -90,6 +90,8 @@
   let documentsState = $state<PortalResourceState>({ kind: 'loading' });
   let downloadingPath = $state<string | null>(null);
   let downloadError = $state(false);
+  /** Where the last document landed, so the row can point at it. */
+  let downloadedPath = $state<string | null>(null);
   let changingLocale = $state(false);
   /**
    * Null until the Rust side answers. Consent is never mirrored optimistically:
@@ -143,6 +145,7 @@
       download: m.download_document(),
       downloading: m.downloading_document(),
       downloadError: m.document_download_error(),
+      downloadSaved: (path: string) => m.document_saved_to({ path }),
       privacyTitle: m.privacy_section_title(),
       analyticsLabel: m.onboarding_analytics_accept(),
       analyticsDescription: m.onboarding_analytics_description(),
@@ -236,8 +239,10 @@
   async function downloadDocument(document: PortalDocument) {
     downloadingPath = document.requestPath;
     downloadError = false;
+    downloadedPath = null;
     try {
-      await downloadPortalDocument(document);
+      const result = await downloadPortalDocument(document);
+      downloadedPath = result.path;
     } catch {
       downloadError = true;
     } finally {
@@ -740,6 +745,15 @@
           >
             <AlertCircle size={16} aria-hidden="true" />
             <span>{copy.downloadError}</span>
+          </p>
+        {:else if downloadedPath}
+          <p
+            class="flex items-center gap-2 rounded-md bg-surface-sunken px-3 py-2 text-sm
+                   font-semibold text-muted-foreground"
+            role="status"
+          >
+            <FileText size={16} aria-hidden="true" />
+            <span class="break-all">{copy.downloadSaved(downloadedPath)}</span>
           </p>
         {/if}
 
