@@ -138,6 +138,26 @@ export class CalendarNavigation {
   };
 
   /**
+   * Move to a date *and* change scope, as one step.
+   *
+   * Doing it as `selectDate` then `setScope` is wrong twice over, and both
+   * ways were live: `selectDate` only moves the anchor while the scope is
+   * already `day`, so zooming from a month cell onto 8 September landed on the
+   * week of 31 August — the anchor never left the month's own. And two calls
+   * ask the parent for two periods when one is wanted, so the portal is
+   * queried for a range nobody is going to look at.
+   */
+  zoomTo = (date: Date, scope: CalendarScope) => {
+    const picked = startOfDay(date);
+    this.scope = scope;
+    this.anchorDate =
+      scope === 'week' ? startOfWeek(picked) : scope === 'month' ? startOfMonth(picked) : picked;
+    this.activeDate = picked;
+    this.monthFocusDate = picked;
+    this.triggerPeriodChange(this.anchorDate, scope);
+  };
+
+  /**
    * Replaces `<input type="week">`, which neither WKWebView nor WebKitGTK
    * implements: on those platforms it degrades to a text field expecting
    * `2026-W35`, which is not a control a student can operate.

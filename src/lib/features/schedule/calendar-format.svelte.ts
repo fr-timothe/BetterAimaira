@@ -51,6 +51,14 @@ export class CalendarFormat {
     () => new Intl.DateTimeFormat(this.#locale(), { hour: '2-digit', minute: '2-digit' })
   );
 
+  /**
+   * The hour alone, for a mark too narrow to carry `08:00` without truncating
+   * it to `08:0`. It is a formatter rather than a message because the shape is
+   * a locale's own — `08 h` in French, `8 AM` in English — and no catalogue
+   * entry can express that.
+   */
+  hourFormatter = $derived.by(() => new Intl.DateTimeFormat(this.#locale(), { hour: 'numeric' }));
+
   rangeFormatter = $derived.by(
     () =>
       new Intl.DateTimeFormat(this.#locale(), { day: 'numeric', month: 'short', year: 'numeric' })

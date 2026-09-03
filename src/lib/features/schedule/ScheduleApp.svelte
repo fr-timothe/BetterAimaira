@@ -30,6 +30,7 @@
   import type { Locale } from "$lib/paraglide/runtime.js";
   import { connectivity } from "$lib/state/connectivity.svelte";
   import { sessionRecovery } from "$lib/state/session-recovery.svelte";
+  import { viewControls } from "$lib/state/view-controls.svelte";
   import { updates } from "$lib/features/updates/updates.svelte";
   import UpdateNotice from "$lib/features/updates/UpdateNotice.svelte";
   import HomeView from "./HomeView.svelte";
@@ -114,6 +115,15 @@
   let absencesRefresh = $state<(() => Promise<void>) | undefined>();
   let moreRefresh = $state<(() => Promise<void>) | undefined>();
   let viewportElement = $state<HTMLDivElement | null>(null);
+
+  /**
+   * The dock's height, measured rather than declared. It is one row taller
+   * whenever the active view fills the control slot, and `--dock-clearance` as
+   * a constant would be wrong in one of the two cases by construction. On an
+   * expanded window the dock is `display: none` and this reads 0, which is
+   * exactly the clearance that layout wants.
+   */
+  let dockHeight = $state(0);
   let requestSequence = 0;
   const scheduleCache = new Map<string, ScheduleCacheEntry>();
   const pendingSchedules = new Map<string, Promise<ScheduleResult>>();
@@ -508,9 +518,13 @@
     'mx-5 mt-4 flex items-center gap-3 rounded-md px-4 py-3 text-base';
 </script>
 
+<!-- `--dock-clearance` is overridden from the dock's own measured height. The
+     token's declared value in app.css stays as the value before the dock has
+     been laid out, and as the value for anything rendered outside this shell. -->
 <div
   class="app-shell relative flex size-full max-h-full flex-row overflow-hidden
          bg-background text-foreground"
+  style:--dock-clearance={dockHeight > 0 ? `${dockHeight}px` : null}
 >
   <!-- Reaching the content past the titlebar, brand, rail toggle, five
        destinations and avatar is ten stops otherwise. -->
@@ -616,13 +630,26 @@
       class="bottom-nav pointer-events-none fixed inset-x-0 bottom-0 z-nav justify-center
              px-3 pt-1 pb-safe-2"
       aria-label={copy.navLabel}
+      bind:clientHeight={dockHeight}
     >
-      <!-- A dock that genuinely floats above the content, on frosted glass. -->
+      <!-- A dock that genuinely floats above the content, on frosted glass —
+           and, when the active view has controls of its own, the container
+           they live in. A view rendering its own bar above this one produced
+           two floating surfaces of the same material stacked on each other:
+           two borders, two shadows, two radii, and a clearance the view had to
+           guess. One object, two rows. -->
       <div
-        class="pointer-events-auto grid w-[min(100%,32rem)] grid-cols-5 gap-1 rounded-xl
-               border border-dock-edge bg-dock-veil px-1 py-[0.3rem] shadow-lg
-               backdrop-blur-[20px]"
+        class="pointer-events-auto w-[min(100%,32rem)] rounded-xl border border-dock-edge
+               bg-dock-veil shadow-lg backdrop-blur-[20px]"
       >
+        {#if viewControls.content}
+          <div class="flex items-center gap-1 px-1 pt-1">
+            {@render viewControls.content()}
+          </div>
+          <div class="mx-2 mt-1 h-px bg-border-subtle" aria-hidden="true"></div>
+        {/if}
+
+        <div class="grid grid-cols-5 gap-1 px-1 py-[0.3rem]">
         {#each navigationItems as item (item.id)}
           {@const Icon = item.icon}
           {@const isActive = activeView === item.id}
@@ -663,6 +690,7 @@
             >{copy.navAccount}</span
           >
         </button>
+        </div>
       </div>
     </nav>
 

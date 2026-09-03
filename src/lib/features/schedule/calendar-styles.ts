@@ -13,13 +13,3 @@ export const monthCellBtn =
   'flex min-h-(--tap-min) w-full cursor-pointer flex-col items-center justify-center gap-[0.15rem]' +
   ' rounded-md border px-1 py-1.5 transition-control active:scale-(--press-scale)' +
   ' hover:border-primary-deep hover:bg-muted';
-
-/**
- * The JS half of the same preference the `prefers-reduced-motion` rule in
- * app.css expresses: that rule cannot reach a scroll option, so the preference
- * is read again here by the two places that scroll something into view.
- */
-export function scrollBehavior(): ScrollBehavior {
-  if (typeof window === 'undefined') return 'auto';
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-}

@@ -48,7 +48,11 @@ Derived roles: `--primary-soft`, `--primary-deep-hover`, `--secondary-hover`, `-
 
 Status tones come in threes — `--success` / `--success-strong` / `--success-surface`, and the same shape for `warning` and `danger`. `*-strong` is the text and icon tone, the plain token is the fill, `*-surface` is the tinted background. **No state is ever communicated by colour alone**; the label says it too.
 
-Course categories use `--category-{lecture,tutorial,lab,exam,project,other}-{surface,text}`, applied only through `KindBadge`. Every pair clears 4.5:1 on its own surface and on white.
+Course categories use `--category-{lecture,tutorial,lab,exam,project,other}-{surface,text}`, applied only through `category-tone.ts`. Every pair clears 4.5:1 on its own surface and on white, and contrast is symmetric, so the `text` tone also carries white when it is used as a ground.
+
+That module is the rule's new home: it used to say "only through `KindBadge`", which held while a badge was the only thing wearing a category. A course block on the time grid wears the same category as a filled, positioned button with children, and it cannot be a badge — so the table moved down a level rather than being copied. `KindBadge` reads it, the calendar block reads it, nothing else spells a `--category-*` class. It also owns `categoryCode()`, the two- or three-character label a mark too small for a name still prints, because a category carried by hue alone is a state communicated by colour alone.
+
+A course that is already over drops its category for `spentSurface` — the neutral pair — instead of being faded. `opacity` fades the label with the field, and an 11px label at 64% on a pale ground falls under the floor. The swap also earns something: nobody scans the past by category, so the palette ends up spent entirely on what is still coming.
 
 ## Typography
 
@@ -85,7 +89,7 @@ Layer order is a scale, not a guess: `--z-raised` 10, `--z-sticky` 20, `--z-nav`
 | `Switch` | on/off preferences, `role="switch"` with `aria-checked`, 44px target, busy state while the answer is being written |
 | `Sheet` | modals and drawers, with focus trap, focus restore, Escape, scroll lock and a panel that rises above the on-screen keyboard |
 | `Badge` | status tones with optional live dot |
-| `KindBadge` | course category tone, resolved from `courseCategory()` |
+| `KindBadge` | course category chip, painted from `category-tone.ts` |
 | `FreshnessLabel` | sync state: fresh, stale, refreshing, failed, offline, never |
 
 Shared keyframes live in `app.css`: `spin`, `pulse-soft`, `pulse-beacon`, `fade-in`, `slide-up-in`, `shimmer`. A local `@keyframes` of the same name gets scoped by Svelte and shadows the shared one — so components must not redeclare them.
@@ -100,9 +104,19 @@ Shared keyframes live in `app.css`: `spin`, `pulse-soft`, `pulse-beacon`, `fade-
 
 ## Authenticated surfaces
 
-- Compact windows and expanded desktop windows share the mobile-first structural baseline. They use a sticky top app bar with a menu trigger, brand badge, active view indicator, notification indicator, and user profile pill. On mobile screens (< 768px), a floating five-destination bottom bar provides quick navigation with safe-area padding; on desktop windows (>= 768px), the bottom bar is hidden while the drawer and top bar handle navigation.
+- Compact windows and expanded desktop windows share the mobile-first structural baseline. On mobile screens (< 768px), a floating five-destination dock provides navigation with safe-area padding; on desktop windows (>= 768px), the dock is hidden and the rail handles navigation.
+
+- **The dock is also where a view's own controls live.** A view fills the shell's control slot (`$lib/state/view-controls.svelte`) and the dock renders it as a row above its destinations, inside the same border, radius, shadow and blur. A view rendering its own bar above the dock is the thing this prevents: two floating surfaces of the same material stacked on each other read as a mistake, and the view has to guess a clearance it does not own. `--dock-clearance` is overridden from the dock's own measured height, because that height changes with the slot and a constant would be wrong in one of the two cases by construction. On an expanded window there is no dock, so the view keeps the same snippet in its own header, where there is width for it.
 - Today exposes sync freshness first, then displays the current or next course in an ink-blue container. Time, location text, portal note, progress, and available Tempo action stay together.
-- Schedule is a time grid: courses sit on an hour scale, so a duration is a height and a free slot is a gap. The band opens on 08:00–18:00 and widens outward to whole hours until the earliest and latest course of the visible period fit. Overlapping courses split their column into lanes. A line marks the current time in today's column only, labelled with the hour. One control bar owns the scope, the period, its navigation, the date picker and the sync statement; the day strip appears in day scope only, because in week scope the grid's own day headers already pick the day. Compact windows scroll the week's columns sideways with the hour gutter and the day headers pinned; expanded windows show the portal six- or seven-day week at once. Month stays a calendar grid — one tab stop, walked with the arrow keys — beside the selected day's list, and each cell carries a density bar and the course count.
+- **Schedule is one time grid at three zoom levels.** Day, week and month are not three views: they are three magnifications of the same drawing, and every one of them is laid out to fit the height it was given rather than to a fixed hour height that then has to be scrolled. That is the decision the rest follows from. Courses sit on an hour scale, so a duration is a height and a free slot is a gap; the band opens on 08:00–18:00 and widens outward to whole hours until the earliest and latest course of the visible period fit; overlapping courses split their column into lanes.
+
+  Because the whole band is on screen, the six columns share the width instead of each demanding a minimum, so **nothing scrolls sideways at any zoom**. The week used to scroll two axes inside a 360px box on a phone, and the horizontal swipe had to be disabled there to avoid a coin toss between two meanings on one axis. It is no longer disabled anywhere: a horizontal swipe changes period at every zoom. Zooming in is a tap — a week column header opens that day, a month cell opens that week — and it goes through `CalendarNavigation.zoomTo`, never through `selectDate` followed by `setScope`, which resolves the anchor against the scope it is leaving and asks the portal for a period nobody will look at.
+
+  A block prints what its **measured** column width allows, not what its breakpoint suggests: below roughly 110px it drops to the hour and a hyphenated name, and a lane narrower than 60px keeps only the compact hour and its category field, saying the rest through `aria-label` and on tap. A line marks the current time in today's column, labelled with the hour only where a 53px column would not be covered by the label. Day zoom takes a measure on wide windows — one column across 1200px is a band, not a schedule.
+
+  Month is the same drawing five times smaller, and it is only worth drawing because it stays decodable: every week row carries the hour scale in a gutter reduced to three anchors, the middle anchor is ruled across every cell so morning and afternoon read as halves, each mark carries its category code and, where it is tall enough, its start hour. The month is one field split by hairlines — `gap-px` over the border colour, so every rule is drawn exactly once and no cell needs a border — never thirty bordered cards. A coming exam is the single saturated mark; it is what a student opens a month for. The grid keeps one tab stop, walked with the arrow keys. The selected day's list sits beside it only where there is width for it (`54rem`), and that decides what a cell does when tapped: with the pane on screen a tap selects, without it a tap zooms.
+
+  **Empty never removes the grid.** A band that still says which day it is and which hours it covers tells the reader more than a card standing where the grid was; the statement rides over it and takes no pointer, so the period can still be swiped away.
 - More groups Profile, Documents, and Questionnaires as accessible tabs. Profile owns the language selector and sign-out action. Sign-out requires confirmation in a modal.
 - Grades, Attendance, Profile, Documents, and Questionnaires render semantic data returned by Rust without inferring values from localized portal strings. Questionnaire responses remain read-only.
 - Expanded desktop windows maintain the centered layout with a minimum window size of `680x580`, using a slide-out drawer for profile, navigation, preferences, and quick actions.
@@ -123,7 +137,7 @@ A refresh that fails while data is already displayed must say so. Swallowing the
 
 ## Interaction
 
-- Minimum control target is `--tap-min` (`2.75rem` / 44px). This is a floor, including for icon-only and compact controls. The one place a control's size is data rather than a choice is a course block on the time grid: its height is its duration. The hour row is therefore 4.5rem, which keeps the shortest slot the portal returns above 36px, and the block carries `min-h-(--tap-min)` so the rare quarter-hour course is still reachable.
+- Minimum control target is `--tap-min` (`2.75rem` / 44px). This is a floor, including for icon-only and compact controls. The one place a control's size is data rather than a choice is a course block on the time grid: its height is its duration. Since the grid fits the band to the height it was given, an hour is worth whatever that division leaves — and the block carries `min-h-(--tap-min)` so the rare quarter-hour course is still reachable. The band scrolls rather than squeezing below 3rem an hour at day zoom and 2rem at week zoom, which is what keeps a fourteen-hour day usable.
 - Focus uses a high-contrast ink-blue outline. `outline: none` on a focusable element is only acceptable when a `:focus-visible` style replaces it in the same rule set.
 - Any element with `onclick` is a `<button>`. A `div role="button"` must handle both `Enter` and `Space` with `preventDefault()` — so prefer the button.
 - Icons are decorative unless they are the only label: `aria-hidden="true"` on the icon, the name on the control.

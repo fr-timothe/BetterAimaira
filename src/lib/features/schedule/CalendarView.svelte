@@ -1,34 +1,28 @@
 <script lang="ts">
   import {
-    Calendar,
     CalendarCheck,
-    CalendarDays,
-    CalendarSearch,
+    CalendarOff,
+    ChevronDown,
     ChevronLeft,
     ChevronRight,
-    Clock,
     RefreshCw,
   } from 'lucide-svelte';
   import * as m from '$lib/paraglide/messages.js';
   import type { Locale } from '$lib/paraglide/runtime.js';
-  import Badge from '$lib/components/ui/Badge.svelte';
   import Button from '$lib/components/ui/Button.svelte';
   import FreshnessLabel from '$lib/components/ui/FreshnessLabel.svelte';
   import IconButton from '$lib/components/ui/IconButton.svelte';
   import SegmentedControl from '$lib/components/ui/SegmentedControl.svelte';
-  import StateCard from '$lib/components/ui/StateCard.svelte';
-  import CalendarDayStrip from './CalendarDayStrip.svelte';
+  import { viewControls } from '$lib/state/view-controls.svelte';
   import CalendarMonthGrid from './CalendarMonthGrid.svelte';
   import CalendarTimeGrid from './CalendarTimeGrid.svelte';
   import CalendarViewSkeleton from './CalendarViewSkeleton.svelte';
   import CourseDetailModal from './CourseDetailModal.svelte';
   import DatePickerSheet from './DatePickerSheet.svelte';
   import { CalendarFormat } from './calendar-format.svelte';
-  import { CalendarNavigation } from './calendar-navigation.svelte';
-  import { panel } from './calendar-styles';
-  import { addDays, dayKey, isSameDay, startOfWeek } from './date-utils';
-  import { eventDurationMinutes, formatDuration } from './course-utils';
-  import { gapMinutes } from './calendar-layout';
+  import { CalendarNavigation, monthGridDays } from './calendar-navigation.svelte';
+  import { timeWindowFor } from './calendar-layout';
+  import { addDays, dayKey, isSameDay, isSameMonth, startOfWeek } from './date-utils';
   import type { CalendarEvent, CalendarScope } from './types';
   import { cn } from '$lib/utils';
 
@@ -103,7 +97,6 @@
   const weekDays = $derived(
     Array.from({ length: visibleWeekDaysCount }, (_, i) => addDays(weekStartDate, i))
   );
-  const weekEvents = $derived(weekDays.flatMap((day) => eventsForDay(day)));
 
   const format = new CalendarFormat(
     () => locale,
@@ -115,25 +108,39 @@
     })
   );
 
-  const activeDateEvents = $derived(eventsForDay(navigation.activeDate));
-  const activeDateDurationMinutes = $derived.by(() =>
-    activeDateEvents.reduce((total, event) => total + eventDurationMinutes(event), 0)
-  );
-  const activeDateGapMinutes = $derived(gapMinutes(activeDateEvents));
+  /**
+   * The columns the current zoom draws, and the events inside them. The month
+   * reads the whole displayed month so its cells share one band with the other
+   * zooms — a mark's height means the same thing wherever you are standing.
+   */
+  const zoomDays = $derived.by(() => {
+    if (navigation.scope === 'day') return [navigation.activeDate];
+    if (navigation.scope === 'week') return weekDays;
+    return monthGridDays(navigation.anchorDate).filter((day) =>
+      isSameMonth(day, navigation.anchorDate)
+    );
+  });
 
-  const ScopeIcon = $derived(
-    navigation.scope === 'day' ? Clock : navigation.scope === 'week' ? CalendarDays : Calendar
-  );
+  const zoomEvents = $derived(zoomDays.flatMap((day) => eventsForDay(day)));
+  const timeWindow = $derived(timeWindowFor(zoomEvents));
+  const hasEvents = $derived(zoomEvents.length > 0);
+
+  const offToday = $derived(!isSameDay(navigation.activeDate, now));
 
   function handleCourseClick(event: CalendarEvent) {
     if (onEventClick) onEventClick(event);
     else modalEvent = event;
   }
 
+  /** Zooming in on a day from the week's header row, and on a week from a month cell. */
+  const zoomToDay = (date: Date) => navigation.zoomTo(date, 'day');
+  const zoomToWeek = (date: Date) => navigation.zoomTo(date, 'week');
+
   /**
-   * Horizontal drag moves the period. Week scope is excluded on purpose: there
-   * the same gesture already scrolls the day columns, and two meanings on one
-   * axis is how a swipe becomes a coin toss.
+   * Horizontal drag moves the period, at every zoom. The week used to be
+   * excluded because its columns owned that axis; now that the whole week fits
+   * the width, nothing scrolls sideways and the gesture means one thing
+   * everywhere.
    */
   const SWIPE_DISTANCE = 64;
   let swipeStartX = 0;
@@ -143,7 +150,7 @@
   let swipeConsumedClick = false;
 
   function handleSwipeStart(event: PointerEvent) {
-    swipeTracking = event.pointerType !== 'mouse' && navigation.scope !== 'week';
+    swipeTracking = event.pointerType !== 'mouse';
     swipeConsumedClick = false;
     swipeStartX = event.clientX;
     swipeStartY = event.clientY;
@@ -171,92 +178,108 @@
     event.preventDefault();
   }
 
-  /**
-   * Day and week hand the leftover height to the time grid. Month keeps its
-   * natural size: its cells are a fixed grid, and squeezing them into whatever
-   * is left is how a month view starts clipping its last week.
-   */
-  const fillsHeight = $derived(navigation.scope !== 'month');
+  // On a compact window the controls are a row of the dock rather than a bar of
+  // their own; see `view-controls.svelte.ts` for why. On an expanded window the
+  // dock is hidden and the header below carries the same snippet.
+  $effect(() => viewControls.claim(periodControls));
 
   const container =
-    'flex w-full flex-col gap-3 px-3 pt-3 pb-6' +
-    ' md:gap-4 md:px-8 md:pt-6 md:pb-8' +
+    'flex w-full min-h-0 flex-1 flex-col gap-2 px-3 pt-2 pb-3' +
+    ' md:gap-3 md:px-8 md:pt-6 md:pb-8' +
     ' lte-600:px-safe-2';
 </script>
 
-<div class={cn(container, fillsHeight && 'min-h-0 flex-1')}>
-  <!-- 1. One control bar: scope, period, navigation, freshness. -->
-  <header
-    class={cn(
-      panel,
-      'flex flex-col gap-2.5 p-3',
-      'md:flex-row md:items-center md:justify-between md:gap-4 md:px-4'
-    )}
-  >
-    <div class="flex min-w-0 flex-col gap-[0.15rem]">
-      <span
-        class="inline-flex min-w-0 items-center gap-1 text-2xs font-bold tracking-[0.05em]
-               uppercase wrap-anywhere text-primary-deep"
+<!-- Previous period, the three zooms, next period. One snippet, rendered in the
+     dock on a compact window and in this view's header on an expanded one. -->
+{#snippet periodControls()}
+  <IconButton label={m.previous_period()} variant="ghost" onclick={() => navigation.movePeriod(-1)}>
+    <ChevronLeft size={19} strokeWidth={2.2} aria-hidden="true" />
+  </IconButton>
+
+  <SegmentedControl
+    options={format.scopeOptions}
+    value={navigation.scope}
+    label={m.calendar_scope_label()}
+    onChange={(scope) => navigation.setScope(scope as CalendarScope)}
+    class="min-w-0 flex-1 border-transparent bg-muted md:max-w-[18rem]"
+  />
+
+  <IconButton label={m.next_period()} variant="ghost" onclick={() => navigation.movePeriod(1)}>
+    <ChevronRight size={19} strokeWidth={2.2} aria-hidden="true" />
+  </IconButton>
+{/snippet}
+
+<div class={container}>
+  <!-- One line where the incumbent spent a 200px panel: the period names itself
+       and is the door to the date sheet, the freshness statement keeps its
+       place because honest state is not a polish item, and everything else
+       moved into the dock's control row. -->
+  <header class="flex shrink-0 flex-col border-b border-border-subtle pb-1">
+    <div class="flex items-center gap-2 md:gap-3">
+      <!-- The period is the door to the date sheet, which is why there is no
+           separate calendar button beside it any more: the same sheet reached
+           twice from one row is a control the row cannot afford at 390px. -->
+      <button
+        type="button"
+        class="flex min-h-(--tap-min) min-w-0 items-center gap-1 rounded-sm pe-1 text-start
+               transition-control active:scale-(--press-scale)"
+        onclick={() => (pickerOpen = true)}
       >
-        <ScopeIcon size={12} aria-hidden="true" />
-        <span>{format.scopeName}</span>
-      </span>
-      <h2
-        class="max-w-full text-base leading-[1.3] font-extrabold wrap-anywhere text-foreground
-               md:text-lg"
-      >{format.periodLabel}</h2>
+        <span class="truncate text-base leading-tight font-extrabold text-foreground md:text-lg"
+          >{format.periodLabel}</span
+        >
+        <ChevronDown
+          size={16}
+          strokeWidth={2.4}
+          class="shrink-0 text-primary-deep"
+          aria-hidden="true"
+        />
+        <span class="sr-only">{m.calendar_pick_date()}</span>
+      </button>
+
+      <!-- The expanded window has no dock, so the same controls sit here. -->
+      <div class="desktop-only ms-auto hidden min-w-0 flex-1 items-center gap-2 md:flex">
+        {@render periodControls()}
+      </div>
+
+      {#if onRefresh}
+        <IconButton
+          label={m.sync_refresh()}
+          variant="ghost"
+          {loading}
+          class="ms-auto shrink-0 md:ms-0"
+          onclick={() => void onRefresh?.()}
+        >
+          <RefreshCw size={17} strokeWidth={2.2} aria-hidden="true" />
+        </IconButton>
+      {/if}
+    </div>
+
+    <!-- Freshness always shows, so this row always exists — and giving the
+         return-to-today action the space beside it is what keeps the grid from
+         changing height every time the reader pages off today. -->
+    <div class="flex min-h-7 items-center justify-between gap-2">
       <FreshnessLabel
         {fetchedAt}
         {locale}
         refreshing={loading}
         failed={refreshFailed}
-        class="mt-[0.15rem]"
+        class="min-w-0"
       />
-    </div>
-
-    <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-      <div class="flex items-center gap-1.5 lte-600:justify-between">
-        <IconButton label={m.previous_period()} onclick={() => navigation.movePeriod(-1)}>
-          <ChevronLeft size={18} strokeWidth={2.2} aria-hidden="true" />
-        </IconButton>
-
+      {#if offToday}
         <Button variant="accent" size="sm" onclick={navigation.goToToday}>
           <CalendarCheck size={14} aria-hidden="true" />
           <span>{m.go_to_today()}</span>
         </Button>
-
-        <IconButton label={m.next_period()} onclick={() => navigation.movePeriod(1)}>
-          <ChevronRight size={18} strokeWidth={2.2} aria-hidden="true" />
-        </IconButton>
-
-        <IconButton label={m.calendar_pick_date()} onclick={() => (pickerOpen = true)}>
-          <CalendarSearch size={17} strokeWidth={2.1} aria-hidden="true" />
-        </IconButton>
-
-        {#if onRefresh}
-          <IconButton
-            label={m.sync_refresh()}
-            loading={loading}
-            onclick={() => void onRefresh?.()}
-          >
-            <RefreshCw size={17} strokeWidth={2.2} aria-hidden="true" />
-          </IconButton>
-        {/if}
-      </div>
-
-      <SegmentedControl
-        options={format.scopeOptions}
-        value={navigation.scope}
-        label={m.calendar_scope_label()}
-        onChange={(scope) => navigation.setScope(scope as CalendarScope)}
-        class="md:w-[15rem]"
-      />
+      {/if}
     </div>
   </header>
 
-  <!-- 2. Scope views. -->
+  <!-- The zooms. Every one of them is laid out to fit the height it was given,
+       so none of them scrolls sideways and the swipe below owns the horizontal
+       axis outright. -->
   <main
-    class={cn('relative flex flex-col gap-3', fillsHeight ? 'min-h-0 flex-1' : 'min-h-96')}
+    class="relative flex min-h-0 flex-1 flex-col"
     onpointerdown={handleSwipeStart}
     onpointerup={handleSwipeEnd}
     onpointercancel={() => (swipeTracking = false)}
@@ -264,88 +287,63 @@
   >
     {#if loading && events.length === 0}
       <CalendarViewSkeleton ariaLabel={m.planning_loading()} />
-    {:else if navigation.scope === 'day'}
-      <div class={cn(panel, 'flex items-center justify-between gap-3 px-4 py-3 lte-600:items-start')}>
-        <p class="min-w-0 text-sm text-muted-foreground">
-          {m.day_course_count({ count: activeDateEvents.length })}
-          {#if activeDateDurationMinutes > 0}
-            · {formatDuration(activeDateDurationMinutes, locale)}
-          {/if}
-          {#if activeDateGapMinutes > 0}
-            · {m.calendar_free_time({ duration: formatDuration(activeDateGapMinutes, locale) })}
-          {/if}
-        </p>
-        {#if isSameDay(navigation.activeDate, now)}
-          <Badge tone="accent">{m.preview_today()}</Badge>
-        {/if}
-      </div>
+    {:else}
+      <!-- Empty does not remove the grid. The band still says which day it is
+           and which hours it covers, which a card standing where the grid was
+           does not. The statement rides over it and takes no pointer, so the
+           period can still be swiped away. -->
+      {#if !hasEvents}
+        <div
+          class="pointer-events-none absolute inset-0 z-raised flex items-center justify-center p-6"
+          role="status"
+        >
+          <div
+            class="flex max-w-[20rem] flex-col items-center gap-2 rounded-lg border
+                   border-border-subtle bg-card/92 px-5 py-4 text-center shadow-sm
+                   backdrop-blur-[6px]"
+          >
+            <CalendarOff size={24} class="text-primary-deep" aria-hidden="true" />
+            <p class="text-sm leading-tight font-extrabold text-foreground">
+              {navigation.scope === 'day' ? m.no_courses_day() : m.no_events_period()}
+            </p>
+            <p class="text-xs leading-relaxed text-muted-foreground">
+              {m.no_events_period_description()}
+            </p>
+          </div>
+        </div>
+      {/if}
 
-      <CalendarDayStrip
-        days={weekDays}
-        activeDate={navigation.activeDate}
-        {now}
-        {format}
-        {eventsForDay}
-        onSelect={navigation.selectDate}
-      />
-
-      {#if activeDateEvents.length > 0}
+      {#if navigation.scope === 'month'}
+        <CalendarMonthGrid
+          anchorDate={navigation.anchorDate}
+          activeDate={navigation.activeDate}
+          monthFocusDate={navigation.monthFocusDate}
+          {now}
+          {locale}
+          {format}
+          {timeWindow}
+          {eventsForDay}
+          onSelectDate={navigation.selectDate}
+          onFocusDate={navigation.focusMonthDate}
+          onZoomWeek={zoomToWeek}
+          onEventClick={handleCourseClick}
+          {onOpenTempo}
+        />
+      {:else}
         <CalendarTimeGrid
-          days={[navigation.activeDate]}
+          days={navigation.scope === 'day' ? [navigation.activeDate] : weekDays}
           scope={navigation.scope}
           activeDate={navigation.activeDate}
           {now}
           {format}
           {eventsForDay}
-          onSelectDate={navigation.selectDate}
+          onZoomDay={zoomToDay}
           onEventClick={handleCourseClick}
         />
-      {:else}
-        <StateCard
-          kind="empty"
-          title={m.no_courses_day()}
-          description={m.no_courses_day_description()}
-          icon={CalendarCheck}
-        />
       {/if}
-    {:else if navigation.scope === 'week'}
-      {#if weekEvents.length > 0}
-        <CalendarTimeGrid
-          days={weekDays}
-          scope={navigation.scope}
-          activeDate={navigation.activeDate}
-          {now}
-          {format}
-          {eventsForDay}
-          onSelectDate={navigation.selectDate}
-          onEventClick={handleCourseClick}
-        />
-      {:else}
-        <StateCard
-          kind="empty"
-          title={m.no_events_period()}
-          description={m.no_courses_day_description()}
-          icon={CalendarDays}
-        />
-      {/if}
-    {:else if navigation.scope === 'month'}
-      <CalendarMonthGrid
-        anchorDate={navigation.anchorDate}
-        activeDate={navigation.activeDate}
-        monthFocusDate={navigation.monthFocusDate}
-        {now}
-        {locale}
-        {format}
-        {eventsForDay}
-        onSelectDate={navigation.selectDate}
-        onFocusDate={navigation.focusMonthDate}
-        onEventClick={handleCourseClick}
-        {onOpenTempo}
-      />
     {/if}
   </main>
 
-  <!-- 3. Date picker. -->
   {#if pickerOpen}
     <DatePickerSheet
       activeDate={navigation.activeDate}
@@ -360,7 +358,6 @@
     />
   {/if}
 
-  <!-- 4. Course detail. -->
   <CourseDetailModal
     event={modalEvent}
     {locale}
